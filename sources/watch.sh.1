@@ -1,0 +1,339 @@
+.TH watch.sh 1 "August 7, 2014" Linux "User Manuals"
+.\"
+.\" NAME ----------------------------------------------------------------------
+.\"
+.SH NAME 
+watch.sh \- a wrapper for mpv/MPlayer to run videos easy via CLI.
+.\"
+.\" SYNOPSIS ------------------------------------------------------------------
+.\"
+.SH SYNOPSIS
+.TP 4
+.IP "Simpliest form:"
+.B watch.sh
+[\fIoptional arguments\fP] \fB-d\fP \fIbasepath  phrase\fP
+.IP "Watching cycle start:"
+.br 
+.B watch.sh
+[\fIoptional arguments\fP] \fB-c -d\fP \fIbasepath  phrase\fP
+.IP "Resuming watching cycle:"
+.br
+.B watch.sh 
+[\fIoptional arguments\fP] \fB-[r|R]\fP  [\fIphrase\fP]
+.\"
+.\" DESCRIPTION ---------------------------------------------------------------
+.\"
+.SH DESCRIPTION
+\fBwatch.sh\fP is written to simplify access to video files and play videos easily. It allows playing single files, DVD/BD folders and folders with episodes of TV series. For the former and the latter ones it can also find external subtitles and tracks, applying heuristic algorithms to include files with names that may strongly differ from the names of corresponding video files, and that frees you from the job of picking appropriate subtitles manually.
+
+This script can also help you deal with organization taken screenshots, placing them right into the folder named after video and compressing them after you stop watching it.
+
+For the folder with episodes watch.sh can track your watching progress, allowing to run episodes one after another without creating a playlist, but remembering the episode number you quit watching today, so you could easily resume watching the folder later.
+
+\[char46]\[char46]\[char46]and many other accompanying things that make life even lazier.
+.\"
+.\" LIST OF ARGUMENTS ---------------------------------------------------------
+.\"
+.SH LIST OF ARGUMENTS
+.SS "Required arguments"
+.TP
+.B -d, --basedir, --basepath <\fIbasepath\fP>
+Main folder with video files for starting the search.
+.TP
+.I phrase
+.br
+A string to search in file and folder names.
+.TP
+.B -c, --run-in-cycle
+Starts watching cycle in a found folder.
+.P
+.B -r, --resume
+.br
+.B -R, --resume-from-previous
+.br
+.RS 7
+Resumes watching cycle. When the \fIphrase\fP was given (phrase is an argument by itself), it resumes session started with the specified \fIphrase\fP, and the last session otherwise. Sessions are stored in a journal which size is limited (see also \fBFILES\fP section and descriptions to \fB--no-journal\fP and \fB--journal-max-size\fP options).
+
+.br
+\fB-r\fP|\fB--resume\fP will play the next episode, if the last one was watched till the end, or the previous one, if watching was interrupted (player was closed before the end of file has been reached). \fB-R\fP|\fB--resume-previous\fP is to select one episode back from what usual \fB--resume\fP would take. It may be helpful in case if you accidentally rewind the episode till the end -- to avoid starting a new watching cycle to open that previous episode again.
+.RE
+.\"
+.\" OPTIONAL ARGUMENTS --------------------------------------------------------
+.\"
+.SS "Optional arguments"
+.P
+.B -a, --match-all
+.br
+.B -n, --match-number
+.br
+.RS 7
+When the script is looking for external subtitles and tracks, it always picks those matching the video file name, but depending on the mode the script running in, it may add some another. Thus, in the mode when it plays a sequence of \fIepisodes\fP, the search for external subtitles and tracks is also done for those having both \fIphrase\fP and \fIepisode number\fP in their names. And when it plays a \fIsingle\fP file, it also searches for those matching \fIphrase\fP. \fB--match-number\fP allows external files having only the \fIepisode number\fP to be included to the list of found subtitles, while \fB--match-all\fP in addition to that includes those having only the \fIphrase\fP in their names.
+.RE
+.TP
+.B -A, --no-aid
+Do not show hints built-in the interface.
+.TP
+.B --bashrc[=\fIpath to file\fP]
+.br
+Source ~/.bashrc or the file specified as an argument. This is to make aliases available for \fB--mplayer-command\fP.
+.TP
+.B -C, --no-color
+Forbid colored output, if possible.
+.TP
+.B --compat <mplayer|mplayer2|mpv-03x>
+Set compatibility mode for keys passing to \fB--mplayer-command\fP. This affects DVD/BD playing, adding external subtitles and tracks, which is involving building options for the player command.
+.br
+The script is written to conform with the syntax of the latest \fBmpv\fP build (i.e. from git), so there’s no need in compatibility modes if you use the upstream.
+Use "mplayer" for the original MPlayer, "mplayer2" for mplayer2 and mpv-03x for mpv-0.3.x or older.
+.TP
+.B -e
+Enable heuristic methods for finding episode numbers in file names. Specifying this option increases the default \fIheuristics level\fP, which initially equals to 0. This option is cumulative and since the highest \fIheuristics level\fP is 2, \fB-ee\fP is enough to bump it to the maximum.
+Usually, there's no need to enable heuristics at all, if the files named properly and those names not differ much.
+.RS 10
+.B \-e 
+is useful when there are two or more kinds of names;
+.br
+.B \-ee 
+is only needed, if the sequence cannot be determined properly by \fBsort\fP used by the level one heuristics (and default sorting functions in other programs).
+.RS -3
+See \fBUsing heuristics\fP subsection further.
+.RE
+.RE
+.TP
+.B --heuristics-level <0..2>
+Sets heuristics level directly to a specified number.
+.TP
+.B -h, --help
+Shows this man page.
+.TP
+.B -H <\fIpattern\fP>
+Calls \fBman watch.sh\fP with 'pager' option, specifying \fBless\fP as the pager and passing \fIpattern\fP to it, allowing to open this man page on a specified word, e.g. passing \fB-H '^EXAM'\fP will open  this man page on \fBEXAMPLES OF USE\fP section.
+.TP
+.B -I, --ignore-disks
+Treat a folder containing DVD of BD stuff like a folder with episodes instead of playing it like an actual DVD or BD (See \fBPlaying DVD and BD\fP subsection).
+.P
+.B -j[\fInumber\fP|a|all]
+.br
+.B --list-journal[=\fInumber\fP|=a|=all]
+.br
+.RS 7
+List recently used phrases saved in journal. Optional argument tells how much entries to show, by default ten is shown. "a" and "all" are the same.
+.RE
+.TP
+.B -J, --no-journal
+Do not use \fIjournal\fP to store session data. Resuming the cycle won't work, but you can gain a bit of privacy instead.
+.TP
+.B --journal-max-size <\fIvalue\fP>
+The maximum size the \fIjournal\fP will be truncated to, in bytes. Additional suffixes K, M and G are recognized in the \fIvalue\fP to represent KiB, MiB and GiB, e.g. "1025" is 1025 bytes, "1K" is one kibibyte (1*1024 = 2^10 bytes). The default size is 64K.
+.TP
+.B --jpeg-compression[=0..100]
+Use conversion to JPEG after running \fBpngcrush\fP (if present) on screenshots taken after closing watch session. The optional parameter defines quality, the default is 92. Use this only if you have MPlayer, mpv can save screenshots to JPEG itself, see \fBman mpv\fP to know how to set up its configuration file.
+.TP
+.B -l, --last-ep
+When watching goes in a \fIcycle\fP, prints the last shown episode number in big ASCII-art numbers, so it would be easier to remember. It sets three internal variables to default values:
+.RS 10
+- \fBcommand\fP - command line calling the program to output in ASCII-art (consider installing \fBfiglet\fP or \fBtoilet\fP for this purpose), default value is "figlet -t -f clb6x10 -c" or "cat" if figlet is not installed yet;
+.br
+- \fBformat\fP is the string to print. By default consists of only "%n", which is substituted with the number of the last shown episode. "\\n" and some other backslash combinations are also recognized, since the output is passed through \fBecho -e\fP;
+.br
+- \fBshow after\fP - defines the time when to output the number. It may be printed after the player stops (and before screenshots processing), after processing, or in both times (this is the default), in this case the number is printed the second time only if there were screenshots that required processing.
+.RE
+.P
+.B --last-ep-command <\fIcommand\fP>
+.br
+.B --last-ep-format <\fIformat\fP>
+.br
+.B --last-ep-show-after <player|screenshots|both>
+.br
+.RS 7
+These options serve to override default values set by \fB--last-ep\fP.
+.RE
+.TP
+.B -M, --mplayer-command <\fIcommand\fP>
+The \fIcommand\fP to run the player. May be an executable or an \fIalias\fP. \fBmpv\fP is used by default.
+.TP
+.B -m, --mplayer-opts <\fIoptions\fP>
+\fIoptions\fP are passed to the \fImplayer command\fP after found subtitles and tracks (if there are any).
+.TP
+.B -N, --dvd-bd-nav
+Pass navigation variant of the protocol when playing a disk, i.e. dvdnav:// and bdnav:// instead of dvd:// or bd://. bdnav:// is only supported by \fBmpv\fP.
+.TP
+.B --retarded
+Color scheme for consoles with white background.
+.TP
+.B -s, --subfolders <\fIpattern list\fP>
+Prospective subfolders that are likely expected between a folder found in \fIbasepath\fP and files matching the \fIphrase\fP. Usually they are subfolders that divide seasons or spans of episodes and named like "0-100", so putting "season -" in the \fIpattern list\fP will order to perform recursive search into the folder found in \fIbasepath\fP appending directories that do not contain \fIphrase\fP but do contain word "season" and/or dash "-" and look for video at the end of the new path.
+.TP
+.B -S, --screenshot-dir <\fIscreens path\fP>
+If set, look for a folder in the \fIscreens path\fP containing \fIphrase\fP in its name. The script will change directory to it, so all the taken screenshots would be put in there. It will also try to compress fresh screenshots of PNG format with \fBpngcrush\fP if it will be found. For later conversion to JPEG see \fB--jpeg-compression\fP.
+.TP
+.B --screenshot-dir-skel <\fIdirlist\fP>
+The argument is a list of comma separated directories to be created under the folder specified via \fB--screenshot-dir\fP, e.g. "art,misc".
+.TP
+.B -t, --taskset-cpulist <\fICPU list\fP>
+Passes \fICPU list\fP to \fBtaskset\fP, \fICPU list\fP may be a number, a span or a list, e.g. "0", "1-3", "0,2-4,7".
+.TP
+.B -v, --version
+Prints version and legal information.
+.\"
+.\" FILES ---------------------------------------------------------------------
+.\"
+.SH FILES
+\fB~/.watch.sh/journal\fP - here session data are stored.
+
+.\"
+.\" EXAMPLES OF USE -----------------------------------------------------------
+.\"
+.SH EXAMPLES OF USE
+
+First of all, everyone has a directory with video files, 
+.I /home/video/ 
+for example. In there can be single files (movies) or folders containing episodes, Blu-ray or DVD stuff. This is what must be passed to the \fB-d\fP option, which stands for \fIbasedir\fP or \fIbasepath\fP. To find something in it, a \fIphrase\fP must also be passed. In this simlpiest case the script would
+search for single files as well as folders inside of the \fIbasepath\fP, which names contain the specified \fIphrase\fP. For example, if command line would look like that
+.nf
+	$ watch.sh -d /home/video clash
+.fi
+then items in \fBbold\fP will be shown to choose one of them to continue:
+.nf
+	/home/video/\fBclash.mkv\fP                           # video file match
+	/home/video/\fBthose ones clashing hardly\fP/01.mkv   # folder match
+	                                      /02.mkv  
+	/home/video/clashing_sounds_10_hours.ogg        # not a video
+	/home/videos/free clash.mp4                     # not in \fIbasepath\fP
+.fi
+If the chosen one was a folder, then search goes further in its contents. Here an additional option, \fB--subfolders\fP may have an effect - if there are folders under the chosen directory, their names will be appended to the resulting path to video files as long as they match any of the patterns in \fIpattern list\fP (see above.) Let's assume the chosen directory was
+.nf
+	/home/video/\fBClashes in the morning\fP
+.fi
+which, in its turn, has the following structure
+.nf
+	./Season 1/01.mkv
+	          /02.mkv
+	          /...
+	./Season 2/01.mkv
+	          /...
+.fi
+then passing \fB-s 'season'\fP will perform recursive search in the current directory, appending inner folders containing 'season' (case-insensitive) in their names to path, so .mkv files could get to the list of episodes. See also description to \dB--subfolders\fP option above.
+.\" -----------------------------------------------------------------------SS--
+.SS Using heuristics
+Sometimes the file names in the destination folder do not have a common template, making the task to guess the correct order of the files harder for the script. To improve ordering results, there were introduced levels of applied heuristics. It's only two of them: 1 and 2. Zero means heuristics is disabled and ordering is performed by calling the \fBsort\fP utility. For the vast majority of cases that would be enough, also this is the fastest method.
+.br
+But this does not cover the rest of the cases, when the list would be built in the wrong order. And to deal with it, the first level of heuristics breaks up each file name from the list to patterns residing to the left and to the right of presumptive episode numbers, increments that number, and, if such file will be found in the list, it combines all the file names having numbers in that place in a group. The largest group will be at the top. Second level, in addition to the before mentioned, does check all numbers in groups as numbers (and not as symbols from the table of symbols), resorting matches inside groups again. This takes time and may lead to some delay on CPUs that are not that powerful (old Pentiums, Atoms, ARMs etc.) But this helps to align the list of episodes in the most correct order, and, in combination with file name groups, in the most desired way (if there is a season and a number of OVAs in the folder, 12 openings, or episode numbers go like "1 2... 10 11" instead of "01 02... 10 11" which makes usual \fBsort\fP fail). It's not recommended to enable 2nd level on a default basis, like putting it in the alias, cause the higher is the level, the slower the script works. It is always available in one key reach.
+.br
+
+Heuristics can be changed in the runtime by pressing \fBh\fP and \fBH\fP keys to lower the level and to rise it, respectively. Setting the level with \fB-e\fP or \fB-ee\fP option on a default basis may enable to avoid manual switching. Here's the reference table of heuristic levels
+.nf
+.B "+-----+---------------------+----------------------------------------+"
+\fB|\fPlevel\fB|\fPcommand needed to set\fB|\fP               description              \fB|\fP
+.B "+-----+---------------------+----------------------------------------+"
+\fB|\fP  0  \fB|\fP          -          \fB|\fP Heuristics disabled. Ordering is done  \fB|\fP
+\fB|\fP     \fB|\fP                     \fB|\fP via `sort` utility. Fastest method.    \fB|\fP
+.B "+-----+---------------------+----------------------------------------+"
+\fB|\fP  1  \fB|\fP -e                  \fB|\fP Each file name is split up to parts to \fB|\fP
+\fB|\fP     \fB|\fP --heuristics-level 1\fB|\fP find numbers. Other parts combined in  \fB|\fP
+\fB|\fP     \fB|\fP                     \fB|\fP patterns, which in their turn are com- \fB|\fP
+\fB|\fP     \fB|\fP                     \fB|\fP bined in groups, largest group is pla- \fB|\fP
+\fB|\fP     \fB|\fP                     \fB|\fP ced at the top. Allows to define episo-\fB|\fP
+\fB|\fP     \fB|\fP                     \fB|\fP de number more precisely. Works slower.\fB|\fP
+.B "+-----+---------------------+----------------------------------------+"
+\fB|\fP  2  \fB|\fP -ee                 \fB|\fP Does the same as 1st level plus additi-\fB|\fP
+\fB|\fP     \fB|\fP --heuristics-level 2\fB|\fP onal checks for episode numbers <10.   \fB|\fP
+\fB|\fP     \fB|\fP                     \fB|\fP Slowest method, switch to it only in   \fB|\fP
+\fB|\fP     \fB|\fP                     \fB|\fP the runtime.                           \fB|\fP
+.B "+-----+---------------------+----------------------------------------+"
+.fi
+.\" -----------------------------------------------------------------------SS--
+.SS Playing DVD and BD
+There's no need to pass the protocol and device options to the player any more! No need to remember them. The script can define the contents of the disk itself, when it finds an appropriate folder, so, playing a DVD or Bluray Disk is as simple as playing a static file - just pass the \fIbasepath\fP and the \fIphrase\fP.
+.RS 7
+.TP 
+Standard player command line
+. B $ mpv dvd:// --dvd-device /home/video/An_old_film/disk_1/
+.TP
+Now
+.nf
+.B $ wa old_film
+   ^------ an alias \fB"watch.sh -d /home/video"\fP.
+.fi
+.RE
+That's it. To use dvdnav:// instead of dvd:// which would be the default for a DVD, there is a \fB--dvd-nav\fP option, or \fB-N\fP as a shorthand that is faster to type after the alias. If the player will have problems with disk viewing, it is possible to build the actual video files into the list of episodes, it takes only \fB-I\fP (or \fB--ignore-disks\fP) option to do it (think of it like adding VIDEO_TS and BDMV/STREAM to the list of prospective \fIsubfolders\fP).
+.br
+
+MPlayer and its forks use \fBprofiles\fP that are usually set in user's config file, and the script aligns with them at this and will add appropriating profile to the option list, e.g. for MPlayer and bluray disk it will add \fB-profile protocol.br\fP, and for mpv \fB--profile protocol.bd\fP. In case the option setting profile was already passed through \fB--mplayer-opts\fP, additional profile will be added and separated by comma. See the player's \fBman\fP page for the details.
+.\" -----------------------------------------------------------------------SS--
+.SS I have one folder where I store old videos, and the other where I download new ones...
+.br
+Each time when there is multiple choice for files/folders a corresponding menu will be shown.
+.\" -----------------------------------------------------------------------SS--
+.SS Setting an alias
+Or course, it wouldn't be much easier than calling mpv/MPlayer directly from the command line, if there would be so much options one must write.
+.br
+Fortunately, the number of options that is supposed to be used on the everyday basis is around five. And all the rest shall be placed in an \fBalias\fP of your \fBshell\fP, which is probably \fBbash\fP. Think of \fBalias\fP as a variable which is substituted with its value once it is found at the beginning of the entered command line. They are commonly used for aggregation of a bunch of options for a command and put into \fB~/.bashrc\fP, which is exactly what we need.
+Here is, for example, author's alias:
+.br
+.nf
+\fBalias wa-a='watch.sh \\
+            -A -e -m "--fs" \\
+            --bashrc=$HOME/bashrc/mplayer.sh \\
+            --last-ep \\
+            -d /home/video/anime/ \\
+            -d /torrents/video/anime/ \\
+            --screenshot-dir /home/picts/watched/ \\
+            --subfolders "season - disk disc cd part pt dvd" '\fP
+.fi
+That's all!
+.RS 7
+.TP
+.B "$ wa-a -c toradora"
+And the cycle is started.
+.TP
+.B "$ wa-a -r"
+And it's resumed.
+.RE
+.\" -----------------------------------------------------------------------SS--
+.SS B-but I don't like writing something in the terminal...
+This is not for you then. Consider reinstalling Windows(tm) or something.
+.\"
+.\" BUGS ----------------------------------------------------------------------
+.\"
+.SH BUGS
+With altered \fBDISPLAY\fP variable keyboard input doesn't reach the player.
+
+.br
+Heuristics is good but not perfect. Some groups may show the same results, since check for duplicates isn't implemented yet.
+
+.br
+Ehehee... It seems I totally forgot to add support for the MyAnimeList.
+
+Report bugs to https://github.com/deterenkelt/watch.sh/issues
+(Fixes to this manpage in particular are appreciated.)
+.\"
+.\" CAVEATS -------------------------------------------------------------------
+.\"
+.SH CAVEATS 
+When using this script with \fB--screenshot-dir\fP be sure to name new screenshot folders properly and give \fIphrases\fP that are short but distinct. The script prints currently used folders above the list in order for you to be able to check it, so please never disregard to cast a glance upon them.
+.br
+
+\fBMPlayer\fP/\fBmpv\fP may still load subtitles it has found on its own. To avoid that, add 
+.br
+\fBsub-auto=no\fP to ~/.mpv/config, if you have mpv from git;
+.br
+\fBautosub=no\fP to ~/.mpv/config, if you have mpv <=0.3.x;
+.br
+\fBnoautosub\fP to ~/.mplayer/config, if you have MPlayer for some reason.
+
+To make the player remember position you quit the file on, use \fBsave-position-on-quit\fP option for \fBmpv\fP (see also binding to the "Q" key), that may also be added to the config file.
+.\"
+.\" SEE ALSO ------------------------------------------------------------------
+.\"
+.SH SEE ALSO
+.BR mpv (1), 
+.BR mplayer (1), 
+.BR figlet (6),
+.BR cjpeg (1),
+.BR taskset (1).
+.\"
+.\" AUTOR ---------------------------------------------------------------------
+.\"
+.SH AUTHOR
+deterenkelt.

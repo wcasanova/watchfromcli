@@ -1,0 +1,31 @@
+Source: watchsh
+Section: video
+Priority: extra
+Maintainer: deterenkelt <deterenkelt.github@gmail.com>
+Standards-Version: 3.9.3
+Homepage: http://github.com/deterenkelt/watch.sh
+
+Package: watchsh
+Architecture: all
+Homepage: http://github.com/deterenkelt/watch.sh
+Depends: mplayer | mplayer2 | mpv, bash (>= 4.2), sed (>= 4.2.1), grep (>= 2.9), file (>= 5.17), util-linux (>=2.20)
+Recommends: parallel, figlet, pngcrush, netpbm, libjpeg-progs
+Enhances: mplayer, mplayer2, mpv
+Description: A wrapper for mpv/MPlayer to run videos easy via CLI.
+ watch.sh is written to simplify access to video files and play videos easily.
+ It allows playing single files, DVD/BD folders and folders with episodes
+ of TV series. For the former and the latter ones it can also find external
+ subtitles and tracks, applying heuristic algorithms to include files with
+ names that may strongly differ from the names of corresponding video files,
+ and that frees you from the job of picking appropriate subtitles manually.
+ .
+ This script can also help you deal with organization taken screenshots, 
+ placing them right into the folder named after video and compressing them 
+ after you stop watching it.
+ .
+ For the folder with episodes watch.sh can track your watching progress,
+ allowing to run episodes one after another without creating a playlist,
+ but remembering the episode number you quit watching today, so you could
+ easily resume watching the folder later.
+ .
+ ...and many other accompanying things that make life even lazier.

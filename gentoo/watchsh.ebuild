@@ -1,0 +1,37 @@
+# Copyright 1999-2014 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: $
+
+EAPI="5"
+inherit eutils
+
+SLOT="0"
+DESCRIPTION="A wrapper for mpv/MPlayer to watch videos easy via CLI."
+HOMEPAGE="https://github.com/deterenkelt/watch.sh"
+SRC_URI="http://github.com/deterenkelt/watch.sh/watchsh-${PV}.tar.gz"
+LICENSE="GPL-3"
+MERGE_TYPE="binary"
+KEYWORDS="~*"
+
+IUSE="convtojpeg +figlet +parallel +pngcrush toilet"
+
+RDEPEND="|| ( media-video/mpv media-video/mplayer2 media-video/mplayer )
+		 >=sys-apps/grep-2.9
+		 >=sys-apps/sed-4.2.1
+		 >=sys-apps/util-linux-2.20
+		 >=app-shells/bash-4.2
+		 convtojpeg? ( media-libs/netpbm
+					   media-libs/libjpeg-turbo )
+		 figlet? ( app-misc/figlet )
+		 parallel? ( sys-process/parallel )
+		 pngcrush? ( media-gfx/pngcrush )
+		 toilet? ( app-misc/toilet )"
+
+src_prepare() {
+	epatch_user
+}
+
+src_install() {
+	mkdir -p ${D}/usr/{bin,share/{doc/${PN},man/man1}}
+	emake DESTDIR="${D}" install || die "make install failed"
+}

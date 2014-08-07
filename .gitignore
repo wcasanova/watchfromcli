@@ -1,0 +1,10 @@
+# Some emacs backups starting with ‘#’ which is special character in this file
+#   if it’s starting the line.
+\#*#
+*~
+.#*
+%*%~
+*.backup
+*.bak
+.desktop
+.desktop.lock

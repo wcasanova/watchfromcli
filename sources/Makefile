@@ -1,0 +1,14 @@
+prefix := /usr
+bindir := ${prefix}/bin
+sharedir := ${prefix}/share
+mandir := ${sharedir}/man
+man1dir := ${mandir}/man1
+docdir := ${sharedir}/doc/watchsh
+
+build:
+# nothing to build
+
+install:
+	install -m 0755 watch.sh ${DESTDIR}${bindir}
+	install -m 0644 watch.sh.1 ${DESTDIR}${man1dir}
+	install -m 0644 RELEASE_NOTES ${DESTDIR}${docdir}
