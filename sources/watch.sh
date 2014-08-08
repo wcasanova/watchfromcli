@@ -549,6 +549,7 @@ esac
 KEYWORD="$*"
 # Now script has the journal and resume may rely on its data.
 [ ! -v RESUME ] && [ -z "$KEYWORD" ] && exit `err no_keyword`
+PROSPECTIVE_SUBFOLDERS="${PROSPECTIVE_SUBFOLDERS//%keyword/$KEYWORD}"
 
 apply_mimetype_fix
 
