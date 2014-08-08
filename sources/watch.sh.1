@@ -165,7 +165,7 @@ Color scheme for consoles with white background.
 Prospective subfolders that are likely expected between a folder found in \fIbasepath\fP and files matching the \fIkeyword\fP. Usually they are subfolders that divide seasons or spans of episodes and named like "0-100", so putting "season -" in the \fIpattern list\fP will order to perform recursive search into the folder found in \fIbasepath\fP appending directories that do not contain \fIkeyword\fP but do contain word "season" and/or dash "-" and look for video at the end of the new path.
 .TP
 .B -S, --screenshot-dir <\fIscreens path\fP>
-If set, look for a folder in the \fIscreens path\fP containing \fIkeyword\fP in its name. The script will change directory to it, so all the taken screenshots would be put in there. It will also try to compress fresh screenshots of PNG format with \fBpngcrush\fP if it will be found. For later conversion to JPEG see \fB--jpeg-compression\fP.
+If set, look for a folder in the \fIscreens path\fP containing \fIkeyword\fP in its name. The script will change directory to it, so all the taken screenshots would be put in there. It will also try to compress fresh screenshots of PNG format with \fBpngcrush\fP if it will be found. For subsequent conversion to JPEG see \fB--jpeg-compression\fP.
 .TP
 .B --screenshot-dir-skel <\fIdirlist\fP>
 The argument is a list of comma separated directories to be created under the folder specified via \fB--screenshot-dir\fP, e.g. "art,misc".

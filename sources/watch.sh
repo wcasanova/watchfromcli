@@ -870,8 +870,7 @@ choose_from() {
 			echo "S: $safe_screenshot_dir"
 		}
 		[ -v NO_AID ] || 
-		echo ' ↙ I think, these are episode numbers.
-   (Try increase heuristics level if numbers don’t match)'
+		echo ' ↙ Pick a number from the list.'
 		[ ${FUNCNAME[1]} = watch -a $HEURISTICS_LEVEL -gt 0 ] && {
 			# The idea is providing a “new-list-to-choose-from” which would be
 			#   an array, so we could highlight not a keyword and hypotetic(?)
@@ -932,6 +931,9 @@ This could happen if some file managed to appear more than once via another
 		}|| echo -e "$LIST_TO_CHOOSE_FROM" | grep -niE "$KEYWORD|$"
 		
 		unset another_view prompt_heuristics_up prompt_heuristics_down
+		# Multiple selection was deprecated in favor of loading all what
+		#   the script could be able to find (smarter than fuzzy-match)
+		# I’m just too lazy to dig into this and clean it now.
 		[ $how_much_to_select = many ] \
 			&& local prompt_numbers="Pick $g<numbers>$s divided by space" \
 			|| local prompt_numbers="Pick $g<number>$s"
