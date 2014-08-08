@@ -43,13 +43,13 @@
 show_help() {
 cat <<"EOF"
 Simpliest form:
-    watch.sh [optional arguments] -d basepath  phrase
+    watch.sh [optional arguments] -d basepath  keyword
 
 Watching cycle start:
-    watch.sh [optional arguments] -c -d basepath  phrase
+    watch.sh [optional arguments] -c -d basepath  keyword
 
 Resuming watching cycle:
-    watch.sh [optional arguments] -r  [phrase]
+    watch.sh [optional arguments] -[r|R]  [keyword]
 
 For the complete list of options see man watch.sh or call this script like
   watch.sh -H 'pattern'
@@ -166,7 +166,7 @@ err() {
 		opt_inputinvalid)
 			code=13; msg='RESERVED';;
 		opt_jentries)
-			code=14; msg='Option -j|--list-journal takes\n  - a number between 1 and 65535;\n  - a single letter “a” or “all” to display all phrases.';;
+			code=14; msg='Option -j|--list-journal takes\n  - a number between 1 and 65535;\n  - a single letter “a” or “all” to display all keywords.';;
 		opt_journalsize)
 			code=15; msg='Option --journal-max-size requires an argument to be a number of bytes that\n  may be followed by one of these suffixes: K M G to represent *2^10 once,\n  twice or three times.';;
 		opt_jpegcompression)
@@ -195,8 +195,8 @@ err() {
 			code=27; msg='DOUSHIYOU~?';;
 		mpcmd_not_found)
 			code=28; msg="No such binary or alias found: “$MPLAYER_COMMAND”.";;
-		no_phrase)
-			code=29; msg='No phrase given.';;
+		no_keyword)
+			code=29; msg='No keyword given.';;
 		no_matches)
 			code=30; msg='No matches!';;
 		empty_folder)
@@ -213,7 +213,7 @@ err() {
 			code=35; msg="Couldn’t create directory “$screens_path”.";;
 		cant_retrieve_from_journal)
 			code=36; msg='Couldn’t retrieve data from journal.'
-			[ "$PHRASE" ] && msg+='\nThis was probably caused by a record at the end of journal and happened because\n  cleansing of broken entries is not implemented yet.';;
+			[ "$KEYWORD" ] && msg+='\nThis was probably caused by a record at the end of journal and happened because\n  cleansing of broken entries is not implemented yet.';;
 		nothing_to_restore)
 			code=37; msg='Nothing to restore!';;
 		cant_retrieve_journal_size)
@@ -242,19 +242,18 @@ read -d $"\n" major minor < <(getopt -V | sed -rn 's/^[^0-9]+([0-9]+)\.?([0-9]+)
 # - kinda global;
 # - or are important for maintaining the watching cycle between runs.
 
+VERSION="20140807"
+
 MAX_HEURISTICS_LEVEL=2
 HEURISTICS_LEVEL=0
 
 JOURNAL=~/.watch.sh/journal
 JOURNAL_MAX_SIZE="64K" # w/o suffix for bytes, K for KiB, M for MiB etc.
-[ -e $JOURNAL ] || echo > $JOURNAL # sed won’t work if there won’t be at least one line
-
-VERSION="20140807"
-
 [ -d ~/.watch.sh ] || {
 	mkdir -m755 ~/.watch.sh/ >/dev/null \
 		|| exit `err homedir`
 }
+
 # DEBUG MODE
 # No function aggregator for debug messages because test [ -v D ]
 #   is faster than function call (there would be lots of them).
@@ -375,8 +374,8 @@ while true; do
 			exit 0
 			;;
 		# -i|'--input-line')
-        #     # take input values from the string supplied after this key
-        #     # instead of asking for manual typing.
+		#     # take input values from the string supplied after this key
+		#     # instead of asking for manual typing.
 		# 	err opt_inputinvalid
 		# 	shift 2
 		# 	;;
@@ -393,7 +392,7 @@ while true; do
 						|| exit `err opt_jentries`
 				}
 			}
-			sed -nr "s/^PHRASE='(.*)'$/\1/p" $JOURNAL | head -n$JOURNAL_ENTRIES
+			sed -nr "s/^KEYWORD='(.*)'$/\1/p" $JOURNAL | head -n$JOURNAL_ENTRIES
 			exit 0
 			;;
 		-J|'--no-journal')
@@ -547,9 +546,9 @@ case "$COMPAT" in
 		;;
 esac
 
-PHRASE="$*"
+KEYWORD="$*"
 # Now script has the journal and resume may rely on its data.
-[ ! -v RESUME ] && [ -z "$PHRASE" ] && exit `err no_phrase`
+[ ! -v RESUME ] && [ -z "$KEYWORD" ] && exit `err no_keyword`
 
 apply_mimetype_fix
 
@@ -571,6 +570,11 @@ alias grep="grep --color=${NO_COLOR:-auto}"
 	}
 }
 
+[ -v NO_JOURNAL ] || {
+	# sed won’t work if there won’t be at least one line
+	[ -e $JOURNAL ] || echo > $JOURNAL
+}
+
 # Must be right before the first function
 [ -v D ] && grep -vFe "$vars" <<<"`set -o posix; set`" \
 	| grep -v "^vars=" >"$DEBUG_DIR/vars"
@@ -578,22 +582,22 @@ alias grep="grep --color=${NO_COLOR:-auto}"
 # And then goes heuristics
 
 # EXPECTS: 
-#     PHRASE — set, non-empty string
+#     KEYWORD — set, non-empty string
 #     BASEPATH — set, non-empty string or an array
 #     IGNORE_DISKS
 #     PROSPECTIVE_SUBFOLDERS
 # SETS:
 #     CHOSEN_ONE — file or folder which reside directly in BASEPATH and which name 
-#                  does match PHRASE
+#                  does match KEYWORD
 #     MODE — 'single', means that script will play _a file_ in BASEPATH
 #            'episodes', this way depends on IGNORE_DISKS variable, but in common
 #                         that means at the end of the collected path there are
 #                         videofiles, probably episodes.
 #                         If IGNORE_DISKS is set, then any disk structure ignored
 #                         and all files of your choice will be available to play
-#                         _independently_ of the fact do they have PHRASE in 
+#                         _independently_ of the fact do they have KEYWORD in 
 #                         their names or not. If IGNORE_DISKS is not set, script 
-#                         will continue searching files matching PHRASE 
+#                         will continue searching files matching KEYWORD 
 #                         at the end of the path.
 #            'dvd'|'bd',  give a directive to player to treat the stuff 
 #                         at the end of the path as a disk.
@@ -605,10 +609,10 @@ alias grep="grep --color=${NO_COLOR:-auto}"
 do_initial_search() {
 	[ -v D ] && dbg_file="$DEBUG_DIR/initial_search"
 	unset MODE CHOSEN_ONE SUBFOLDERS
-	list_videofiles  search_by_phrase  ${BASEPATH[1]:+preserve_basepath} || return $?
+	list_videofiles  search_by_keyword  ${BASEPATH[1]:+preserve_basepath} || return $?
 	[ ${#BASEPATH[@]} -eq 1 ] \
-		&& local dirs=`find -L "$BASEPATH" -maxdepth 1 -type d -iname "*$PHRASE*" -printf "%f\n"` \
-		|| local dirs=`find -L "${BASEPATH[@]}" -maxdepth 1 -type d -iname "*$PHRASE*" -printf "%H: %f\n"`
+		&& local dirs=`find -L "$BASEPATH" -maxdepth 1 -type d -iname "*$KEYWORD*" -printf "%f\n"` \
+		|| local dirs=`find -L "${BASEPATH[@]}" -maxdepth 1 -type d -iname "*$KEYWORD*" -printf "%H: %f\n"`
 	unset newline #  DELETE ME?
 
 	[ "$dirs" ] && [ "$VIDEOFILES" ] && newline="\n"
@@ -714,13 +718,13 @@ do_initial_search() {
 }
 
 # EXPECTS:
-#     PHRASE ($1 requirement) — set, non-empty string
+#     KEYWORD ($1 requirement) — set, non-empty string
 #     BASEPATH — set, non-empty string or an array
 #     CHOSEN_ONE — may be unset, if BASEPATH is an array
 #     SUBFOLDERS — may be unset, if BASEPATH is an array
 # TAKES:
-#     $1 — whether or no search by the PHRASE. This depends on the time this
-#          function called, if the first time needed the phrase to define
+#     $1 — whether or no search by the KEYWORD. This depends on the time this
+#          function called, if the first time needed the keyword to define
 #          CHOSEN_ONE, for example, then the second time assumes anything lying
 #          there is wanted by default.
 #     $2 — whether to preserve BASEPATH. This is an important thing at an early
@@ -730,12 +734,12 @@ do_initial_search() {
 #       parameter and pointing to the last line of the first subshell.
 list_videofiles() {
 	local result
-	[ "$1" = search_by_phrase ] && local searchphrase="-iname *$PHRASE*"
+	[ "$1" = search_by_keyword ] && local searchkeyword="-iname *$KEYWORD*"
 	[ "$2" = preserve_basepath ] && local preserve_basepath=t
 	set -f
 	# Single files residing directly in BASEPATH
 	VIDEOFILES=`find -L "${BASEPATH[@]}${CHOSEN_ONE:-}${SUBFOLDERS:-}" \
-	                    -maxdepth 1 -type f ${searchphrase:-} \
+	                    -maxdepth 1 -type f ${searchkeyword:-} \
 	                    -exec file -iL {} \; 2>/dev/null`
 	result=$?;
 	[ -v D ] && declare -p VIDEOFILES >>$dbg_file
@@ -840,7 +844,7 @@ choose_from() {
 		[ -v NO_AID ] || echo ' ↙ The directory I’m currently in.'
 		local cwd="$PWD"
 		[ ${#cwd} -gt $max_width ] && cwd="…${cwd:0-$max_width:$max_width}"
-		echo -e "C: $cwd"  | grep -iE "$PHRASE|$"
+		echo -e "C: $cwd"  | grep -iE "$KEYWORD|$"
 		# S: screenshot directory as provided via -S option (see above), 
 		#    it shows only in case this call of “choose_from” came from 
 		#    “screenshots_preprocessing”, so the user could see the actual
@@ -848,17 +852,17 @@ choose_from() {
 		#    because of two things
 		#    - portable hard drive;
 		#    - very bad directory guessing, because it’s done by only matching
-		#      the given phrase, e.g. I’m going to watch “Daria”, and type just
-		#      “dar” as a phrase, because it’s enough to find it in the current
+		#      the given keyword, e.g. I’m going to watch “Daria”, and type just
+		#      “dar” as a keyword, because it’s enough to find it in the current
 		#      BASEPATH on my netbook, but I’m going to save screenshots on
 		#      my portable hard drive where in SCREENSHOT_DIR a folder named
 		#      “darker_then_black” is already present, so script will choose it
-		#      without asking, because of phrase matched the part of
-		#      folder name. In most cases phrase would match correctly, so 
+		#      without asking, because of keyword matched the part of
+		#      folder name. In most cases keyword would match correctly, so 
 		#      asking about “are you glad with the folder I’ve chosen for you?”
-		#      would be annoying, so we just highlight the phrase, so the user
+		#      would be annoying, so we just highlight the keyword, so the user
 		#      can abort script executing and run it again with a more proper
-		#      phrase.
+		#      keyword.
 		[ -v print_screenshot_dir ] && {
 			local safe_screenshot_dir="$SCREENSHOT_DIR"
 			[ ${#safe_screenshot_dir} -gt $max_width ] && ="…${safe_screenshot_dir:0-$max_width:$max_width}"
@@ -870,7 +874,7 @@ choose_from() {
    (Try increase heuristics level if numbers don’t match)'
 		[ ${FUNCNAME[1]} = watch -a $HEURISTICS_LEVEL -gt 0 ] && {
 			# The idea is providing a “new-list-to-choose-from” which would be
-			#   an array, so we could highlight not a phrase and hypotetic(?)
+			#   an array, so we could highlight not a keyword and hypotetic(?)
 			#   episode number, but a part of line that matched current pattern.
 			local lcount=1 match
 			unset used_matches
@@ -925,7 +929,7 @@ This could happen if some file managed to appear more than once via another
 			VIDEOFILES=`echo -e "$used_matches"`
 			LIST_TO_CHOOSE_FROM="$VIDEOFILES"
 			[ 1 -eq 1 ] # Yes, I hate ifs this much.
-		}|| echo -e "$LIST_TO_CHOOSE_FROM" | grep -niE "$PHRASE|$"
+		}|| echo -e "$LIST_TO_CHOOSE_FROM" | grep -niE "$KEYWORD|$"
 		
 		unset another_view prompt_heuristics_up prompt_heuristics_down
 		[ $how_much_to_select = many ] \
@@ -1361,7 +1365,7 @@ This is not a bug.' >>$dbg_file
 
 # EXPECTS:
 #     SCREENSHOT_DIR — be correct
-#     PHRASE — set, non-empty string
+#     KEYWORD — set, non-empty string
 # SETS:
 #     screens_path — path where pushd to, so MPlayer will store taken screenshots there.
 # EXIT_CODES: 0 if ok, 
@@ -1369,7 +1373,7 @@ This is not a bug.' >>$dbg_file
 #             of insufficient rights to access $screens_path.
 screenshots_preprocessing() {
 	[ -v SCREENSHOT_DIR ] && {
-		screens_path=`find -L "$SCREENSHOT_DIR" -maxdepth 1 -type d -iname "*$PHRASE*" -printf "%f\n"`
+		screens_path=`find -L "$SCREENSHOT_DIR" -maxdepth 1 -type d -iname "*$KEYWORD*" -printf "%f\n"`
 		if [ "$screens_path" ]; then
 			[ `echo "$screens_path" | wc -l` -gt 1 ] && {
 				echo "Which directory to store screenshots in?"
@@ -1559,7 +1563,7 @@ Consider switching to the latest mpv if you want to load multiple tracks
 # BASEPATH      CHOSEN_ONE          SUBFOLDERS  videofile
 
 # 4.b. If IGNORE_DISKS is not present, then the folder containing disk stuff 
-#      and matched PHRASE becomes the path.
+#      and matched KEYWORD becomes the path.
 # /home/video/  Zeta_Project_Disk_1      
 # BASEPATH      CHOSEN_ONE
 
@@ -1582,7 +1586,7 @@ Consider switching to the latest mpv if you want to load multiple tracks
 # EXPECTS:
 #     findpath — where to search for additional files (subtitles, audiotracks etc.)
 #     videofile – exact name match
-#     PHRASE — set, non-empty string
+#     KEYWORD — set, non-empty string
 #     MATCH_NUMBER — set if called with -n, -a.
 # TAKES: 
 #     $1 — non-empty string with a list of extensions to match agaist, must be 
@@ -1593,7 +1597,7 @@ Consider switching to the latest mpv if you want to load multiple tracks
 # RETURNS: 0 if ok, >0 if internal function call returned an error.
 get_other_files() {
 	matchext="$1"
-	unset match_by_phrase_and_num match_by_num
+	unset match_by_keyword_and_num match_by_num
 	# W! This asterisk in the line below is under shell pathname expansion.
 	ext=`echo "$matchext" | sed -r 's/\s/ -o /g; s^([a-zA-Z0-9_-]{3,})^-iname *.\1^g'`
 	set -f # disabling pathname expansion, or patterns in find may fail.
@@ -1601,16 +1605,16 @@ get_other_files() {
 	set +f
 	match_by_name=`echo "$found_other_files" | grep -Fi "${videofile%.*}" | sort`
 	other_files_list="$match_by_name"
-	# TODO: This is the only place where PHRASE is used as a fixed string.
-	#       Need to replace PHRASE with two variables 
-	#       PHRASE_FOR_FIND with space substituted with “?” and 
-	#       PHRASE_FOR_GREP with space replaced with “.”.
-	#       Also either escape special symbols in PHRASE, or somehow
+	# TODO: This is the only place where KEYWORD is used as a fixed string.
+	#       Need to replace KEYWORD with two variables 
+	#       KEYWORD_FOR_FIND with space substituted with “?” and 
+	#       KEYWORD_FOR_GREP with space replaced with “.”.
+	#       Also either escape special symbols in KEYWORD, or somehow
 	#       check UNICODE symbol class to be letter/hieroglyph.
-	match_by_phrase=`echo "$found_other_files" | grep -Fi "$PHRASE" | sort`
+	match_by_keyword=`echo "$found_other_files" | grep -Fi "$KEYWORD" | sort`
 	[ $MODE = episodes ] && {
-		match_by_phrase_and_num=`echo "$match_by_phrase" | grep -e "[^0-9a-oA-Oq-zQ-Z]$episode_number[^0-9a-oA-Oq-zQ-Z]" | sort`
-		other_files_list="${other_files_list:+${other_files_list}\n}$match_by_phrase_and_num"
+		match_by_keyword_and_num=`echo "$match_by_keyword" | grep -e "[^0-9a-oA-Oq-zQ-Z]$episode_number[^0-9a-oA-Oq-zQ-Z]" | sort`
+		other_files_list="${other_files_list:+${other_files_list}\n}$match_by_keyword_and_num"
 		match_by_num=`echo "$found_other_files" | grep -e "[^0-9]$episode_number[^0-9]" | sort`
 	}
 	# For subtitles that must be picked, but all what they have in common
@@ -1619,12 +1623,12 @@ get_other_files() {
 	#   scription, while downloaded subs are in native language with hie-
 	#   roglyphs.
 	[ -v MATCH_ALL -o -v MATCH_NUMBER ] && other_files_list="${other_files_list:+${other_files_list}\n}${match_by_num:-}"
-	# Including files matching by phrase in search results requires MATCH_ALL
-	#   to be set, because in case of lots of files matching that phrase many
+	# Including files matching by keyword in search results requires MATCH_ALL
+	#   to be set, because in case of lots of files matching that keyword many
 	#   other unnecessary may be included (e.g. subtitles to 20 episodes). But,
 	#   in case of the file is a single, in gives some confidence that there are
 	#   not many other files, at least, not that much like in previous case.
-	[ -v MATCH_ALL -o $MODE = single ] && other_files_list="${other_files_list:+${other_files_list}\n}$match_by_phrase"
+	[ -v MATCH_ALL -o $MODE = single ] && other_files_list="${other_files_list:+${other_files_list}\n}$match_by_keyword"
 	# Remove duplicates and empty lines
 	other_files_list=`echo -e "$other_files_list" \
 	                  | sed -nr 'G; s/\n/&&/; /^([[:print:]]*\n).*\n\1/d; s/\n//; h; P'`
@@ -1692,12 +1696,12 @@ screenshots_postprocessing() {
 import_session_data() {
 	[ -v NO_JOURNAL ] || {
 		[ "`stat --format='%s' $JOURNAL`" -gt 1 ] && {
-			if [ "$PHRASE" ]; then
-				# PHRASE present, search among entries in the journal
-				eval "`sed -n "/^PHRASE='$(escape_for_sed_pattern "$PHRASE")'/,/^$/ p" \
+			if [ "$KEYWORD" ]; then
+				# KEYWORD present, search among entries in the journal
+				eval "`sed -n "/^KEYWORD='$(escape_for_sed_pattern "$KEYWORD")'/,/^$/ p" \
 		       $JOURNAL 2>/dev/null`" || local shell_failed=t
 			else
-				# PHRASE is not given, take 1st one from the journal
+				# KEYWORD is not given, take 1st one from the journal
 				eval "`sed -n '1,/^$/ p' $JOURNAL 2>/dev/null`" || local shell_failed=t
 			fi
 			[ -v shell_failed ] && return `err cant_retrieve_from_journal`
@@ -1709,7 +1713,7 @@ import_session_data() {
 				done
 			}
 
-			check_required_vars 'PHRASE' 'MODE' 'BASEPATH'
+			check_required_vars 'KEYWORD' 'MODE' 'BASEPATH'
 			[ "$MODE" != single ] \
 				&& check_required_vars 'CHOSEN_ONE' 'SUBFOLDERS' # it’s OK to check like that.
 			[ "$MODE" = single ] \
@@ -1744,7 +1748,7 @@ escape_for_sed_replacement() {
 #            “cant_compute_journal_max_size”, “cant_truncate_journal”.
 export_session_data() {
 	[ -v NO_JOURNAL ] || {
-		local data="PHRASE='`escape_for_sed_replacement "$PHRASE"`'"
+		local data="KEYWORD='`escape_for_sed_replacement "$KEYWORD"`'"
 		# [ -v T ] && data+="\nSTAMP=\\\"`date`\\\""
 		data+="\nMODE='$MODE'"
 		data+="\nBASEPATH='`escape_for_sed_replacement "$BASEPATH"`'"
@@ -1765,7 +1769,7 @@ export_session_data() {
 			[ -v INTERRUPTED ] && data+="\nINTERRUPTED='yes'" || data+="\nINTERRUPTED='no'"
 		}
 		# removing old data
-		sed -ri "/^PHRASE='`escape_for_sed_pattern "$PHRASE"`'/,/^$/ d" $JOURNAL
+		sed -ri "/^KEYWORD='`escape_for_sed_pattern "$KEYWORD"`'/,/^$/ d" $JOURNAL
 		# exporting last data
 		sed -ri "1s/^/$data\n\n&/" $JOURNAL
 		# truncate to JOURNAL_MAX_SIZE
