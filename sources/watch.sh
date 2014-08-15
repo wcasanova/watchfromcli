@@ -20,7 +20,7 @@
 # GNU grep >= 2.9 (started developing with it)
 # GNU bash >= 4.2 (strongly)
 # file >= 5.17 (output format of that utility has been changing,
-#        this version of watch.sh conforms with 5.17)
+#        watch.sh conforms with 5.17 since v20140807)
 # util-linux >= 2.20 (for getopt that is required, and taskset
 #        which may be of use, but is optional)
 # mplayer, mplayer2 or mpv. Syntax was optimized 
@@ -125,12 +125,12 @@ EOF
 }
 
 [ "$BASH_SOURCE" != "$0" ] && {
-	echo -e 'This script shouldn’t be sourced. See usage (-h).' >&2
+	echo 'This script shouldn’t be sourced. See usage (-h).' >&2
 	return 4
 }
 
 # TAKES: 
-#     $1 — a string with assinged message and exit code.
+#     $1 — a string that has a message and exit code assigned to it.
 # RETURNS: exit code corresponding to the messsage.
 err() {
 	# Don’t rely on these codes — they tend to shift each time a new one is added.
@@ -266,6 +266,8 @@ JOURNAL_MAX_SIZE="64K" # w/o suffix for bytes, K for KiB, M for MiB etc.
 	vars="`set -o posix; set`"
 }
 
+# getopt from util-linux 2.24 is known to allow long options with a single dash
+#   independetly of whether the -a|--alternative option is passed. 
 opts=`getopt \
              --options \
                        aAcCd:eEhH:Ij::JlM:m:nNrRs:S:t:Tv \
@@ -350,8 +352,8 @@ while true; do
 			shift 2
 			;;
 		-e) # heuristics shorthand, cumulative
-			[ $((++HEURISTICS_LEVEL)) -gt $MAX_HEURISTICS_LEVEL ] && 
-			HEURISTICS_LEVEL=$MAX_HEURISTICS_LEVEL
+			[ $((++HEURISTICS_LEVEL)) -gt $MAX_HEURISTICS_LEVEL ] \
+				&& HEURISTICS_LEVEL=$MAX_HEURISTICS_LEVEL
 			shift
 			;;
 		'--heuristics-level')
@@ -816,10 +818,8 @@ choose_from() {
 		|| local how_much_to_select='one'
 	# [ ${FUNCNAME[1]} != watch ] && local disable_heuristics=t
 	[ ${FUNCNAME[1]} = screenshots_preprocessing ] && local print_screenshot_dir=t
-
 	LIST_TO_CHOOSE_FROM=`sort <<<"$1"`
 	LIST_ITEMS_COUNT=`echo -e "$LIST_TO_CHOOSE_FROM" | wc -l`
-
 	local cols=`tput cols`
 	unset choice_made list_variants_available ROTATE_PATTERN_LIST mapfile_patterns MAPPAT_INDEX_OFFSET
 	until [ -v choice_made ]; do
@@ -880,7 +880,7 @@ choose_from() {
 			unset used_matches
 			[ -v D ] && {
 				dbg_file="$DEBUG_DIR/choose_from_while_in_watch"
-				declare -p mapfile_patterns mapfile_matches mapfile_matches_count >>$dbg_file
+				declare -p mapfile_patterns mapfile_matches mapfile_matches_count | tee -a $dbg_file
 			}
 			for ((i=0; i<${#mapfile_patterns[@]}; i++)); do
 				for ((j=0; j<${mapfile_matches_count[i]}; j++)); do
@@ -905,26 +905,26 @@ choose_from() {
 				done
 			done
 
-			[ -v D ] && declare -p used_matches >>$dbg_file
+			[ -v D ] && declare -p used_matches | tee -a $dbg_file
 			# This is subject for testing. Since each filename that doesn’t
 			#   conform to a known pattern must start a new sequence, there
 			#   shouldn’t be any filenames “on their own”. But to be sure
 			#   we won’t lost them if they’ve suddenly appeared…
 			# used_matches=`echo -e "$used_matches"`
-			unique_lines=`echo -e "${used_matches:+${used_matches}\n}$used_matches" | sort | uniq -u`
+			unique_lines=`echo -e "${used_matches:+${used_matches}\n}$LIST_TO_CHOOSE_FROM" | sort | uniq -u`
 			[ "$unique_lines" ] && {
 				used_matches="${used_matches:+${used_matches}\n}$unique_lines"
 				used_matches=`echo -e "$used_matches"`
 				while read unique_line; do
-					echo -en "${g}$((++lcount)):${s}"
+					echo -en "${g}$((lcount++)):${s}"
 					[ -v D ] && echo -en "${g}-:${s}"
-					echo "$unique_line"
+					grep -iG "\($KEYWORD\|$\)" <<<"$unique_line"
 				done < <(echo "$unique_lines")
-				echo -e "${r}There shouldn’t be lines not corresponding to any pattern.\nYou can file a bug.${s}" >&2
-				[ -v D ] && echo -e "\nTHAT’S STRANGE — the new list contains line(s), which has(ve) no pattern.
+				[ -v D ] && echo -e "\nThe new list contains line(s), which has(ve) no pattern.
 unique_lines [--->\n$unique_lines\n<---]
-This could happen if some file managed to appear more than once via another
-  pattern, and another file became an outsider due to LIST_ITEMS_COUNT limit." >>$dbg_file
+This could happen if there was just a file with a unique name or some file has
+  managed to appear more than once via another pattern, and another file became
+  an outsider due to LIST_ITEMS_COUNT limit, then that’s a problem." >>$dbg_file
 			}
 			VIDEOFILES=`echo -e "$used_matches"`
 			LIST_TO_CHOOSE_FROM="$VIDEOFILES"

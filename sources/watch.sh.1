@@ -163,6 +163,7 @@ Color scheme for consoles with white background.
 .TP
 .B -s, --subfolders <\fIpattern list\fP>
 Prospective subfolders that are likely expected between a folder found in \fIbasepath\fP and files matching the \fIkeyword\fP. Usually they are subfolders that divide seasons or spans of episodes and named like "0-100", so putting "season -" in the \fIpattern list\fP will order to perform recursive search into the folder found in \fIbasepath\fP appending directories that do not contain \fIkeyword\fP but do contain word "season" and/or dash "-" and look for video at the end of the new path.
+\fB%keyword\fP in the pattern list will be substituted with actual \fIkeyword\fP passed via command line.
 .TP
 .B -S, --screenshot-dir <\fIscreens path\fP>
 If set, look for a folder in the \fIscreens path\fP containing \fIkeyword\fP in its name. The script will change directory to it, so all the taken screenshots would be put in there. It will also try to compress fresh screenshots of PNG format with \fBpngcrush\fP if it will be found. For subsequent conversion to JPEG see \fB--jpeg-compression\fP.
@@ -213,12 +214,12 @@ which, in its turn, has the following structure
 	./Season 2/01.mkv
 	          /...
 .fi
-then passing \fB-s 'season'\fP will perform recursive search in the current directory, appending inner folders containing 'season' (case-insensitive) in their names to path, so .mkv files could get to the list of episodes. See also description to \dB--subfolders\fP option above.
+then passing \fB-s 'season'\fP will perform recursive search in the current directory, appending inner folders containing 'season' (case-insensitive) in their names to path, so .mkv files could get to the list of episodes. See also description to the \fB--subfolders\fP option above.
 .\" -----------------------------------------------------------------------SS--
 .SS Using heuristics
 Sometimes the file names in the destination folder do not have a common template, making the task to guess the correct order of the files harder for the script. To improve ordering results, there were introduced levels of applied heuristics. It's only two of them: 1 and 2. Zero means heuristics is disabled and ordering is performed by calling the \fBsort\fP utility. For the vast majority of cases that would be enough, also this is the fastest method.
 .br
-But this does not cover the rest of the cases, when the list would be built in the wrong order. And to deal with it, the first level of heuristics breaks up each file name from the list to patterns residing to the left and to the right of presumptive episode numbers, increments that number, and, if such file will be found in the list, it combines all the file names having numbers in that place in a group. The largest group will be at the top. Second level, in addition to the before mentioned, does check all numbers in groups as numbers (and not as symbols from the table of symbols), resorting matches inside groups again. This takes time and may lead to some delay on CPUs that are not that powerful (old Pentiums, Atoms, ARMs etc.) But this helps to align the list of episodes in the most correct order, and, in combination with file name groups, in the most desired way (if there is a season and a number of OVAs in the folder, 12 openings, or episode numbers go like "1 2... 10 11" instead of "01 02... 10 11" which makes usual \fBsort\fP fail). It's not recommended to enable 2nd level on a default basis, like putting it in the alias, cause the higher is the level, the slower the script works. It is always available in one key reach.
+But this does not cover the rest of the cases, when the list would be built in the wrong order. And to deal with it, the first level of heuristics breaks up each file name from the list to patterns residing to the left and to the right of presumptive episode numbers, increments that number, and, if such file will be found in the list, it combines all the file names having numbers in that place in a group. The largest group will be at the top. Second level, in addition to the before mentioned, does check all numbers in groups as numbers (and not as symbolic strings), resorting matches inside groups again. This takes time and may lead to some delay on CPUs that are not that powerful (old Pentiums, Atoms, ARMs etc.) But this helps to align the list of episodes in the most correct order, and, in combination with file name groups, in the most desired way (if there is a season and a number of OVAs in the folder, 12 openings, or episode numbers go like "1 2... 10 11" instead of "01 02... 10 11" which makes usual \fBsort\fP fail). It's not recommended to enable 2nd level on a default basis, like putting it in the alias, cause the higher is the level, the slower the script works. It is always available in one key reach.
 .br
 
 Heuristics can be changed in the runtime by pressing \fBh\fP and \fBH\fP keys to lower the level and to rise it, respectively. Setting the level with \fB-e\fP or \fB-ee\fP option on a default basis may enable to avoid manual switching. Here's the reference table of heuristic levels
@@ -237,9 +238,10 @@ Heuristics can be changed in the runtime by pressing \fBh\fP and \fBH\fP keys to
 \fB|\fP     \fB|\fP                     \fB|\fP de number more precisely. Works slower.\fB|\fP
 .B "+-----+---------------------+----------------------------------------+"
 \fB|\fP  2  \fB|\fP -ee                 \fB|\fP Does the same as 1st level plus additi-\fB|\fP
-\fB|\fP     \fB|\fP --heuristics-level 2\fB|\fP onal checks for episode numbers <10.   \fB|\fP
-\fB|\fP     \fB|\fP                     \fB|\fP Slowest method, switch to it only in   \fB|\fP
-\fB|\fP     \fB|\fP                     \fB|\fP the runtime.                           \fB|\fP
+\fB|\fP     \fB|\fP --heuristics-level 2\fB|\fP onal checks for episode numbers orde-  \fB|\fP
+\fB|\fP     \fB|\fP                     \fB|\fP ring them as actual numbers and not    \fB|\fP
+\fB|\fP     \fB|\fP                     \fB|\fP as strings. Slowest method, switch     \fB|\fP
+\fB|\fP     \fB|\fP                     \fB|\fP to it only in runtime.                 \fB|\fP
 .B "+-----+---------------------+----------------------------------------+"
 .fi
 .\" -----------------------------------------------------------------------SS--
