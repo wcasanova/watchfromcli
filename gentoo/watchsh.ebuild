@@ -8,7 +8,7 @@ inherit eutils
 SLOT="0"
 DESCRIPTION="A wrapper for mpv/MPlayer to watch videos easy via CLI."
 HOMEPAGE="https://github.com/deterenkelt/watch.sh"
-SRC_URI="http://github.com/deterenkelt/watch.sh/watchsh-${PV}.tar.gz"
+SRC_URI="http://github.com/deterenkelt/watch.sh/raw/master/watchsh-${PV}.tar.gz"
 LICENSE="GPL-3"
 MERGE_TYPE="binary"
 KEYWORDS="~*"
