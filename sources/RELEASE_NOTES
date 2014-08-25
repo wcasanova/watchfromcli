@@ -1,3 +1,14 @@
+===] August 25, 2014 [=====================================================
+
+1. Added additional check before creation of an empty journal.
+2. Make --subfolders recognize %keyword.
+3. Fix unique files that do not start a sequence not appearing in the list
+  (unique_lines was appended via newline to itself instead of
+   to LIST_TO_CHOOSE_FROM). Also fix numbering for those lines and high-
+   liting KEYWORD in the filenames. Start using GRE for grep.
+4. Fix check for setting HEURISTICS_LEVEL a value higher than
+  MAX_HEURISTICS_LEVEL.
+
 ===] August 7, 2014 [=====================================================
 
 1. Script now runs as an executable.

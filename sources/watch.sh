@@ -242,7 +242,7 @@ read -d $"\n" major minor < <(getopt -V | sed -rn 's/^[^0-9]+([0-9]+)\.?([0-9]+)
 # - kinda global;
 # - or are important for maintaining the watching cycle between runs.
 
-VERSION="20140807"
+VERSION="20140825"
 
 MAX_HEURISTICS_LEVEL=2
 HEURISTICS_LEVEL=0
