@@ -1,4 +1,4 @@
 ebuild file here is for me to copy it to the deter overlay after preparing
-a release. Since my overlay is not on o.g.o yet, you can add it to layman
-by copying http://github.com/deterenkelt/deter/metadata/deter.xml to
-/etc/layman/overlays/
+a release. 
+
+See http://github.com/deterenkelt/deter

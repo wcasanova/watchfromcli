@@ -7,8 +7,8 @@ inherit eutils
 
 SLOT="0"
 DESCRIPTION="A wrapper for mpv/MPlayer to watch videos easy via CLI."
-HOMEPAGE="https://github.com/deterenkelt/watch.sh"
-SRC_URI="http://github.com/deterenkelt/watch.sh/raw/master/watchsh-${PV}.tar.gz"
+HOMEPAGE="https://github.com/deterenkelt/watchsh"
+SRC_URI="https://github.com/deterenkelt/watchsh/archive/v${PV}.tar.gz -> ${P}.tar.gz"
 LICENSE="GPL-3"
 MERGE_TYPE="binary"
 KEYWORDS="~*"
@@ -33,5 +33,6 @@ src_prepare() {
 
 src_install() {
 	mkdir -p ${D}/usr/{bin,share/{doc/${PN},man/man1}}
+	cd sources
 	emake DESTDIR="${D}" install || die "make install failed"
 }
