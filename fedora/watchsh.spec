@@ -1,10 +1,10 @@
 Name: watchsh
-Version: 20140624
+Version: 20141016
 Release: 1%{?dist}
 Summary: A meta package for a wrapper for mpv/MPlayer to run videos easy via CLI.
 
 License: GPLv3
-URL: http://github.com/deterenkelt/watch.sh  
+URL: http://github.com/deterenkelt/watchsh
 Group: Applications/Multimedia
 BuildArch: noarch
 Requires: watchsh-base, parallel, figlet, pngcrush, libjpeg-turbo-utils, netpbm-progs
@@ -29,8 +29,8 @@ subtitles and tracks, applying heuristic algorithms to include files with
 names that may strongly differ from the names of corresponding video files,
 and that frees you from the job of picking appropriate subtitles manually.
 
-This script can also help you deal with organization taken screenshots, 
-placing them right into the folder named after video and compressing them 
+This script can also help you deal with organization taken screenshots,
+placing them right into the folder named after video and compressing them
 after you stop watching it.
 
 For the folder with episodes watch.sh can track your watching progress,

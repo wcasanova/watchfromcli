@@ -1,3 +1,32 @@
+===] October 16, 2014 [====================================================
+
+(\ /)
+(….…) Bunny met changes he wanted more than a 1-ri long carrot.
+(> <)
+
+1. Fix screenshots left raw if they were put into the current directory.
+2. Fixed loading of external files that have v[number] after the episode
+   number. Implemented debugging for that part of code.
+3. Fix journal entries which VIDEOFILES variable contained files with
+   single quote in their names and which couldn’t load properly because
+   of that.
+4. Improve util-linux version check.
+5. Make error message about an empty folder hinting for a possible
+   mistake which some weird patterns in --subfolders could lead to.
+6. --mplayer-opts is now cumulative.
+7. Add .mka to the tracks extensions.
+8. The keyword is now can be a pattern!
+   -f switch that tells watch.sh to treat keyword as a fixed string, may
+   be used to use ‘.’ ‘*’ and ‘|’ in the pattern.
+   Also entries from your journal will become invalid after update, this
+   is normal, there’s just two new variables, and one of them
+   required to be present.
+9. Arrow keys are now working in the menu! So selecting an item is as
+   simple as pressing “up” and “down”. The update introduces two new
+   options for used-defined keys to increment and decrement the number
+   besides the arrow keys. They are --my-increment and --my-decrement.
+10. Other little changes, code cleanup and bugfixes.
+
 ===] August 25, 2014 [=====================================================
 
 1. Added additional check before creation of an empty journal.
@@ -7,65 +36,71 @@
    to LIST_TO_CHOOSE_FROM). Also fix numbering for those lines and high-
    liting KEYWORD in the filenames. Start using GRE for grep.
 4. Fix check for setting HEURISTICS_LEVEL a value higher than
-  MAX_HEURISTICS_LEVEL.
+   MAX_HEURISTICS_LEVEL.
 
-===] August 7, 2014 [=====================================================
+===] August 7, 2014 [======================================================
 
 1. Script now runs as an executable.
    Edit your aliases.
 
-2. Option parsing was transferred from getopts to getopt, long options finally
-   appeared.
+2. Option parsing was transferred from getopts to getopt, long options
+   finally appeared.
    Most short options left untouched, the change was made to:
-   -j (--jpeg-compression) now takes an optional argument, that may be a number
-     from 0 to 100; It represents screenshot compress ratio after conversion
-     to jpeg. The default is 92;
+   -j (--jpeg-compression) now takes an optional argument, that may be
+     a number from 0 to 100; It represents screenshot compress ratio
+	 after conversion to jpeg. The default is 92;
    -l (--last-ep) takes no argument, it only enables printing the number
-     of the last shown episode; it also sets to default the command, the format
-     and a new parameter that specifies whether the script shall print
-     the number after player stops (and before screenshot processing starts)
-     or after processing; the command, the format and when to show episode
-     number may be overriden by the newly introduced parameters:
-	 --last-ep-command is supposed to be a command line calling figlet/toilet
-	 --last-ep-format takes format
+     of the last shown episode; it also sets to default the command, the
+	 format and a new parameter that specifies whether the script shall
+	 print the number after player stops (and before screenshot proces-
+	 sing starts) or after processing; the command, the format and when
+	 to show episode number may be overriden by the newly introduced
+	 parameters:
+	 --last-ep-command is supposed to be a command line calling
+       figlet/toilet;
+	 --last-ep-format takes format;
 	 --last-ep-show-after takes an argument that can be one of ‘player’,
-     ‘screenshots’ or ‘both’ (it is never shown twice);
-   -N (--dvd-bd-nav) now adds “nav” string to both dvd and bd protocols, but
-     bdnav is only available for mpv.
-   -P (don’t pad episode number) was removed due to fixes described below with
-     which the purpose of this option was gone.
-   The behaviour of the -n (--match-number) key has slightly changed, and it is
-     not necessary any more to keep it in your aliases. When playing a folder
-     with episodes, watch.sh will look for external files matching both phrase
-     and the episode number automatically. Thus the "-n" key is preseved for
-     the usage when it’s needed to include subtitles containing nothing
-     but an episode number, for example.
+       ‘screenshots’ or ‘both’ (it is never shown twice);
+   -N (--dvd-bd-nav) now adds “nav” string to both dvd and bd protocols,
+     but bdnav is only available for mpv.
+   -P (don’t pad episode number) was removed due to fixes described
+     below with which the purpose of this option was gone.
+   The behaviour of the -n (--match-number) key has slightly changed,
+     and it is not necessary any more to keep it in your aliases. When
+	 playing a folder with episodes, watch.sh will look for external
+	 files matching both phrase and the episode number automatically.
+	 Thus the "-n" key is preseved for the usage when it’s needed
+	 to include subtitles containing nothing but an episode number,
+	 for example.
 
 3. New options were added.
-   --bashrc which is meant to cover the disadvantage of switching to the exe-
-     cutable form of the script. It’s that aliases couldn’t be exported to
-     the subshell (the script is running in), thus are not available for
-     the usage in the -M (--mplayer-command). With no argument it sources 
-     ~/.bashrc or the specified file otherwise.
-   --compat option has emerged to solve the issue with divergent approaches
-     of player to systematize key names. There are three compatibility modes:
+   --bashrc which is meant to cover the disadvantage of switching to
+     the executable form of the script. It’s that aliases couldn’t be
+	 exported to the subshell (the script is running in), thus are not
+	 available for the usage in the -M (--mplayer-command). With no
+	 argument it sources ~/.bashrc or the specified file otherwise.
+   --compat option has emerged to solve the issue with divergent
+     approaches of player to systematize key names. There are three
+	 compatibility modes:
 	 - “mplayer” for the original MPlayer;
 	 - “mplayer2” for mplayer2;
-	 - “mpv-03x” for mpv 0.3.x or older. 
-	 The script is written to conform with the latest mpv build (i.e. git
-	 version) which at the present time differs from 0.3.x version, and does
-	 not require any compatibility options for usage with the upstream mpv
-	 build.
+	 - “mpv-03x” for mpv 0.3.x or older.
+	 The script is written to conform with the latest mpv build
+    (i.e. git version) which at the present time differs from 0.3.x
+	 version, and does not require any compatibility options for usage
+	 with the upstream mpv build.
    -j (--list-journal) outputs recently entered phrases from the journal.
    -J (--no-journal) forbids the script to keep the journal.
-   --journal-max-size allows to restrict the size journal is allowed to take
-     on the disk. The default is 64KiB.
-   --screenshot-dir-skel takes a list of comma separated directories to be cre-
-     ated under the folder specified via --screenshot-dir, e.g. "art,misc"
+   --journal-max-size allows to restrict the size journal is allowed
+     to take on the disk. The default is 64KiB.
+   --screenshot-dir-skel takes a list of comma separated directories
+     to be created under the folder specified via --screenshot-dir,
+	 e.g. "art,misc".
 
-4. Short options taking an _optional_ argument must _not_ be separated from it
-   Long options taking _an optional_ argument need this argument to be passed
-   through the equals sign, i.e. the following forms are acceptable
+4. Short options taking an _optional_ argument must _not_ be separated
+   from it. Long options taking _an optional_ argument need this
+   argument to be passed through the equals sign, i.e. the following
+   forms are acceptable
       -j                                      | optional
       -j13                                    | optional
 	  -m "--fs"                               | mandatory only
@@ -73,74 +108,81 @@
      --bashrc=$HOME/bashrc/mplayer_aliases.sh | optional
 	 --screenshot-dir /home/screenshots       | mandatory only
 	 --screenshot-dir=/home/screenshots       | mandatory
-   This isn’t related to the options taking mandatory argument, where the equals
-   sign is optional and arguments may be passed via space as well.
+   This isn’t related to the options taking mandatory argument, where
+   the equals sign is optional and arguments may be passed via space
+   as well.
 
-5. The script now maintains a journal where it stores recently entered phrases
-   and the data necessary to resume watching sessions bound to them, 
-   so the script doesn’t depend on a permanently open terminal any more.
-   A journal makes it possible to simultaneously keep multiple watching
-   sessions, and that affected resume procedure behaviour: now if a phrase was
-   given along with the -r option, it will search the journal for that phrase;
-   in case the phrase is not given, it will pick the last session by default.
+5. The script now maintains a journal where it stores recently entered
+   phrases and the data necessary to resume watching sessions bound
+   to them, so the script doesn’t depend on a permanently open terminal
+   any more. A journal makes it possible to simultaneously keep multiple
+   watching sessions, and that affected resume procedure behaviour: now
+   if a phrase was given along with the -r option, it will search
+   the journal for that phrase; in case the phrase is not given, it will
+   pick the last session by default.
 
 6. The script can be given multiple basepaths. If there is a folder where
-   titles are stored and another folder where new ones downloaded, it would be
-   convenient to have script watch both folders so there will be no need
-   to move them from a download folder to the storage. Basepaths are passed
-   through the -d (--basedir|--basepath) option. The first is supposed to be
-   the storage and thus takes priority, so if the match with the same name
-   would be found in more than one path, duplicates won’t be shown.
+   titles are stored and another folder where new ones downloaded, it
+   would be convenient to have script watch both folders so there will be
+   no need to move them from a download folder to the storage. Basepaths
+   are passed through the -d (--basedir|--basepath) option. The first is
+   supposed to be the storage and thus takes priority, so if the match
+   with the same name would be found in more than one path, duplicates
+   won’t be shown.
 
-7. Fix input to terminal. Now while choosing a number, input is restricted
-   to numbers and incorrect input may be erased with backspace.
+7. Fix input to terminal. Now while choosing a number, input is restric-
+   ted to numbers and incorrect input may be erased with backspace.
 
-8. Improved escaping of sed expressions to get rid of lots of bugs related
-   to special characters in file names of videos and external files.
+8. Improved escaping of sed expressions to get rid of lots of bugs rela-
+   ted to special characters in file names of videos and external files.
 
 9. Fix simultaneous loading of subtitles and tracks (multiple tracks are
    only available in the latest mpv).
 
-10. Fix bug with non-working conversion to JPEG due to flag variable being
-	unexported to the function called in the subshell.
+10. Fix bug with non-working conversion to JPEG due to flag variable
+	being unexported to the function called in the subshell.
 
-11. Added support for bd:// protocol (br:// for MPlayer). -I option now allows
-	to play a folder ignoring _any_ disk structure, whether it is DVD or BD.
-	Some instructions were added to the ~/.magic file enabling to recognize
-	MPEG 2 Transport (MP2T) streams as video files.
+11. Added support for bd:// protocol (br:// for MPlayer). -I option now
+	allows to play a folder ignoring _any_ disk structure, whether it is
+	DVD or BD. Some instructions were added to the ~/.magic file enabling
+	to recognize MPEG 2 Transport (MP2T) streams as video files.
 
-12. Fixes to the ‘single’ and ‘episodes’ modes. 
+12. Fixes to the ‘single’ and ‘episodes’ modes.
 
 13. More intelligent episode numbering, requiring heuristic level >=1.
-	The number of an episode that has been watched is now defined via file name
-	pattern of the largest group (See “Using heuristics” subsection in man page)
-	created while building the list and is not dependent on the position
-	in the list anymore. EPISODE_NUMBER is currently used only when looking
-	for subtitles and tracks and to display it after the playback is finished;
-	it also will be used for MAL intergration in the future. Position
-    in the list is now defined via VIDEO_ITEM.
+	The number of an episode that has been watched is now defined via
+	file name pattern of the largest group (See “Using heuristics” sub-
+	section in man page) created while building the list and is not
+	dependent on the position in the list anymore. EPISODE_NUMBER is
+	currently used only when looking for subtitles and tracks and
+	to display it after the playback is finished; it will also be used
+	for MAL intergration in the future. Position in the list is now defi-
+	ned via VIDEO_ITEM.
 
-14. Heuristics second level finally debugged and works properly now. Tracing
-	this part of code was delaying for long, but inevitable. The interface
-	now highlights not the phrase, but the part of the filename which
-	corresponds to the group pattern, if heuristics level is greater than 0.
+14. Heuristics second level finally debugged and works properly now. Tra-
+	cing this part of code was delaying for long, but inevitable. The in-
+	terface	now highlights not the phrase, but the part of the filename
+	which corresponds to the group pattern, if heuristics level is grea-
+	ter than 0.
 
-15. Debug output for the hardest places of code implemented. Files are stored
-	to "~/.watch.sh/debug/". To enable it, export D variable to the environment
-	of the script. This will also output the group numbers.
+15. Debug output for the hardest places of code implemented. Files are
+	stored to "~/.watch.sh/debug/". To enable it, export D variable
+	to the environment of the script. This will also output the group
+	numbers.
 
-16. Minor fixes to error reporting, old code and commentaries. A little of code
-    cleaning, moved check_for_subfolders() and check_for_disk_stuff() related
-	to do_initial_search() closer to the last.
+16. Minor fixes to error reporting, old code and commentaries. A little
+	of code cleaning, moved check_for_subfolders() and
+	check_for_disk_stuff() related to do_initial_search() closer
+	to the last.
 
-17. Dependency from awk removed. For conversion to jpeg the script now uses
-    pngtopam from netpbm and cjpeg from libjpeg-turbo instead of imagemagick
-	to make the list or required packages more minimalistic.
+17. Dependency from awk removed. For conversion to jpeg the script now
+	uses pngtopam from netpbm and cjpeg from libjpeg-turbo instead of
+	imagemagick to make the list or required packages more minimalistic.
 
 18. Please note, that since mplayer2 development was dropped, it is not
 	officially supported by this program, which uses syntax of the keys
-	depending on what MPLAYER_COMMAND contains or the value passed to --compat
-	option.
+	depending on what MPLAYER_COMMAND contains or the value passed
+	to --compat option.
 
 19. Version number and man page!
     Like a decent program, it finally comes with them.

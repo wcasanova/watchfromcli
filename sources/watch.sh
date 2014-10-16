@@ -6,7 +6,7 @@
 
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published
-# by the Free Software Foundation; either version 3 of the License, 
+# by the Free Software Foundation; either version 3 of the License,
 # or (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
@@ -23,22 +23,29 @@
 #        watch.sh conforms with 5.17 since v20140807)
 # util-linux >= 2.20 (for getopt that is required, and taskset
 #        which may be of use, but is optional)
-# mplayer, mplayer2 or mpv. Syntax was optimized 
+# mplayer, mplayer2 or mpv. Syntax was optimized
 #   for the first and the latter.
 #
 # Works better with
 # GNU parallel — to compress screenshots faster using all cores available
-#       (or those available after restricting to those specified 
+#       (or those available after restricting to those specified
 #        to the -t or --taskset option.)
 # figlet — to draw last seen episode number with big ASCII art numbers.
 # pngcrush — helps to reduce PNG image size, if you prefer it over JPEG.
-#       (players tend to save PNG in an unoptimized format, which makes 
+#       (players tend to save PNG in an unoptimized format, which makes
 #        screenshots very large. pngcrush recompresses them without quality
 #        loss.)
 # pngtopam and cjpeg — are only needed for converting screenshots from PNG
 #       (if you, for some reason use MPlayer, that can only save them to PNG)
 #        to JPEG by the usage of --jpeg-compression. pngtopam is usually found
 #        in the netpbm package and cjpeg in libjpeg-turbo.
+
+# extglob for the sake of it, expand_aliases to make aliases available for
+#   MPLAYER_COMMAND
+shopt -s extglob expand_aliases
+# Disable pathname expansion. * in expressions with find may lead to unforseen
+#   consequences.
+set -f
 
 show_help() {
 cat <<"EOF"
@@ -117,8 +124,8 @@ There is NO WARRANTY, to the extent permitted by law.
 EOF
 }
 
-[ ${BASH_VERSINFO[0]:-0} -eq 4 ] && 
-[ ${BASH_VERSINFO[1]:-0} -le 1 ] || 
+[ ${BASH_VERSINFO[0]:-0} -eq 4 ] &&
+[ ${BASH_VERSINFO[1]:-0} -le 1 ] ||
 [ ${BASH_VERSINFO[0]:-0} -le 3 ] && {
 	echo "Bash v4.2 or higher required." >&2
 	return 3 2>/dev/null || exit 3
@@ -129,14 +136,14 @@ EOF
 	return 4
 }
 
-# TAKES: 
+# TAKES:
 #     $1 — a string that has a message and exit code assigned to it.
 # RETURNS: exit code corresponding to the messsage.
 err() {
 	# Don’t rely on these codes — they tend to shift each time a new one is added.
 	# They are assembled here just for the ease of reparsing and future
 	#   localization (if it will be done eventually).
-	case $1 in 
+	case $1 in
 		no_getopt)
 			code=5; msg='No getopt utility (that usually comes with util-linux package) was found.';;
 		old_utillinux)
@@ -171,24 +178,10 @@ err() {
 			code=15; msg='Option --journal-max-size requires an argument to be a number of bytes that\n  may be followed by one of these suffixes: K M G to represent *2^10 once,\n  twice or three times.';;
 		opt_jpegcompression)
 			code=16; msg='Option --jpeg-compression takes an argument that has to be a number between 0 and 100.';;
-		opt_lepcmd)
-			code=17; msg='Option --last-ep-command requires an argument.';;
-		opt_lepformat)
-			code=18; msg='Option --last-ep-format requires an argument.';;
 		opt_lepshowafter)
 			code=19; msg='Option --last-ep-show-after requires an argument to be one of\n  - player;\n  - screenshots;\n  - both.';;
 		opt_limitsec)
 			code=20; msg='RESERVED';;
-		opt_mpcmd)
-			code=21; msg='Option -M|--mplayer-command requires an argument.';;
-		opt_mpopts)
-			code=22; msg='Option -m|--mplayer-opts requires an argument.';;
-		opt_subfolders)
-			code=23; msg='Option -s|--subfolders requires an argument.';;
-		opt_scrdir)
-			code=24; msg='Option -S|--screenshot-dir requires an argument.';;
-		opt_scrdirskel)
-			code=25; msg='Option --screenshot-dir-skel requires an argument.';;
 		opt_taskset)
 			code=26; msg='Option -t|--taskset-cpulist requires an argument to be a valid CPU list.\n See `man taskset` for the details.';;
 		doushiyou)
@@ -200,7 +193,11 @@ err() {
 		no_matches)
 			code=30; msg='No matches!';;
 		empty_folder)
-			code=31; msg='Chosen directory does not contain any video files';;
+			# CHOSEN_ONE shall be set at the time of possibility of this error,
+			#   so BASEPATH shouldn’t be an array already.
+			code=31; msg="I couldn’t find any video files in
+$BASEPATH${CHOSEN_ONE:-}${SUBFOLDERS:-}
+Check your --subfolders pattern.";;
 		chosen_one_is_unreadable)
 			code=32; msg="“$CHOSEN_ONE” is not readable!";;
 		user_declined_input)
@@ -215,13 +212,19 @@ err() {
 			code=36; msg='Couldn’t retrieve data from journal.'
 			[ "$KEYWORD" ] && msg+='\nThis was probably caused by a record at the end of journal and happened because\n  cleansing of broken entries is not implemented yet.';;
 		nothing_to_restore)
-			code=37; msg='Nothing to restore!';;
+			code=37; msg="Not enough data to restore.
+Couldn’t rereive $not_found_vars from the journal.
+This might be caused by the broken file, trancated entry at the end of the journal (though such entries shouldn’t exist) or a new update that changed the mechanism of file searching and the list of required variables.";;
 		cant_retrieve_journal_size)
 			code=38; msg='Couldn’t retrieve journal size.';;
 		cant_compute_journal_maxsize)
 			code=39; msg='Couldn’t compute journal maximum size.';;
 		cant_truncate_journal)
 			code=40; msg='Couldn’t truncate journal.';;
+		aborted_by_user)
+			code=41; msg='Aborted by user.';;
+		opt_requires_an_arg)
+			code=42; msg="Option “$option” requires an argument.";;
 		*)
 			code=107; msg='Unknown error.';;
 	esac
@@ -231,10 +234,11 @@ err() {
 
 which getopt &>/dev/null || exit `err no_getopt`
 
-# Checking util-linux version 
-read -d $"\n" major minor < <(getopt -V | sed -rn 's/^[^0-9]+([0-9]+)\.?([0-9]+)?/\1\n\2/p')
+# Checking util-linux version
+read -d $"\n" major minor < <(getopt -V | sed -rn 's/^[^0-9]+([0-9]+)\.?([0-9]+)?.*/\1\n\2/p')
 [[ "$major" =~ ^[0-9]+$ ]] && [[ "$minor" =~ ^[0-9]+$ ]] \
-	&& [ $major -ge 2 ] && [ $minor -ge 20 ] || exit `err old_utillinux`
+	&& [ $major -ge 2 ] && ( [ $major -gt 2 ] || \
+	                         [ $major -eq 2 -a $minor -ge 20 ] ) || exit `err old_utillinux`
 
 # Variables typed in caps can be either
 # - bash built-ins;
@@ -242,7 +246,7 @@ read -d $"\n" major minor < <(getopt -V | sed -rn 's/^[^0-9]+([0-9]+)\.?([0-9]+)
 # - kinda global;
 # - or are important for maintaining the watching cycle between runs.
 
-VERSION="20140825"
+VERSION="20141016"
 
 MAX_HEURISTICS_LEVEL=2
 HEURISTICS_LEVEL=0
@@ -257,7 +261,7 @@ JOURNAL_MAX_SIZE="64K" # w/o suffix for bytes, K for KiB, M for MiB etc.
 # DEBUG MODE
 # No function aggregator for debug messages because test [ -v D ]
 #   is faster than function call (there would be lots of them).
-# Also [ -v D ] is more visually distinguishable. descartes.jpg 
+# Also [ -v D ] is more visually distinguishable. descartes.jpg
 [ -v D ] && {
 	DEBUG_DIR="$HOME/.watch.sh/debug"
 	[ -d "$DEBUG_DIR" ] && rm -rf "$DEBUG_DIR"
@@ -267,10 +271,10 @@ JOURNAL_MAX_SIZE="64K" # w/o suffix for bytes, K for KiB, M for MiB etc.
 }
 
 # getopt from util-linux 2.24 is known to allow long options with a single dash
-#   independetly of whether the -a|--alternative option is passed. 
+#   independetly of whether the -a|--alternative option is passed.
 opts=`getopt \
              --options \
-                       aAcCd:eEhH:Ij::JlM:m:nNrRs:S:t:Tv \
+                       aAcCd:eEfhH:Ij::JlM:m:nNrRs:S:t:Tv \
              --longoptions \
 match-all,\
 no-aid,\
@@ -291,6 +295,8 @@ last-ep-command:,\
 last-ep-format:,\
 mplayer-command:,\
 mplayer-opts:,\
+my-increment:,\
+my-decrement:,\
 match-number,\
 dvd-bd-nav,\
 resume,\
@@ -313,13 +319,14 @@ getopt_exit_code=$?
 eval set -- "$opts"
 
 while true; do
-	case "$1" in 
+	option="$1" # becasue this way it may be used in err()
+	case "$option" in
 		-a|'--match-all')
-			MATCH_ALL=t 
+			MATCH_ALL=t
 			MATCH_NUMBER=t # implies -n
 			shift
 			;;
-		-A|'--no-aid')
+		-A|'--no-aid') # hide hints
 			NO_AID=t
 			shift
 			;;
@@ -335,7 +342,7 @@ while true; do
 			shift
 			;;
 		-C|'--no-color')
-			NO_COLOR="never" 
+			NO_COLOR="never"
 			shift
 			;;
 		'--compat')
@@ -347,7 +354,7 @@ while true; do
 			[ -d "$arg" ] \
 				&& {
 				[ "${arg:0-1}" = '/' ] || arg="$arg/"
-				BASEPATH[${#BASEPATH[@]}]="$arg" 
+				BASEPATH[${#BASEPATH[@]}]="$arg"
 			}|| exit `err opt_basedir`
 			shift 2
 			;;
@@ -363,8 +370,19 @@ while true; do
 				|| exit `err opt_heulevel`
 			shift 2
 			;;
-		-E) # W! Experimental code
+		-E) # W! Experimental code.
 			E=t
+			shift
+			;;
+		-f) # Treat KEYWORD as a fixed string (-F for grep).
+			# It’s not actually meant to be in use, since it affects code only
+			#   in two places — when assigning KEYWORD_FIND_PATTERNS and when
+			#   looking for _other files_ matching by KEYWORD. In other cases
+			#   job is done by find or grep -G, and -G is unavoidable, so
+			#   further development of this key would actually be escaping to
+			#   avoid KEYWORD being recognized as a pattern by grep -G.
+			# Strings separated by newlines are another caveat.
+			FIXED_STRING='F'
 			shift
 			;;
 		-h|'--help')
@@ -376,13 +394,13 @@ while true; do
 			exit 0
 			;;
 		# -i|'--input-line')
-		#     # take input values from the string supplied after this key
-		#     # instead of asking for manual typing.
+		#     # Take input values from the string supplied after this key
+		#     #   instead of asking for manual typing.
 		# 	err opt_inputinvalid
 		# 	shift 2
 		# 	;;
 		-I|'--ignore-disks')
-			IGNORE_DISKS=t 
+			IGNORE_DISKS=t
 			shift
 			;;
 		-j|'--list-journal')
@@ -415,33 +433,43 @@ while true; do
 		-l|'--last-ep')
 			which figlet &>/dev/null \
 				&& LAST_EP_NUMBER_PRINTING_COMMAND='figlet -t -f clb6x10 -c' \
-				|| LAST_EP_NUMBER_PRINTING_COMMAND='cat'
+				|| {
+				echo 'E! figlet is not installed.
+I will use ‘cat’ to print the last shown episode number!.' >&2
+				LAST_EP_NUMBER_PRINTING_COMMAND='cat'
+			}
 			LAST_EP_NUMBER_PRINTING_FORMAT='%n'
 			LAST_EP_NUMBER_SHOW_AFTER='both'
 			shift
 			;;
-		'--last-ep-command') 
+		'--last-ep-command')
 			[ "$2" ] && LAST_EP_NUMBER_PRINTING_COMMAND="$2" && shift 2 \
-				|| exit `err opt_lepcmd`
+				|| exit `err opt_requires_an_arg`
 			;;
 		'--last-ep-format')
 			[ "$2" ] && LAST_EP_NUMBER_PRINTING_FORMAT="$2" && shift 2 \
-				|| exit `err opt_lepformat`
+				|| exit `err opt_requires_an_arg`
 			;;
 		'--last-ep-show-after')
-			[ "$2" = player -o "$2" = screenshots -o "$2" = both ] \
+			[[ "$2" == @(player|screenshots|both) ]] \
 				&& LAST_EP_NUMBER_SHOW_AFTER="$2" && shift 2 || exit `err opt_lepshowafter`
 			;;
 		# -L)
-		# 	# Limit sequence iterations to $2. 
+		# 	# Limit sequence iterations to $2.
 		# 	err opt_limitsec
 		# 	shift 2
 		# 	;;
 		-M|'--mplayer-command')
-			[ "$2" ] && MPLAYER_COMMAND="$2" && shift 2 || exit `err opt_mpcmd`
+			[ "$2" ] && MPLAYER_COMMAND="$2" && shift 2 || exit `err opt_requires_an_arg`
 			;;
 		-m|'--mplayer-opts')
-			[ "$2" ] && MPLAYER_OPTS="$2" && shift 2 || exit `err opt_mpopts`
+			[ "$2" ] && MPLAYER_OPTS="$MPLAYER_OPTS $2" && shift 2 || exit `err opt_requires_an_arg`
+			;;
+		'--my-increment')
+			[ "$2" ] && MY_INCREMENT="$2" && shift 2 || exit `err opt_requires_an_arg`
+			;;
+		'--my-decrement')
+			[ "$2" ] && MY_DECREMENT="$2" && shift 2 || exit `err opt_requires_an_arg`
 			;;
 		-n|'--match-number')
 			MATCH_NUMBER=t
@@ -452,7 +480,7 @@ while true; do
 			shift
 			;;
 		# -q|'--be-quiet')
-		# 	# BE_QUIET=t 
+		# 	# BE_QUIET=t
 		# 	exec >/dev/null 2>&1
 		# 	;;
 		-R|'--resume-from-previous')
@@ -466,15 +494,16 @@ while true; do
 			;;
 		'--retarded')
 			RETARDED=t
+			shift
 			;;
 		-s|'--subfolders')
-			[ "$2" ] && PROSPECTIVE_SUBFOLDERS="$2" && shift 2 || exit `err opt_subfolders`
+			[ "$2" ] && EXPECTED_SUBFOLDERS="$2" && shift 2 || exit `err opt_requires_an_arg`
 			;;
 		-S|'--screenshot-dir')
-			[ "$2" ] && SCREENSHOT_DIR="$2" && shift 2 || exit `err opt_scrdir`
+			[ "$2" ] && SCREENSHOT_DIR="$2" && shift 2 || exit `err opt_requires_an_arg`
 			;;
 		'--screenshot-dir-skel')
-			[ "$2" ] && SCREENSHOT_DIR_SKEL="$2" && shift 2 || exit `err opt_scrdirskel`
+			[ "$2" ] && SCREENSHOT_DIR_SKEL="$2" && shift 2 || exit `err opt_requires_an_arg`
 			;;
 		-t|'--taskset-cpulist')
 			[[ "$2" =~ ^[0-9,-]+$ ]] && TASKSET_CPULIST="$2" && shift 2 || exit `err opt_taskset`
@@ -500,7 +529,6 @@ done
 
 # This check must be here because -M itself is optional.
 MPLAYER_COMMAND=${MPLAYER_COMMAND:=mpv}
-shopt -s expand_aliases
 which "$MPLAYER_COMMAND" &>/dev/null || {
 	alias | grep -q "^alias $MPLAYER_COMMAND='.*'$" \
 		&& alias=`alias -p | sed -nr "s/^alias $MPLAYER_COMMAND='(.*)'$/\1/"` \
@@ -549,26 +577,46 @@ case "$COMPAT" in
 esac
 
 KEYWORD="$*"
-# Now script has the journal and resume may rely on its data.
-[ ! -v RESUME ] && [ -z "$KEYWORD" ] && exit `err no_keyword`
-PROSPECTIVE_SUBFOLDERS="${PROSPECTIVE_SUBFOLDERS//%keyword/$KEYWORD}"
+[ -v RESUME ] || {
+	[ "${KEYWORD/@(*[^.]|)\**/}" ] || {
+		echo -e '\nI’ve found that you used * in the pattern for keyword, and the patterns should use “.*” style, not just “*”.' >&2
+		read -p 'Are you sure you want to continue? [N/y] > '
+		[[ "$REPLY" =~ ^[yY]$ ]] || exit `err aborted_by_user`
+	}
+	[ "$KEYWORD" ] || exit `err no_keyword`
+	# Now script has the journal and resume may rely on its data.
+	EXPECTED_SUBFOLDERS="${EXPECTED_SUBFOLDERS//%keyword/$KEYWORD}"
+	# Pattern split for find
+	[ -v FIXED_STRING ] && {
+		# Perform escaping of | . * in the pattern for grep -G?
+		KEYWORD_FIND_PATTERNS="-iname \"*$KEYWORD*\""
+	}||{
+		KEYWORD_FIND_PATTERNS=`
+			sed -r 's/([^\])"/\1\\"/g                       # Escape unescaped "
+			        s/([^\])\.\*/\1*/g                     # .* → * ; \.* → \.*
+			        s/^/\\\\( -iname "*/; s/$/*" \\\\)/   # ^… …$ → \( -iname "*… …*" \)
+			        s/([^\])\|/\1*" -o -iname "*/g       # | → *" -o -iname "* ; \| → \|
+			       ' <<<"$KEYWORD"`
+		KEYWORD_FIND_PATTERNS=`eval echo "$KEYWORD_FIND_PATTERNS"`
+	}
+}
 
 apply_mimetype_fix
 
 alias grep="grep --color=${NO_COLOR:-auto}"
 [ -v NO_COLOR ] || {
-	[ -v RETARDED ] && { 
+	[ -v RETARDED ] && {
 		# retarded console with white bg
 		w='\e[00;30m'    # black
 		g='\e[00;32m'    # green
 		r='\e[00;31m'    # red
-		s='\e[00m' 	  # stop
+		s='\e[00m'    # stop
 		u='\e[04;30m'    # underline black
 	}||{ # normal colors
 		w='\e[00;37m'    # white
 		g='\e[00;32m'    # green
 		r='\e[00;31m'    # red
-		s='\e[00m' 	  # stop
+		s='\e[00m'    # stop
 		u='\e[04;37m'    # underline white
 	}
 }
@@ -584,13 +632,13 @@ alias grep="grep --color=${NO_COLOR:-auto}"
 
 # And then goes heuristics
 
-# EXPECTS: 
+# EXPECTS:
 #     KEYWORD — set, non-empty string
 #     BASEPATH — set, non-empty string or an array
 #     IGNORE_DISKS
-#     PROSPECTIVE_SUBFOLDERS
+#     EXPECTED_SUBFOLDERS
 # SETS:
-#     CHOSEN_ONE — file or folder which reside directly in BASEPATH and which name 
+#     CHOSEN_ONE — file or folder which reside directly in BASEPATH and which name
 #                  does match KEYWORD
 #     MODE — 'single', means that script will play _a file_ in BASEPATH
 #            'episodes', this way depends on IGNORE_DISKS variable, but in common
@@ -598,11 +646,11 @@ alias grep="grep --color=${NO_COLOR:-auto}"
 #                         videofiles, probably episodes.
 #                         If IGNORE_DISKS is set, then any disk structure ignored
 #                         and all files of your choice will be available to play
-#                         _independently_ of the fact do they have KEYWORD in 
-#                         their names or not. If IGNORE_DISKS is not set, script 
-#                         will continue searching files matching KEYWORD 
+#                         _independently_ of the fact do they have KEYWORD in
+#                         their names or not. If IGNORE_DISKS is not set, script
+#                         will continue searching files matching KEYWORD
 #                         at the end of the path.
-#            'dvd'|'bd',  give a directive to player to treat the stuff 
+#            'dvd'|'bd',  give a directive to player to treat the stuff
 #                         at the end of the path as a disk.
 
 # EXIT CODES: 0 if ok;
@@ -614,12 +662,13 @@ do_initial_search() {
 	unset MODE CHOSEN_ONE SUBFOLDERS
 	list_videofiles  search_by_keyword  ${BASEPATH[1]:+preserve_basepath} || return $?
 	[ ${#BASEPATH[@]} -eq 1 ] \
-		&& local dirs=`find -L "$BASEPATH" -maxdepth 1 -type d -iname "*$KEYWORD*" -printf "%f\n"` \
-		|| local dirs=`find -L "${BASEPATH[@]}" -maxdepth 1 -type d -iname "*$KEYWORD*" -printf "%H: %f\n"`
+		&& local dirs=`find -L "$BASEPATH" -maxdepth 1 -type d $KEYWORD_FIND_PATTERNS -printf "%f\n"` \
+		|| local dirs=`find -L "${BASEPATH[@]}" -maxdepth 1 -type d $KEYWORD_FIND_PATTERNS -printf "%H: %f\n"`
 	unset newline #  DELETE ME?
 
 	[ "$dirs" ] && [ "$VIDEOFILES" ] && newline="\n"
 	local matches="`echo -e "$dirs${newline:-}$VIDEOFILES"`"
+
 	if [ "$matches" ]; then
 		# Primary basepath takes priority, so remove entries duplicated
 		#   in other paths.
@@ -652,7 +701,7 @@ do_initial_search() {
 			matches="`sed "s/^$escaped_basepath: //" <<<"$matches"`"
 		}
 
-		# Yeah, you might have noticed that the checks above cheated 
+		# Yeah, you might have noticed that the checks above cheated
 		#   on the case with single match, that could be noticed yet after
 		#   that sed expression with “primary” and “slave” basepath,
 		#   but that has almost blown my mind so I decided to simplify it
@@ -665,12 +714,12 @@ do_initial_search() {
 			#   path, and the BASEPATH chosen by user is yet to be defined.
 			# export -f escape_for_sed
 			[ ${#BASEPATH[@]} -gt 1 ] && for ((i=0; i<${#BASEPATH[@]}; i++)); do
-                # No local directive here!
-                m=$(sed -rn "s/^`escape_for_sed_pattern "${BASEPATH[i]}"`: //p;T;Q1" <<<"$CHOSEN_ONE") || {
-                    CHOSEN_ONE="$m"
+				# No local directive here!
+				m=$(sed -rn "s/^`escape_for_sed_pattern "${BASEPATH[i]}"`: //p;T;Q1" <<<"$CHOSEN_ONE") || {
+					CHOSEN_ONE="$m"
 					BASEPATH[0]="${BASEPATH[i]}"
-                    break
-                }
+					break
+				}
 			done
 			# export -nf escape_for_sed
 			[ 1 -eq 1 ] # Yes, I dislike if… else… fi this much.
@@ -686,7 +735,7 @@ do_initial_search() {
 		if [ -d "$BASEPATH$CHOSEN_ONE" ]; then
 			MODE='episodes'
 			# Yep, it’s a directory. Trying to search subfolders.
-			[ -v IGNORE_DISKS ] && PROSPECTIVE_SUBFOLDERS+=" VIDEO_TS BDMV"
+			[ -v IGNORE_DISKS ] && EXPECTED_SUBFOLDERS+=" VIDEO_TS BDMV "
 			unset same_path # important!
 			check_for_subfolders || return $?
 			[ -v IGNORE_DISKS ] || {
@@ -695,9 +744,9 @@ do_initial_search() {
 				[ "`find "$BASEPATH/$CHOSEN_ONE${SUBFOLDERS:-}" -type d -name "BDMV"`" ] \
 					&& MODE='bd'
 			}
-# FIXME: Here must be check for the count of VIDEOFILES found at the end of 
+# FIXME: Here must be check for the count of VIDEOFILES found at the end of
 #        the path (with SUBFOLDERS). If count==1, change mode to single and
-#        correct paths for “single” case appropriately. If there are 
+#        correct paths for “single” case appropriately. If there are
 #        videofiles and they look like episodes, i.e. containing numbers
 #        like 01, 02…
 			[ $MODE != dvd -a $MODE != bd ] && {
@@ -737,9 +786,8 @@ do_initial_search() {
 #       parameter and pointing to the last line of the first subshell.
 list_videofiles() {
 	local result
-	[ "$1" = search_by_keyword ] && local searchkeyword="-iname *$KEYWORD*"
+	[ "$1" = search_by_keyword ] && local searchkeyword="$KEYWORD_FIND_PATTERNS"
 	[ "$2" = preserve_basepath ] && local preserve_basepath=t
-	set -f
 	# Single files residing directly in BASEPATH
 	VIDEOFILES=`find -L "${BASEPATH[@]}${CHOSEN_ONE:-}${SUBFOLDERS:-}" \
 	                    -maxdepth 1 -type f ${searchkeyword:-} \
@@ -759,7 +807,6 @@ list_videofiles() {
 		            <<<"$VIDEOFILES"`
 		result=$?; [ $result -gt 0 ] && return $result
 	fi
-	set +f
 	return 0
 }
 
@@ -767,11 +814,11 @@ list_videofiles() {
 #     BASEPATH — set, non-empty string
 #     CHOSEN_ONE — existed and readable directory
 #     SUBFOLDERS — not set
-#     PROSPECTIVE_SUBFOLDERS — be correct
+#     EXPECTED_SUBFOLDERS — be correct
 # SETS:
 #     SUBFOLDERS — path between CHOSEN_ONE and actual filename to play (excepting them)
 # EXIT CODES: 0 if ok, >0 if error occured in internal function calls.
-check_for_subfolders() { 
+check_for_subfolders() {
 	FUNCNEST=12 # to avoid possible bug with a loop in symlinked dirs.
 	[ "$BASEPATH$CHOSEN_ONE${SUBFOLDERS:-}" = "${same_path:-}" ] && {
 		# IGNORE_DISKS is set and it is a bluray disk, but files for the
@@ -782,7 +829,7 @@ check_for_subfolders() {
 	}
 	# not local!
 	same_path="$BASEPATH$CHOSEN_ONE${SUBFOLDERS:-}"
-	for word in ${PROSPECTIVE_SUBFOLDERS:-}; do
+	for word in ${EXPECTED_SUBFOLDERS:-}; do
 		internal_dirs=`find -L "$BASEPATH$CHOSEN_ONE${SUBFOLDERS:-}" -mindepth 1 -maxdepth 1 -type d -iname "*${word}*" -printf "%f\n"`
 		[ "$internal_dirs" ] && {
 			[ `echo -e "$internal_dirs" | wc -l` -gt 1 ] && {
@@ -799,23 +846,15 @@ check_for_subfolders() {
 #     NO_COLOR
 # TAKES:
 #     $1 — list of strings
-# SETS: 
-#     selected_one ——\ set to the line from the $1 which number is $reply
-#     selected_ones —/  same thing, but contain all the selected lines
-#                        (this may contain the same with “selected_one”
-#                         if only one line was allowed for selection).
-# EXIT CODES: 0 if line(s) was(were) successfully picked, 
+# SETS:
+#     selected_one — set to the line from the $1 which number is $reply
+# EXIT CODES: 0 if line(s) was(were) successfully picked,
 #            “user_declined” in case of
 #              - <Return> was hit (choice was declined);
 #              - wrong number entered;
 #              - not a number entered (prevented).
 choose_from() {
 	unset disable_heuristics print_screenshot_dir
-	# After the script was allowed to include all the so-called “other files”
-	#   which were found, does this check still has a point?
-	[ ${FUNCNAME[1]} = get_other_files ] \
-		&& local how_much_to_select='many' \
-		|| local how_much_to_select='one'
 	# [ ${FUNCNAME[1]} != watch ] && local disable_heuristics=t
 	[ ${FUNCNAME[1]} = screenshots_preprocessing ] && local print_screenshot_dir=t
 	LIST_TO_CHOOSE_FROM=`sort <<<"$1"`
@@ -827,7 +866,7 @@ choose_from() {
 		# Could it be replaced with && … &&?
 		[ ${FUNCNAME[1]} != watch ] || [ $HEURISTICS_LEVEL -eq 0 ] || {
 			dbg_file="$DEBUG_DIR/choose_from_[watch]"
-			[ -v mapfile_patterns ] || create_patterns_for_the_list || return $? 
+			[ -v mapfile_patterns ] || create_patterns_for_the_list || return $?
 			build_the_list || return $?
 		}
 		[ ${FUNCNAME[1]} = watch ] && VIDEOFILES="$LIST_TO_CHOOSE_FROM"
@@ -845,9 +884,9 @@ choose_from() {
 		[ -v NO_AID ] || echo ' ↙ The directory I’m currently in.'
 		local cwd="$PWD"
 		[ ${#cwd} -gt $max_width ] && cwd="…${cwd:0-$max_width:$max_width}"
-		echo -e "C: $cwd"  | grep -iE "$KEYWORD|$"
-		# S: screenshot directory as provided via -S option (see above), 
-		#    it shows only in case this call of “choose_from” came from 
+		echo -e "C: $cwd"  | grep -iG "\($KEYWORD\|$\)"
+		# S: screenshot directory as provided via -S option (see above),
+		#    it shows only in case this call of “choose_from” came from
 		#    “screenshots_preprocessing”, so the user could see the actual
 		#    folder where screenshots will be saved to. This is important
 		#    because of two things
@@ -859,7 +898,7 @@ choose_from() {
 		#      my portable hard drive where in SCREENSHOT_DIR a folder named
 		#      “darker_then_black” is already present, so script will choose it
 		#      without asking, because of keyword matched the part of
-		#      folder name. In most cases keyword would match correctly, so 
+		#      folder name. In most cases keyword would match correctly, so
 		#      asking about “are you glad with the folder I’ve chosen for you?”
 		#      would be annoying, so we just highlight the keyword, so the user
 		#      can abort script executing and run it again with a more proper
@@ -870,7 +909,7 @@ choose_from() {
 			[ -v NO_AID ] || echo ' ↙ Screenshot directory as it was passed.'
 			echo "S: $safe_screenshot_dir"
 		}
-		[ -v NO_AID ] || 
+		[ -v NO_AID ] ||
 		echo ' ↙ Pick a number from the list.'
 		[ ${FUNCNAME[1]} = watch -a $HEURISTICS_LEVEL -gt 0 ] && {
 			# The idea is providing a “new-list-to-choose-from” which would be
@@ -901,7 +940,6 @@ choose_from() {
 					used_matches="${used_matches:+$used_matches\n}$match"
 					# We use mapfile_matches[i], because HEU LVL2 does sorting in place
 					[ $((++lcount)) -gt $LIST_ITEMS_COUNT ] && break 2
-					# read; [ "$REPLY" != "" ] && exit 105
 				done
 			done
 
@@ -929,15 +967,10 @@ This could happen if there was just a file with a unique name or some file has
 			VIDEOFILES=`echo -e "$used_matches"`
 			LIST_TO_CHOOSE_FROM="$VIDEOFILES"
 			[ 1 -eq 1 ] # Yes, I hate ifs this much.
-		}|| echo -e "$LIST_TO_CHOOSE_FROM" | grep -niE "$KEYWORD|$"
-		
+		}|| echo -e "$LIST_TO_CHOOSE_FROM" | grep -niG "\($KEYWORD\|$\)"
+
 		unset another_view prompt_heuristics_up prompt_heuristics_down
-		# Multiple selection was deprecated in favor of loading all what
-		#   the script could be able to find (smarter than fuzzy-match)
-		# I’m just too lazy to dig into this and clean it now.
-		[ $how_much_to_select = many ] \
-			&& local prompt_numbers="Pick $g<numbers>$s divided by space" \
-			|| local prompt_numbers="Pick $g<number>$s"
+		local prompt_numbers="Pick $g<number>$s"
 		[ $HEURISTICS_LEVEL -gt 0 ] && [ -v list_variants_available ] \
 			&& local another_view="View: $w[${MAPPAT_INDEX_OFFSET:=1}/${#mapfile_patterns[@]}]$s, $g<Tab>$s to alter, "
 		[ $HEURISTICS_LEVEL -lt $MAX_HEURISTICS_LEVEL ] \
@@ -947,68 +980,84 @@ This could happen if there was just a file with a unique name or some file has
 			[ ! -v prompt_heuristics_up ] && local hl=' heuristics level' || local comma=', '
 			local prompt_heuristics_down="${comma:-}$g<h>$s to lower${hl:-}"
 		}
-		[ -v NO_AID ] || echo ' ↙ Commands to rebuild the list in other way, if possible.'
+		[ -v NO_AID ] || {
+			local num_choosing_hint="[$MY_DECREMENT↓0-9↑$MY_INCREMENT] "
+			echo ' ↙ Commands to rebuild the list in other way, if possible.'
+		}
 		local prompt_1st_line="${another_view:-}${prompt_heuristics_up}${prompt_heuristics_down}."
-		local prompt_2nd_line="$prompt_numbers or hit $g<Return>$s to return > "
+		local prompt_2nd_line="$prompt_numbers or hit $g<Return>$s to return ${num_choosing_hint}> "
 		local prompt="${prompt_1st_line}\n${prompt_2nd_line}"
 		echo -ne "$prompt"
 
-		unset replies reply_is_ready
+		# `local` is poinless for these two, because big cycle and <TAB>.
+		unset reply reply_is_ready
+		local up=$'\e[A'        # Use C-v <key> to print its escape sequence.
+		local down=$'\e[B'
+		local backspace=$'\177'        # Octals work, too!
 		until [ -v reply_is_ready ]; do
-			read -n1 -p "$replies"
-			[ -v disable_heuristics ] || {
-				[ "$REPLY" = $'\t' ] && {
+			# [ ${#reply} -gt 5 ] && reply=${reply:$((${#reply}-5))}
+			[ ${#reply} -gt 5 ] && reply=${reply:0:5}
+			read -n1 -p "$reply" -s char
+			[ "$char" = $'\e' ] && {
+				while read -n2 -s rest; do char+="$rest"; break; done
+				[ 1 -eq 1 ]
+			}
+			[ $HEURISTICS_LEVEL -eq 0 ] || {
+				[ "$char" = $'\t' ] && {
 					[ -v list_variants_available ] && ROTATE_PATTERN_LIST=t
 					echo && continue 2
 				}
-				[ "$REPLY" = 'H' ] && {
-					[ $HEURISTICS_LEVEL -lt $MAX_HEURISTICS_LEVEL ] && 
+				[ "$char" = 'H' ] && {
+					[ $HEURISTICS_LEVEL -lt $MAX_HEURISTICS_LEVEL ] &&
 					let HEURISTICS_LEVEL++
 					MAPPAT_INDEX_OFFSET=1
 					echo && continue 2
 				}
-				[ "$REPLY" = 'h' ] && {
-					[ $HEURISTICS_LEVEL -gt 0 ] && 
+				[ "$char" = 'h' ] && {
+					[ $HEURISTICS_LEVEL -gt 0 ] &&
 					let HEURISTICS_LEVEL--
 					MAPPAT_INDEX_OFFSET=1
 					echo && continue 2
 				}
 			}
 
-			# TODO: Add processing of the arrow keys (↑↓) to change the number?
-			[ "$REPLY" ] && {
-				if [ "$REPLY" = $'\177' ]; then # ← backspace 
-					[ ${#replies} -gt 0 ] && replies=${replies::-1}
+			[ "$char" ] && {
+				if [ "$char" = "$backspace" ]; then
+					[ ${#reply} -gt 0 ] && reply=${reply::-1}
+				elif [ "$char" = "$up" -o "$char" = "$MY_INCREMENT" ]; then
+					[ "$reply" ] || local reply=0
+					[[ "$reply" =~ ^[0-9]+$ ]] \
+						&& [ $reply -lt $LIST_ITEMS_COUNT ] \
+						&& let reply++ || {
+							[ $reply -gt $LIST_ITEMS_COUNT ] \
+								&& reply=$LIST_ITEMS_COUNT
+					}
+				elif [ "$char" = "$down" -o "$char" = "$MY_DECREMENT" ]; then
+					[ "$reply" ] || local reply=0
+					[[ "$reply" =~ ^[0-9]+$ ]] \
+						&& [ $reply -gt 1 ] && {
+							[ $reply -gt $LIST_ITEMS_COUNT ] \
+								&& reply=$LIST_ITEMS_COUNT \
+								|| let reply--
+					}
 				else
-					[[ "$REPLY" =~ ^[0-9]$ ]] && replies="${replies}$REPLY"
+					[[ "$char" =~ ^[0-9]$ ]] && reply="$reply$char"
 				fi
-				echo -ne "\r$prompt_2nd_line"
-				for ((i=0; i<$(($cols-${#prompt_2nd_line})); i++)); do echo -n ' '; done
-				echo -ne "\r$prompt_2nd_line"
-			}
-
-			[ "$REPLY" = '' ] && reply_is_ready=t
+				echo -ne "\r\e[K$prompt_2nd_line" # \K lear line
+			}||{ reply_is_ready=t; echo; }
 		done
 
-		# TOCHECK: Does the ability to select multiple files still needed, 
-		#   since it was introduced to allow picking subtitles and tracks
-		#   selectively and that code was removed because all found 
-		#   “other files” are to be included to the command line?
-		unset selected_ones
-		for reply in $replies; do
-			[ "$reply" ] && {
-				[[ "$reply" =~ ^[0-9]+$ ]] && {
-					[ $reply -le $LIST_ITEMS_COUNT ] && [ $reply -gt 0 ] && {
-						selected_one=`echo -e "$LIST_TO_CHOOSE_FROM" | sed -n "$reply p"`
-						selected_ones=`echo -e "${selected_ones:-}\n$selected_one" | grep -ve '^$'`
-					}|| echo "Number must be the number of the line." >&2
-				}|| echo "“$reply” must be a number." >&2
-			}
-			[ $how_much_to_select = one ] && break
-		done
-		[ -v selected_ones ] && choice_made=t || return `err user_declined_input`
+		unset selected_one
+		[ "$reply" ] && {
+			[[ "$reply" =~ ^[0-9]+$ ]] && {
+				[ $reply -le $LIST_ITEMS_COUNT ] && [ $reply -gt 0 ] \
+					&& selected_one=`echo -e "$LIST_TO_CHOOSE_FROM" | sed -n "$reply p"` \
+					|| echo "Number must be the number of the line." >&2
+			}|| echo "“$reply” must be a number." >&2
+		}
+		[ -v selected_one ] && choice_made=t || return `err user_declined_input`
 	done
-	return 0
+return 0
 }
 
 # This function’s purpose is to create patterns of similarity among files
@@ -1024,7 +1073,7 @@ create_patterns_for_the_list() {
 	# In origin this function was a part of another function where is was
 	#   checking the list of possible candidates to $videofile variable
 	#   (at the end of the “eval” in watch()), and those ones were really
-	#   existed files. But now it’s part of “choose_from” function, so 
+	#   existed files. But now it’s part of “choose_from” function, so
 	#   the list passing to it may be list of folders, subfolders, video,
 	#   subtitle files et cetera.
 	#
@@ -1042,7 +1091,7 @@ create_patterns_for_the_list() {
 				}
 			done
 		}
-		# Splitting the string "$filename" by “numbers” and “not numbers”		
+		# Splitting the string "$filename" by “numbers” and “not numbers”
 		readarray -t < <(echo "$filename" | sed -r 's/([0-9]+)/\n\1\n/g')
 		[ -v D ] && {
 			echo -e "\tFilename is unique and is about to start a new sequence.
@@ -1106,7 +1155,7 @@ create_patterns_for_the_list() {
 				#   boundary helped for some time, but then filenames having
 				#   episode number surrounded with underscores (“_”) appeared,
 				#   and, because \b matches letters, digits and underscores
-				#   as a single word, this caused patterns to fail on such 
+				#   as a single word, this caused patterns to fail on such
 				#   names. That’s why \b was replaced by a “possible non-
 				#   number” — [^0-9]\?
 				multinum_patterns=( "^$left_part[0-9]\+[^0-9].*$" \
@@ -1115,15 +1164,15 @@ create_patterns_for_the_list() {
 					"^$left_part[0-9]\+$right_part$" ) # Both parts — the last!
 				# If you noticed that the two last elements of both arrays with
 				#   regular expressions are redundant. That’s because I’ve rea-
-				#   lized only at this point, that sed capabilities are not 
-				#   enough. 
+				#   lized only at this point, that sed capabilities are not
+				#   enough.
 				# Below, in the “watch” function, at the end of the “episodes”
 				#   case, one of the patterns above this text will be applied to
 				#   a file name in attempt to acquire episode number. And there
 				#   is the rub: sed behaves non-greedy when it searches for
 				#   ([0-9]+) and that makes first digits of the number to fall
 				#   out of the \1 match. The first thing I did was to add boun-
-				#   dary separators \b around the regex matching the number, 
+				#   dary separators \b around the regex matching the number,
 				#   but then sed appeared to include not only alphanumeric
 				#   characters, BUT DIGITS AND THE UNDERSCORE SIGN, TOO, i.e.
 				#   in file name “Durarara_01_2F4B8D2.mkv” there’s only one word
@@ -1137,8 +1186,8 @@ create_patterns_for_the_list() {
 				[ -v D ] && declare -p inc_patterns multinum_patterns \
 					| sed -r 's/\[[0-9]+]="[^"]+"/\t&\n/g'>>$dbg_file
 
-				# If either of left or right parts appear empty, this will cause 
-				#   the non-empty one and the pattern with both of them 
+				# If either of left or right parts appear empty, this will cause
+				#   the non-empty one and the pattern with both of them
 				#  (whicht is supposed to be the last element) to be the same,
 				#   causing a bug with duplication.
 				[ -z "$left_part" -o -z "$right_part" ] && {
@@ -1159,7 +1208,7 @@ create_patterns_for_the_list() {
 					matches=$(echo "$LIST_TO_CHOOSE_FROM" | sed -n "/${multinum_patterns[j]}/p")
 					matches_count=`echo "$matches" | wc -l`
 					[ -v D ] && echo -e "\t\t\tMultinum matches: $matches_count." >>$dbg_file
-					# -gt 1 because wc -l  will _must not_ use echo -n, so one newline by echo may be an empty string 
+					# -gt 1 because wc -l  will _must not_ use echo -n, so one newline by echo may be an empty string
 					#   but may be also a string with a pattern; tl;dr -gt 1 means 2 or more
 					[[ "$matches_count" =~ ^[0-9]+$ ]] && [ $matches_count -gt 1 ] && {
 						[ -v D ] && echo -en "\t\t\tUnique? " >>$dbg_file
@@ -1184,7 +1233,7 @@ create_patterns_for_the_list() {
 					}||{ [ -v D ] && echo -e "\n#\t\t\tMULTINUM EXPRESSION FAILED!
 \t\t\tSequence was found, but multinum pattern couldn’t find even two filenames.\n" >>$dbg_file; } # multinumber pattern found two or more matches
 					[ 1 -eq 1 ] # yes I hate ifs this much.
-				}||{ [ -v D ] && echo 'No.' >>$dbg_file; } # inc_pattern[j] found a sequence (non-empty match list) 
+				}||{ [ -v D ] && echo 'No.' >>$dbg_file; } # inc_pattern[j] found a sequence (non-empty match list)
 				done # for j in inc_patterns[@]
 				[ 1 -eq 1 ] # yes I hate ifs this much.
 			}||{ [ -v D ] && echo 'No.' >>$dbg_file; }  # MAPFILE[i] is a number
@@ -1196,10 +1245,10 @@ return 0
 # EXPECTS:
 #     - that you know why some characters should be escaped;
 #     - that the output will be used in the subshell, i.e. $(…)
-#       so don’t make assignings like 
+#       so don’t make assignings like
 #           var1=`escape_for_sed_pattern "blablabla"`
-#       but use subshell in place 
-#       
+#       but use subshell in place
+#
 # TAKES:
 #     $1 – a string to escape.
 # RETURNS: an escaped string.
@@ -1213,7 +1262,7 @@ escape_for_sed_pattern() {
 	str=${str//\./\\.}
 	str=${str//\$/\\$}
 	str=${str//\*/\\*}
-	# Your syntax checker may fail here, 
+	# Your syntax checker may fail here,
 	#   and indentaion may also be fucked up, but it’s ok.
 	str=${str//\[/\\[} 	# …add round parentheses too?
 	# str=${str//\]/\\]}
@@ -1223,23 +1272,23 @@ escape_for_sed_pattern() {
 	#     sed: -e expression #1, char 77: unknown command: `o'
 	#     sed: -e expression #1, char 102: Invalid range end
 	#   especially when BASEPATH is an array, this may mean that folder paths
-	#   have appeared in the pattern when they should not, because 
+	#   have appeared in the pattern when they should not, because
 	#   create_patterns_for_the_list() must only process _file names_ when
 	#   MODE == episodes and choose_from() was called from watch().
-	# P.S. Slashes are used in do_initial_search() when removing 
+	# P.S. Slashes are used in do_initial_search() when removing
 	#   duplicates from d.
-	str=${str//\//\\/} 
+	str=${str//\//\\/}
 	str=${str//\^/\\^}
 	echo -ne "$str" # TODO: check for what purpose is -e here
 }
 
 
-build_the_list() {	
+build_the_list() {
 	[ -v D ] && {
 		dbg_file="$DEBUG_DIR/pattern_groups"
 		declare -p mapfile_patterns mapfile_matches mapfile_matches_count >>$dbg_file
 	}
-	# If we have no patterns and therefore, no matches, that’s bad 
+	# If we have no patterns and therefore, no matches, that’s bad
 	#   and we have to fallback, there’s no error produced since
 	#   the list_to_choose_from still exist, so we just don’t touch it.
 	[ ${#mapfile_patterns[@]} -eq 0 ] && {
@@ -1253,7 +1302,7 @@ build_the_list() {
 	[ -v list_variants_available ] && {
 		[ -v D ] && echo "List variants available: $list_variants_available." >>$dbg_file
 		# There is >1 pattern, we can sort and rotate patterns.
-		[ -v ROTATE_PATTERN_LIST ] && {	
+		[ -v ROTATE_PATTERN_LIST ] && {
 			[ -v D ] && echo 'ROTATING' >>$dbg_file
 			# ┌─────────────────────>──────────┐
 			# ^   TAB in menu rotates groups   v
@@ -1279,7 +1328,7 @@ build_the_list() {
 			#   lexicographically if numbers are equal
 			for (( i=0; i<${#mapfile_patterns[@]}-1; i++)); do
 				for (( j=$i+1; j<${#mapfile_patterns[@]}; j++)); do
-					( [ ${mapfile_matches_count[i]} -lt ${mapfile_matches_count[j]} ] || 
+					( [ ${mapfile_matches_count[i]} -lt ${mapfile_matches_count[j]} ] ||
 						( [ ${mapfile_matches_count[i]} -eq ${mapfile_matches_count[j]} ] &&
 							[[ "${mapfile_patterns[i]}" > "${mapfile_patterns[j]}" ]] ) ) && {
 						# Biggest number of matches → to the top of the array.
@@ -1371,12 +1420,12 @@ This is not a bug.' >>$dbg_file
 #     KEYWORD — set, non-empty string
 # SETS:
 #     screens_path — path where pushd to, so MPlayer will store taken screenshots there.
-# EXIT_CODES: 0 if ok, 
+# EXIT_CODES: 0 if ok,
 #            “scrdir_isnt_writeable”, “cant_create_scrdir” in case
 #             of insufficient rights to access $screens_path.
 screenshots_preprocessing() {
 	[ -v SCREENSHOT_DIR ] && {
-		screens_path=`find -L "$SCREENSHOT_DIR" -maxdepth 1 -type d -iname "*$KEYWORD*" -printf "%f\n"`
+		screens_path=`find -L "$SCREENSHOT_DIR" -maxdepth 1 -type d $KEYWORD_FIND_PATTERNS -printf "%f\n"`
 		if [ "$screens_path" ]; then
 			[ `echo "$screens_path" | wc -l` -gt 1 ] && {
 				echo "Which directory to store screenshots in?"
@@ -1402,20 +1451,22 @@ screenshots_preprocessing() {
 		fi
 	}
 
-	[ -v screens_path ] && {
-		# eval is used here because all the " were escaped for the eval before ;_;
-		pushd "$screens_path" >/dev/null
-		watching_started=`date +%s`
-	}|| echo "Current directory is about to hold screenshots."
+	[ -v screens_path ] \
+		&& pushd "$screens_path" >/dev/null \
+		||{
+			screens_path='.'
+			echo "Current directory is about to hold screenshots."
+		}
+	watching_started=`date +%s`
 	return 0
 }
 
-# EXPECTS: 
+# EXPECTS:
 #     MODE — set and be one of 'single', 'episodes' or 'dvd' strings.
 #     IT_IS_NEXT_ITERATION — set only when execution is on the next iteration
 #                            of `until` cycle, or it was resumed after
-#                            interruption, i.e. RESUME, and therefore 
-#                            IT_IS_NEXT_ITERATION, is set. 
+#                            interruption, i.e. RESUME, and therefore
+#                            IT_IS_NEXT_ITERATION, is set.
 #     RUN_IN_CYCLE — set only if script was called with -c or -r option.
 #     INTRRUPTED — set if previous run of MPlayer was interrupted by <q>
 #                  or <Esc>.
@@ -1426,7 +1477,7 @@ screenshots_preprocessing() {
 #     videofile — videofile that will be playing, must be unset to play a disk
 #                 as a disk.
 #     episode_number — retrieved via EP_PATTERN applied to $videofile.
-#     INTERRUPTED — used in “resume” case, means episode wasn’t watched till 
+#     INTERRUPTED — used in “resume” case, means episode wasn’t watched till
 #                   the end and must be re-played on resume.
 #     stop — if MPlayer was interrupted by key, that stops the cycle too.
 # RETURNS: 0 if ok, >0 if internal function call returned an error.
@@ -1434,23 +1485,23 @@ watch() {
 	case $MODE in
 		single)
 			# Already nothing to do!
-			# See adding subs/tracks below.
+			# See adding subs/tracks after esac.
 			;;
 		episodes)
-			# Add check for -L option limiting the number of 
+			# Add check for -L option limiting the number of
 			#   sequentially playing files to LIMIT_SEQUNCE.
-			# Add check to stop cycle when last episode finished? 
+			# Add check to stop cycle when last episode finished?
 			#   -e for “stop at the end”?
 			if [ -v IT_IS_NEXT_ITERATION ]; then
 				# If playback was interrupted, play last watched episode
-				#   once again, otherwise increment episode number and play 
+				#   once again, otherwise increment episode number and play
 				#   the next one otherwise.
 				[ -v RESUME_AND_REPLAY ] || let VIDEO_ITEM++
 				[ -v RESUME_FROM_PREVIOUS ] \
 					&& [ $VIDEO_ITEM -gt 0 ] && let VIDEO_ITEM--
 				unset RESUME_AND_REPLAY RESUME_FROM_PREVIOUS
-				[ $VIDEO_ITEM -gt `echo -e "$VIDEOFILES" | wc -l` ] && 
-				VIDEO_ITEM=1			   
+				[ $VIDEO_ITEM -gt `echo -e "$VIDEOFILES" | wc -l` ] &&
+				VIDEO_ITEM=1
 				videofile=`echo -e "$VIDEOFILES" | sed -n "$VIDEO_ITEM p"`
 			else
 				# The beginning of watching cycle
@@ -1460,7 +1511,7 @@ watch() {
 					VIDEO_ITEM=$reply
 				}
 			fi
-			# Storing chosen pattern to EP_PATTERN 
+			# Storing chosen pattern to EP_PATTERN
 			#  (cycle has just started and the variable doesn’t exist yet).
 			[ -v EP_PATTERN ] \
 				|| EP_PATTERN=`sed -r 's/\[0-9]\\\\\+/\\\(&\\\)/' \
@@ -1472,7 +1523,6 @@ watch() {
 			}
 			;;
 		dvd|bd)
-			# CHECKIT: May be left from previous run 
 			unset videofile
 			if [ $MODE = dvd ]; then
 				[ -v DVD_BD_NAV ] && local protocol=dvdnav || local protocol=dvd
@@ -1486,7 +1536,7 @@ watch() {
 			if $MPLAYER_COMMAND ${dashes}profile help \
 				|& grep -q "\<protocol.$protocol\>" ; then
 				MPLAYER_OPTS=`echo "$MPLAYER_OPTS" \
-				    | sed "s/${dashes}profile[= ]^\S+/&,protocol.$protocol/;T;Q1"` 
+				    | sed "s/${dashes}profile[= ]^\S+/&,protocol.$protocol/;T;Q1"`
 				[ $? -eq 0 ] && \
 					MPLAYER_OPTS+=" ${dashes}profile protocol.$protocol"
 			else
@@ -1506,16 +1556,16 @@ watch() {
 		findpath="$BASEPATH${CHOSEN_ONE:-}${SUBFOLDERS:-}"
 		[ "$subtitles" ] && {
 			[ -v COMPAT ] && { # subtitles in one line, --sub file1,file2,…fileN
-				# Because MPlayer’s syntax for subtitles is "-sub file1,file2"  
+				# Because MPlayer’s syntax for subtitles is "-sub file1,file2"
 				#   we must escape commas in path and file names.
 				findpath="${findpath//,/\\\,}"
 				subtitles="${subtitles//,/\,}"
 				subtitles=`echo "$subtitles" | sed -r " # Here we combine all subtitles in one line.
-				1s/^/$(escape_for_sed_replacement "$findpath")/  # Padding 1st sub file with path. 
-				:loop  # For every next line 
+				1s/^/$(escape_for_sed_replacement "$findpath")/  # Padding 1st sub file with path.
+				:loop  # For every next line
 				    N; s/\n/,$(escape_for_sed_replacement "$findpath")/;  # …append its line to pattern space
 				    # …and replace newline between those lines with a comma
-				    # …and path that goes for the second file (after \n). 
+				    # …and path that goes for the second file (after \n).
 				    t loop  # Successful replace → goto loop."`
 				subtitles="${dashes}${mp_keys[sub-file]} \"$subtitles\""
 			}||{ # each subtitle file passed with the key --sub file1 --sub file2 etc.
@@ -1528,7 +1578,7 @@ watch() {
 		#     options are ignored except the last one. The same goes for mpv-0.3.x
 		#     but it was fixed in git version, where multilpe -audio-file options
 		#     are allowed and work.
-		get_other_files "dst ac3" || return $?
+		get_other_files "mka dst ac3" || return $?
 		tracks="${other_files_list}"
 		[ "$tracks" ] && {
 			[ -v COMPAT ] && {
@@ -1565,14 +1615,14 @@ Consider switching to the latest mpv if you want to load multiple tracks
 # /home/video/  Zeta_Project_Disk_1 /VIDEO_TS/  VTS_04_01.VOB
 # BASEPATH      CHOSEN_ONE          SUBFOLDERS  videofile
 
-# 4.b. If IGNORE_DISKS is not present, then the folder containing disk stuff 
+# 4.b. If IGNORE_DISKS is not present, then the folder containing disk stuff
 #      and matched KEYWORD becomes the path.
-# /home/video/  Zeta_Project_Disk_1      
+# /home/video/  Zeta_Project_Disk_1
 # BASEPATH      CHOSEN_ONE
 
 # NB: CHOSEN_ONE never has surrounding slashes. Neither in front nor behind.
 #     videofile never has a slash in front of it.
-	[ -v TASKSET_CPULIST ] && which taskset >/dev/null && 
+	[ -v TASKSET_CPULIST ] && which taskset >/dev/null &&
 	taskset_cmd="taskset --cpu-list $TASKSET_CPULIST"
 # Spaces in filenames in $subtitles and $tracks may be lost w/o quotes here.
 # TODO: Find out why altered DISPLAY breaks input to mplayer
@@ -1591,8 +1641,8 @@ Consider switching to the latest mpv if you want to load multiple tracks
 #     videofile – exact name match
 #     KEYWORD — set, non-empty string
 #     MATCH_NUMBER — set if called with -n, -a.
-# TAKES: 
-#     $1 — non-empty string with a list of extensions to match agaist, must be 
+# TAKES:
+#     $1 — non-empty string with a list of extensions to match agaist, must be
 #          separated by space and contain no trailing space, like "abc def ghi"
 # SETS:
 #     other_files_list — list of files that reside in findpath, match by extension to what
@@ -1603,22 +1653,29 @@ get_other_files() {
 	unset match_by_keyword_and_num match_by_num
 	# W! This asterisk in the line below is under shell pathname expansion.
 	ext=`echo "$matchext" | sed -r 's/\s/ -o /g; s^([a-zA-Z0-9_-]{3,})^-iname *.\1^g'`
-	set -f # disabling pathname expansion, or patterns in find may fail.
 	found_other_files=`find -L "$BASEPATH${CHOSEN_ONE:-}${SUBFOLDERS:-}" -maxdepth 1 -type f \( $ext \) -printf "%f\n"`
-	set +f
 	match_by_name=`echo "$found_other_files" | grep -Fi "${videofile%.*}" | sort`
-	other_files_list="$match_by_name"
+	other_files_list="$match_by_name" # exact name
 	# TODO: This is the only place where KEYWORD is used as a fixed string.
-	#       Need to replace KEYWORD with two variables 
-	#       KEYWORD_FOR_FIND with space substituted with “?” and 
+	#       Need to replace KEYWORD with two variables
+	#       KEYWORD_FOR_FIND with space substituted with “?” and
 	#       KEYWORD_FOR_GREP with space replaced with “.”.
 	#       Also either escape special symbols in KEYWORD, or somehow
 	#       check UNICODE symbol class to be letter/hieroglyph.
-	match_by_keyword=`echo "$found_other_files" | grep -Fi "$KEYWORD" | sort`
+	match_by_keyword=`echo "$found_other_files" | grep -i -${FIXED_STRING:-G} "$KEYWORD" | sort`
+	[ -v D ] && {
+		dbg_file="$DEBUG_DIR/other_files"
+		declare -p ext found_other_files match_by_name >>$dbg_file
+	}
 	[ $MODE = episodes ] && {
-		match_by_keyword_and_num=`echo "$match_by_keyword" | grep -e "[^0-9a-oA-Oq-zQ-Z]$episode_number[^0-9a-oA-Oq-zQ-Z]" | sort`
+		# This check may be not needed, but it’s safer to have it                    vvv     EP20v2    vvv
+		match_by_keyword_and_num=`echo "$match_by_keyword" | grep -e "[^0-9a-oA-Oq-zQ-Z]$episode_number[^0-9a-uA-Uw-zW-Z]" | sort`
 		other_files_list="${other_files_list:+${other_files_list}\n}$match_by_keyword_and_num"
 		match_by_num=`echo "$found_other_files" | grep -e "[^0-9]$episode_number[^0-9]" | sort`
+		[ -v D ] && {
+			echo -e "\nEpisodes: AYE.\nother_files == exact_name + keyword_and_number\n" >>$dbg_file
+			declare -p match_by_keyword_and_num match_by_num >>$dbg_file
+		}
 	}
 	# For subtitles that must be picked, but all what they have in common
 	#   with corresponding files is episode number. I.e if subs are named
@@ -1635,11 +1692,12 @@ get_other_files() {
 	# Remove duplicates and empty lines
 	other_files_list=`echo -e "$other_files_list" \
 	                  | sed -nr 'G; s/\n/&&/; /^([[:print:]]*\n).*\n\1/d; s/\n//; h; P'`
+	[ -v D ] && declare -p other_files_list >>$dbg_file
 	return 0
 }
 
 # EXPECTS:
-#     screens_path — if set, then we should be in screenshot directory 
+#     screens_path — if set, then we should be in screenshot directory
 #                    and therefore, will be popd’d inside of the trap.
 #     *.png — screenshots taken.
 # RETURNS:  0 if the function processed screenshots, 1 if not. This is needed
@@ -1653,8 +1711,9 @@ screenshots_postprocessing() {
 		                      -newermt @$watching_started -printf "%f\n"`
 		compress_screenshot() {
 			local shot="$1"
-			[ -v pngcrush ] && { # in place overwriting wasn’t supposed
-				# to run under parallel.
+			[ -v pngcrush ] && {
+				# In place overwriting wasn’t supposed to run under parallel.
+				# Should check how to run optipng some day.
 				pngcrush -reduce "$shot" "/tmp/$shot"
 				mv "/tmp/$shot" "$shot"
 			}
@@ -1665,7 +1724,6 @@ screenshots_postprocessing() {
 				rm "$shot"
 			}
 		}
-			
 		[ "$new_screenshots" ] && {
 			local result=0
 			if which parallel &>/dev/null; then
@@ -1702,7 +1760,7 @@ import_session_data() {
 			if [ "$KEYWORD" ]; then
 				# KEYWORD present, search among entries in the journal
 				eval "`sed -n "/^KEYWORD='$(escape_for_sed_pattern "$KEYWORD")'/,/^$/ p" \
-		       $JOURNAL 2>/dev/null`" || local shell_failed=t
+				$JOURNAL 2>/dev/null`" || local shell_failed=t
 			else
 				# KEYWORD is not given, take 1st one from the journal
 				eval "`sed -n '1,/^$/ p' $JOURNAL 2>/dev/null`" || local shell_failed=t
@@ -1712,11 +1770,14 @@ import_session_data() {
 			check_required_vars() {
 				local var
 				for var in $@; do
-					[ -v $var ] || no_data=t
+					[ -v $var ] || {
+						not_found_vars+=" $var"
+						no_data=t
+					}
 				done
 			}
 
-			check_required_vars 'KEYWORD' 'MODE' 'BASEPATH'
+			check_required_vars 'KEYWORD' 'KEYWORD_FIND_PATTERNS' 'MODE' 'BASEPATH'
 			[ "$MODE" != single ] \
 				&& check_required_vars 'CHOSEN_ONE' 'SUBFOLDERS' # it’s OK to check like that.
 			[ "$MODE" = single ] \
@@ -1733,26 +1794,32 @@ import_session_data() {
 		unset INTERRUPTED
 	}
 	return 0
+
 }
 
 # TAKES: $1 string to prepare to be put in sed replacement string.
 escape_for_sed_replacement() {
-	# Probably these escaping procedures are not sufficient.
-	local str="$1"
-	str=${str//\\/\\\\} # must be first
+	# local str="$1" # as it was before 20140915
+	# to cover issue with ' in file names, when it goes through the journal
+	# NB  suited for export_session_data, for being read through eval in
+	#     import_session_data
+	local str=${1//\\/\\\\} # must be first
+	str=${str//\'/\'\"\'\"\'} # glue: var='bla bl'a bla'  →  var='bla bl'"'"'a bla'
 	str=${str//&/\\&}
-	str=${str//\'/\\\'}
+	# str=${str//\'/\\\'} # as it was before 20140915
 	str=${str//\//\\/}
 	# str=${str//\"/\\\"} # Just for the case if a bug will appear
 	echo -ne "$str"
 }
 
-# EXIT_CODES: 0 if OK, “cant_retrieve_journal_size”, 
+# EXIT_CODES: 0 if OK, “cant_retrieve_journal_size”,
 #            “cant_compute_journal_max_size”, “cant_truncate_journal”.
 export_session_data() {
 	[ -v NO_JOURNAL ] || {
 		local data="KEYWORD='`escape_for_sed_replacement "$KEYWORD"`'"
 		# [ -v T ] && data+="\nSTAMP=\\\"`date`\\\""
+		data+="\nKEYWORD_FIND_PATTERNS='`escape_for_sed_replacement "$KEYWORD_FIND_PATTERNS"`'"
+		[ -v FIXED_STRING ] && data+="\nFIXED_STRING='$FIXED_STRING'"
 		data+="\nMODE='$MODE'"
 		data+="\nBASEPATH='`escape_for_sed_replacement "$BASEPATH"`'"
 		[ $MODE != single ] && {
@@ -1766,7 +1833,7 @@ export_session_data() {
 			local videofiles_in_one_row="`echo -n "$(escape_for_sed_replacement "$VIDEOFILES")" | sed ':be N; s/\n/\\\n/g; b be'`"
 			data+="\nVIDEOFILES='$videofiles_in_one_row'"
 			data+="\nVIDEO_ITEM=$VIDEO_ITEM"
-			# For what reason escape_for_sed_pattern was used here? 
+			# For what reason escape_for_sed_pattern was used here?
 			#   was it just a mistake or not?
 			data+="\nEP_PATTERN='$(escape_for_sed_replacement "${EP_PATTERN//\\/\\\\\\}")'"
 			[ -v INTERRUPTED ] && data+="\nINTERRUPTED='yes'" || data+="\nINTERRUPTED='no'"
@@ -1794,7 +1861,6 @@ export_session_data() {
 }
 
 print_last_shown_episode_number() {
-	shopt -s extglob
 	local ep_number=${episode_number##*(0)}
 	$LAST_EP_NUMBER_PRINTING_COMMAND < \
 		<( echo -e "${LAST_EP_NUMBER_PRINTING_FORMAT//%n/$ep_number}" )
@@ -1811,8 +1877,8 @@ exit_trap() {
 
 if [ -v RESUME ]; then
 	import_session_data || exit $?
-else 
-	do_initial_search || exit $? 
+else
+	do_initial_search || exit $?
 fi
 screenshots_preprocessing || exit $?
 trap "exit_trap; trap - EXIT HUP INT QUIT KILL" EXIT HUP INT QUIT KILL
@@ -1829,7 +1895,7 @@ until [ -v stop ]; do
 				unset REPLY
 				read -n1 -t3 ; echo
 				[ "$REPLY" = ' ' ] && stop=t || IT_IS_NEXT_ITERATION=t
-			}||	stop=t
+			}|| stop=t
 		}
 done
 screenshots_postprocessing && [ $MODE = episodes ] \

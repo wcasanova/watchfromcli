@@ -3,11 +3,11 @@ Section: video
 Priority: extra
 Maintainer: deterenkelt <deterenkelt.github@gmail.com>
 Standards-Version: 3.9.3
-Homepage: http://github.com/deterenkelt/watch.sh
+Homepage: http://github.com/deterenkelt/watchsh
 
 Package: watchsh
 Architecture: all
-Homepage: http://github.com/deterenkelt/watch.sh
+Homepage: http://github.com/deterenkelt/watchsh
 Depends: mplayer | mplayer2 | mpv, bash (>= 4.2), sed (>= 4.2.1), grep (>= 2.9), file (>= 5.17), util-linux (>=2.20)
 Recommends: parallel, figlet, pngcrush, netpbm, libjpeg-progs
 Enhances: mplayer, mplayer2, mpv
@@ -19,8 +19,8 @@ Description: A wrapper for mpv/MPlayer to run videos easy via CLI.
  names that may strongly differ from the names of corresponding video files,
  and that frees you from the job of picking appropriate subtitles manually.
  .
- This script can also help you deal with organization taken screenshots, 
- placing them right into the folder named after video and compressing them 
+ This script can also help you deal with organization taken screenshots,
+ placing them right into the folder named after video and compressing them
  after you stop watching it.
  .
  For the folder with episodes watch.sh can track your watching progress,

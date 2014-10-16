@@ -16,16 +16,16 @@ KEYWORDS="~*"
 IUSE="convtojpeg +figlet +parallel +pngcrush toilet"
 
 RDEPEND="|| ( media-video/mpv media-video/mplayer2 media-video/mplayer )
-		 >=sys-apps/grep-2.9
-		 >=sys-apps/sed-4.2.1
-		 >=sys-apps/util-linux-2.20
-		 >=app-shells/bash-4.2
-		 convtojpeg? ( media-libs/netpbm
-					   media-libs/libjpeg-turbo )
-		 figlet? ( app-misc/figlet )
-		 parallel? ( sys-process/parallel )
-		 pngcrush? ( media-gfx/pngcrush )
-		 toilet? ( app-misc/toilet )"
+         >=sys-apps/grep-2.9
+         >=sys-apps/sed-4.2.1
+         >=sys-apps/util-linux-2.20
+         >=app-shells/bash-4.2
+         convtojpeg? ( media-libs/netpbm
+                       media-libs/libjpeg-turbo )
+         figlet? ( app-misc/figlet )
+         parallel? ( sys-process/parallel )
+         pngcrush? ( media-gfx/pngcrush )
+         toilet? ( app-misc/toilet )"
 
 src_prepare() {
 	epatch_user

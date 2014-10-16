@@ -1,6 +1,6 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: watchsh
-Source: <http://github.com/deterenkelt/watch.sh>
+Source: <http://github.com/deterenkelt/watchsh>
 
 Files: *
 Copyright: 2013, 2014 deterenkelt <deterenkelt.github@gmail.com>
