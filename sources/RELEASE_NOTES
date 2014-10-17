@@ -1,3 +1,15 @@
+===] October 17, 2014 [====================================================
+
+ ( ( ( |
+(^(^(^ )  Buппy is glad тo have coмrades.
+( ( (  )*
+
+1. Fix an error when script tried to check an empty KEYWORD for pattern.
+2. Fix an error when SCREENSHOT_DIR_SKEL is empty, which led to
+   an incorrectly eval’ed string, and result depended on the bash version.
+3. Fix bug caused by the old code preventing CHOSEN_ONE and SUBFOLDERS
+   element paths to be put into journal if MODE is 'single'.
+
 ===] October 16, 2014 [====================================================
 
 (\ /)

@@ -246,7 +246,7 @@ read -d $"\n" major minor < <(getopt -V | sed -rn 's/^[^0-9]+([0-9]+)\.?([0-9]+)
 # - kinda global;
 # - or are important for maintaining the watching cycle between runs.
 
-VERSION="20141016"
+VERSION="20141017"
 
 MAX_HEURISTICS_LEVEL=2
 HEURISTICS_LEVEL=0
@@ -578,12 +578,12 @@ esac
 
 KEYWORD="$*"
 [ -v RESUME ] || {
+	[ "$KEYWORD" ] || exit `err no_keyword`
 	[ "${KEYWORD/@(*[^.]|)\**/}" ] || {
 		echo -e '\nI’ve found that you used * in the pattern for keyword, and the patterns should use “.*” style, not just “*”.' >&2
 		read -p 'Are you sure you want to continue? [N/y] > '
 		[[ "$REPLY" =~ ^[yY]$ ]] || exit `err aborted_by_user`
 	}
-	[ "$KEYWORD" ] || exit `err no_keyword`
 	# Now script has the journal and resume may rely on its data.
 	EXPECTED_SUBFOLDERS="${EXPECTED_SUBFOLDERS//%keyword/$KEYWORD}"
 	# Pattern split for find
@@ -1441,11 +1441,22 @@ screenshots_preprocessing() {
 				[ -d "$screens_path" ] && {
 					[ -w "$screens_path" ] && [ -x "$screens_path" ] || return `err scrdir_isnt_writeable`
 				}||{
-					# eval is necessary for {} expansion in SCREENSHOT_DIR_SKEL
-					eval mkdir -pm775 "${screens_path// /\ }/${SCREENSHOT_DIR_SKEL:+{${SCREENSHOT_DIR_SKEL// /\ }}}" || return `err cant_create_scrdir`
-					# Keep escaping for the other special cahracters for later.
-					# Now it will drag unescaping or eval’ing for all the further
-					#   commands involving screens_path.
+					## There was an idea to make all the folders at once.
+					## This had two major drawbacks:
+					##   1) if SCREENSHOT_DIR_SKEL is empty, eval failed on the
+					##      closing } of {macro,misc}, which led in its turn
+					##      to wrong directories made by mkdir, and the result
+					##      depended on the bash version: 4.2.53(1) creates
+					##      directories with spaces in them properly and puts
+					##      folder named '}' in it, while 4.3.30(1) makes two
+					##      directories not honoring space and puts '}' into the
+					##      latter;
+					##   2) eval required more escaping than just ' ' → '\ '.
+					## eval is necessary for {} expansion in SCREENSHOT_DIR_SKEL
+					# eval mkdir -pm775 "\"${screens_path// /\ }/${SCREENSHOT_DIR_SKEL:+{${SCREENSHOT_DIR_SKEL// /\ }}}\"" || return `err cant_create_scrdir`
+					for folder in '' ${SCREENSHOT_DIR_SKEL//,/ }; do
+						mkdir -m775 "$screens_path/$folder" || return `err cant_create_scrdir`
+					done
 				}
 			}|| unset screens_path
 		fi
@@ -1777,9 +1788,7 @@ import_session_data() {
 				done
 			}
 
-			check_required_vars 'KEYWORD' 'KEYWORD_FIND_PATTERNS' 'MODE' 'BASEPATH'
-			[ "$MODE" != single ] \
-				&& check_required_vars 'CHOSEN_ONE' 'SUBFOLDERS' # it’s OK to check like that.
+			check_required_vars 'KEYWORD' 'CHOSEN_ONE' 'SUBFOLDERS' 'KEYWORD_FIND_PATTERNS' 'MODE' 'BASEPATH'
 			[ "$MODE" = single ] \
 				&& check_required_vars 'videofile'
 			[ "$MODE" = episodes ] \
@@ -1822,10 +1831,8 @@ export_session_data() {
 		[ -v FIXED_STRING ] && data+="\nFIXED_STRING='$FIXED_STRING'"
 		data+="\nMODE='$MODE'"
 		data+="\nBASEPATH='`escape_for_sed_replacement "$BASEPATH"`'"
-		[ $MODE != single ] && {
-			data+="\nCHOSEN_ONE='`escape_for_sed_replacement "$CHOSEN_ONE"`'" # only “&” and “'” actually
-			[ "$SUBFOLDERS" ] && data+="\nSUBFOLDERS='${SUBFOLDERS//\//\\/}'"
-		}
+		data+="\nCHOSEN_ONE='`escape_for_sed_replacement "$CHOSEN_ONE"`'" # only “&” and “'” actually
+		[ "$SUBFOLDERS" ] && data+="\nSUBFOLDERS='${SUBFOLDERS//\//\\/}'"
 		[ $MODE = single ] \
 			&& data+="\nvideofile='$(escape_for_sed_replacement "$videofile")'"
 		[ $MODE = episodes ] && {

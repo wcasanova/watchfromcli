@@ -19,9 +19,9 @@ RPM_CHANGELOG_DATE := $(shell LC_TIME=C date --date='@${DATE}' +'%a %b %_d %Y')
 PF := ${PN}-${PV}${REV}
 
 clean:
-	-@rm -rf ${PN}* *~ &>/dev/null
+	-@rm -rf ${PN}*.tar.gz *~ &>/dev/null
 
-prepare: clean
+prepare:
 	sed -i 's/^VERSION=.*$$/VERSION="${PV}"/' sources/watch.sh
 	sed -i '1 s/^.TH watch\.sh 1 "[^"]*"/.TH watch.sh 1 "${HUMAN_DATE}"/' sources/watch.sh.1
 	read -p 'Have you written RELEASE_NOTES? [N/y] > '; [[ "$$REPLY" =~ ^[yY]$$ ]] \
@@ -42,19 +42,20 @@ ebuild: prepare
 	cp gentoo/${PN}.ebuild ${P}.ebuild
 
 deb: prepare
+	-@rm -rf ${PN}*.deb ${PN}*.changes &>/dev/null
 	cp ${TARBALL} ${TARBALL_ORIG}
 	tar xf ${TARBALL_ORIG}
 	cd ${P} \
 		&& cp -R ../debian ./ \
 		&& echo 9 > debian/compat \
-		&& echo -e "${PN} (${PV}${REV}) unstable; urgency=low\n\n  *\n\n -- ${DEBFULLNAME} <${DEBEMAIL}>  ${DEB_CHANGELOG_DATE}\n" > debian/changelog \
-		&& $$EDITOR debian/changelog \
+		&& echo -e "${PN} (${PV}${REV}) unstable; urgency=low\n\n  * WHY\n\n -- ${DEBFULLNAME} <${DEBEMAIL}>  ${DEB_CHANGELOG_DATE}\n" > debian/changelog \
 		&& dpkg-buildpackage -A -k9F0D2DC6 -pgpg2
+#		&& $$EDITOR debian/changelog \ #↑↑
 	cd ../
 	rm -rf ${P} ${TARBALL_ORIG}
 
 rpm:
-	-@rm -rf ~/rpmbuild
+	-@rm -rf ${PN}*.rpm ~/rpmbuild &>/dev/null
 	rpmdev-setuptree
 	sed -ri "s/^(Name:).*$$/\1 ${PN}/" fedora/${PN}.spec
 	sed -ri "s/^(Version:).*$$/\1 ${PV}/" fedora/${PN}.spec
