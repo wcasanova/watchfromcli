@@ -21,19 +21,19 @@ First thing it does is looking for files and folders inside of a _basepath_ (the
 <img src="img/3.png"/>
 </p>
 
-It works not only with single video files, but also with folders having disk structure. For folders with episodes watch.sh can start a cycle, in which it will play one file after another through a short pause, in the time of which it can be stopped. The watching cycle can also be stopped by quitting from the player, or even killing it — watch.sh recognizes whether it quit normally or was closed in the middle of an episode. That helps to open the episode that was interrupted, on resume. 
+It works not only with single video files, but also with folders having disk structure. For folders with episodes watch.sh can start a cycle, in which it will play one file after another through a short pause, in the time of which it can be stopped. The watching cycle can also be stopped by quitting the player, or even killing it — watch.sh recognizes when it quits normally or is closed in the middle of an episode. That helps to resume the cycle on a correct episode.
 
 <p align="center">
 <img src="img/4.png"/>
 </p>
 
-watch.sh maintains journal, where it stores session data providing information neede to resume an interrupted watching cycle.
+watch.sh maintains a journal, where it stores session data providing information needed to resume an interrupted watching cycle.
 
 <p align="center">
 <img src="img/5.png"/>
 </p>
 
-Having a _keyword_ and being able to distinguish episode number sequences in file names enables this script to load exactly those subtitles and tracks, which are needed. This is a step forward from current paradigm “load by exact name or the whole bunch”.
+Having a _keyword_ and being able to distinguish episode number sequences in file names enables this script to load exactly those subtitles and tracks, which are needed. This is a big step forward from the video players’ beloved paradigm “load by exact name or the whole bunch”.
 
 Are you interested yet? Learn more in [our wiki](https://github.com/deterenkelt/watchsh/wiki)!
 

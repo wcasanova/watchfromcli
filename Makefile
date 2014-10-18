@@ -1,5 +1,7 @@
 # Makefile for building packages for watch.sh
 SHELL := /usr/bin/env bash
+LANG=C
+export LANG
 PN := watchsh
 DATE := $(shell date +%s)
 PV := $(shell LC_TIME=C date --date='@${DATE}' +%Y%m%d)
@@ -19,14 +21,18 @@ RPM_CHANGELOG_DATE := $(shell LC_TIME=C date --date='@${DATE}' +'%a %b %_d %Y')
 PF := ${PN}-${PV}${REV}
 
 clean:
-	-@rm -rf ${PN}*.tar.gz *~ &>/dev/null
+	-@rm -rf ${P} ${PN}*.tar.gz *~ &>/dev/null
 
-prepare:
+prepare: clean
 	sed -i 's/^VERSION=.*$$/VERSION="${PV}"/' sources/watch.sh
 	sed -i '1 s/^.TH watch\.sh 1 "[^"]*"/.TH watch.sh 1 "${HUMAN_DATE}"/' sources/watch.sh.1
 	read -p 'Have you written RELEASE_NOTES? [N/y] > '; [[ "$$REPLY" =~ ^[yY]$$ ]] \
 		|| { echo -e "Please write.\nAborted by user." >&2; exit 3; }
-	sed -ri '1 s/^.*(\[.*)$$/===] ${HUMAN_DATE} \1/' sources/RELEASE_NOTES
+#   This is to not touch the file if it wan’t modified, so Emacs wouldn’t ask
+#     about rereading it from the disk.
+	sed -r '1 s/^.*(\[.*)$$/===] ${HUMAN_DATE} \1/' sources/RELEASE_NOTES >/tmp/RELEASE_NOTES
+	diff sources/RELEASE_NOTES /tmp/RELEASE_NOTES &>/dev/null \
+		|| mv /tmp/RELEASE_NOTES source/RELEASE_NOTES
 	$$EDITOR sources/RELEASE_NOTES
 	mkdir ${P}
 	cp sources/* ${P}
@@ -37,12 +43,21 @@ prepare:
 	fakeroot tar czf ${TARBALL} --exclude-backups ${P}
 	@rm -rf ${P}
 
+# ebuild will work only when it will be able to download the archive,
+#   and it won’t appear until the commit (with debs and rpms) is uploaded.
+ebuild:
+	cp gentoo/${PN}.ebuild ../deter/media-video/watchsh/${P}.ebuild
+	cd ../deter/media-video/watchsh \
+		&& ebuild ${P}.ebuild digest \
+		&& git add . \
+		&& [ "`git status -s`" ] \
+		&& git commit -m "Added ${P}.ebuild." \
+		&& git push
 
-ebuild: prepare
-	cp gentoo/${PN}.ebuild ${P}.ebuild
-
-deb: prepare
-	-@rm -rf ${PN}*.deb ${PN}*.changes &>/dev/null
+# Work on copy for debian is necessary because otherwise it will try
+#   to alter ownership on NFS and fail.
+deb:
+	-@rm -rf ${PN}*.deb ${PN}*.orig.tar.gz ${PN}*.changes &>/dev/null
 	cp ${TARBALL} ${TARBALL_ORIG}
 	tar xf ${TARBALL_ORIG}
 	cd ${P} \
@@ -60,10 +75,40 @@ rpm:
 	sed -ri "s/^(Name:).*$$/\1 ${PN}/" fedora/${PN}.spec
 	sed -ri "s/^(Version:).*$$/\1 ${PV}/" fedora/${PN}.spec
 #	sed -ri "s/^%changelog$$/&\n* ${RPM_CHANGELOG_DATE} ${MAINTAINER} <${MAINTAINER_EMAIL}> ${PV}${REVISION}\n- \n/" fedora/${PN}.spec
-	$$EDITOR fedora/${PN}.spec
+#	$$EDITOR fedora/${PN}.spec
 	cp fedora/${PN}.spec ~/rpmbuild/SPECS/
 	cp ${TARBALL} ~/rpmbuild/SOURCES/
 	cd ~/rpmbuild \
 		&& rpmbuild -ba SPECS/${PN}.spec
 
-all: ebuild deb rpm
+#		rm -rf ~/watch.sh.local;
+#		cp -R ~/watch.sh ~/watch.sh.local;
+deb_and_rpm: prepare
+# with vm-* aliases can be found in the “dotfiles” repo nearby.
+# Don’t forget that ssh requires -t or "RequestTTY force". Also -X for pinentry
+	ps axu |& grep -v grep | grep -q "qemu.*debean" || { vm-d.sh && sleep 5; }
+	ps axu |& grep -v grep | grep -q "qemu.*feedawra" || { vm-f.sh && sleep 5; }
+	ssh vmdebean "grep -q 'watch.sh' /proc/mounts && { \
+		export EDITOR='nano -w'; \
+		[ -d /tmp/decrypted ] || scp -r home:/tmp/decrypted /tmp/; \
+		ln -sf /tmp/decrypted/.gnupg ~/.gnupg; \
+		rm -rf ~/watch.sh.local; \
+		cp -Ra ~/watch.sh ~/watch.sh.local; \
+		cd ~/watch.sh.local; \
+		make deb && cp -a ./*{deb,changes} ../watch.sh/ ; \
+		[ 1 -eq 1 ]; \
+	}||{ echo 'ERROR: ~/watch.sh is not mounted.' >&2; exit 3; }" \
+	&& ssh vmfeedawra "grep -q 'watch.sh' /proc/mounts && { \
+		export EDITOR='nano -w'; \
+		cd ~/watch.sh/; \
+		make rpm && { \
+			cp -a /home/d/rpmbuild/RPMS/noarch/* ~/watch.sh/; \
+			cp -a /home/d/rpmbuild/SRPMS/* ~/watch.sh/; \
+		} ; \
+		[ 1 -eq 1 ]; \
+	}||{ echo 'ERROR: ~/watch.sh is not mounted.' >&2; exit 3; }" \
+	&& ssh root@vmdebean "init 0" && ssh root@vmfeedawra "init 0"
+
+test:
+	pgrep -af "qemu.*debean" ; echo $$?
+	echo $$ME

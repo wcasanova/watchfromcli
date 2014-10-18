@@ -246,7 +246,7 @@ read -d $"\n" major minor < <(getopt -V | sed -rn 's/^[^0-9]+([0-9]+)\.?([0-9]+)
 # - kinda global;
 # - or are important for maintaining the watching cycle between runs.
 
-VERSION="20141017"
+VERSION="20141018"
 
 MAX_HEURISTICS_LEVEL=2
 HEURISTICS_LEVEL=0
@@ -682,7 +682,7 @@ do_initial_search() {
 		# Okay, duplicates removed, now check if the list still contains
 		#   matches sharing the same path
 		for ((i=0; i<${#BASEPATH[@]}; i++)); do
-			[ `grep -cF "${BASEPATH[i]}" <<<"$matches"` \
+			[ `grep -cF "${BASEPATH[i]}:" <<<"$matches"` \
 				-eq `wc -l <<<"$matches"` ] && {
 				BASEPATH[0]="${BASEPATH[i]}"
 				# unset unnecessary basepaths for them to not appear
