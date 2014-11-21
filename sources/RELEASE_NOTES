@@ -37,9 +37,9 @@
    P.S. this works only with mpv.
    P.P.S. audio-delay can be remembered, too.
 10. Update checker is written. Now each 21 day (by default) watch.sh will
-	check the repo on github and report either about new version available,
-	or that the current version is the latest. The behaviour of the updater
-	is customizeable via -u and --check-for-update options.
+    check the repo on github and report either about new version available,
+    or that the current version is the latest. The behaviour of the updater
+    is customizeable via -u and --check-for-update options.
 
 ===] October 18, 2014 [====================================================
 

@@ -13,7 +13,7 @@ LICENSE="GPL-3"
 MERGE_TYPE="binary"
 KEYWORDS="~*"
 
-IUSE="convtojpeg +figlet +parallel +pngcrush +remember-delays toilet"
+IUSE="convtojpeg +figlet +parallel +pngcrush +remember-delays toilet +xdg-open"
 
 RDEPEND="|| ( media-video/mpv media-video/mplayer2 media-video/mplayer )
          >=sys-apps/grep-2.9

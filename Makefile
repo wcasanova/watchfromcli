@@ -108,7 +108,7 @@ deb_and_rpm: prepare
 		} ; \
 		[ 1 -eq 1 ]; \
 	}||{ echo 'ERROR: ~/watch.sh is not mounted.' >&2; exit 3; }" \
-	&& set -x; for m in vmdebean vmfeedawra; do ssh root@$$m "init 0"; done
+	&& for m in vmdebean vmfeedawra; do ssh root@$$m "init 0"; done
 
 upload:
 	git status
