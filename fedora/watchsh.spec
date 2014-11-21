@@ -1,5 +1,5 @@
 Name: watchsh
-Version: 20141018
+Version: 20141121
 Release: 1%{?dist}
 Summary: A meta package for a wrapper for mpv/MPlayer to run videos easy via CLI.
 
@@ -7,7 +7,7 @@ License: GPLv3
 URL: http://github.com/deterenkelt/watchsh
 Group: Applications/Multimedia
 BuildArch: noarch
-Requires: watchsh-base, parallel, figlet, pngcrush, libjpeg-turbo-utils, netpbm-progs
+Requires: watchsh-base, parallel, figlet, pngcrush, libjpeg-turbo-utils, netpbm-progs, inotify-tools, procps-ng, xdg-utils
 
 %description
 %{summary}
@@ -16,10 +16,10 @@ Requires: watchsh-base, parallel, figlet, pngcrush, libjpeg-turbo-utils, netpbm-
 # Core subpackage.
 
 %package base
-Summary: A wrapper for mpv/MPlayer to run videos easy via CLI.
+Summary: A shell wrapper for mpv/MPlayer to run videos easy via CLI.
 Group: Applications/Multimedia
 Source0: %{name}-%{version}.tar.gz
-Requires: mpv, bash >= 4.2, sed >= 4.2.1, grep >= 2.9, file >= 5.17, util-linux >= 2.20
+Requires: mpv, bash >= 4.2, sed >= 4.2.1, grep >= 2.9, file >= 5.17, util-linux >= 2.20, wget
 
 %description base
 watch.sh is written to simplify access to video files and play videos easily.

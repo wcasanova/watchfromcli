@@ -1,3 +1,46 @@
+===] November 21, 2014 [====================================================
+
+   Z z
+ _z_   Bunny has den up.
+(_±_)
+
+1. Fixed down arrow making number a zero, if nothing was entered yet.
+2. New targets in Makefile.
+3. Improved error checking for mpv, when it quits.
+4. Fixed possible double call for export_sesion_data on exit.
+5. Fixed one bug which caused watch.sh to play the first item from the list
+   after playing an item that was chosen under certain circumstances
+   in cycle mode. The solution brought another revision to the session-
+   related parts of code, so old sessions from the journal won’t be valid.
+6. Fixed a fresh and juicy bug: when watch.sh was prompting for stopping
+   watching cycle, it didn’t take into account that some keys are actually
+   returned as multiple chars, e.g. right arrow is ^[[C, where ^[ is
+   a sequence for the escape code. That means if one rewinded an episode
+   with the right arrow _and hold it_ to make ‘read’ take that key and
+   not wait 3 seconds for its timeout, this caused ^[ to become an input
+   character to ‘read’ and ‘[’ with ‘C’ are to be taken by mpv and
+   interpreted as key commands, which, in their turn, caused mpv
+   to decrease speed by multiplying it by 0.9 each time. Now replies from
+   such keys are intercepted accordingly.
+7. Brought some order to variable names and done a little of code cleaning.
+8. SCREENSHOT_DIR is now cumulative and is exported to the journal
+  (but not required at retrieving). It is done to make watch.sh not ask
+   the user each time he starts it with ‘-r’ key for what _exactly_ folder
+   does he want, if there are several folders in the path specified after
+   --screenshot-dir that matched the KEYWORD.
+9. Finally long-awaited support for remembering sub-delay between episodes
+   was added! To make use of it, please see the corresponding subsection
+   of EXAMPLES OF USE in the man page. Here’s the code to jump there:
+
+   $ man -P"less -p '^\s*Remembering subtitles.*delay.*'" watch.sh
+
+   P.S. this works only with mpv.
+   P.P.S. audio-delay can be remembered, too.
+10. Update checker is written. Now each 21 day (by default) watch.sh will
+	check the repo on github and report either about new version available,
+	or that the current version is the latest. The behaviour of the updater
+	is customizeable via -u and --check-for-update options.
+
 ===] October 18, 2014 [====================================================
 
 (\ /v
@@ -36,9 +79,9 @@
    mistake which some weird patterns in --subfolders could lead to.
 6. --mplayer-opts is now cumulative.
 7. Add .mka to the tracks extensions.
-8. The keyword is now can be a pattern!
-   -f switch that tells watch.sh to treat keyword as a fixed string, may
-   be used to use ‘.’ ‘*’ and ‘|’ in the pattern.
+8. The keyword now can be a pattern!
+   The -f switch that tells watch.sh to treat keyword as a fixed string,
+   may be used to use ‘.’ ‘*’ and ‘|’ in the pattern.
    Also entries from your journal will become invalid after update, this
    is normal, there’s just two new variables, and one of them
    required to be present.
@@ -61,8 +104,9 @@
 
 ===] August 7, 2014 [======================================================
 
-1. Script now runs as an executable.
-   Edit your aliases.
+Migration from the “scripts” repository.
+
+1. watch.sh now runs as an executable. Edit your aliases.
 
 2. Option parsing was transferred from getopts to getopt, long options
    finally appeared.

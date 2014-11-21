@@ -1,6 +1,6 @@
 # Makefile for building packages for watch.sh
 SHELL := /usr/bin/env bash
-LANG=C
+LANG := C
 export LANG
 PN := watchsh
 DATE := $(shell date +%s)
@@ -28,18 +28,18 @@ prepare: clean
 	sed -i '1 s/^.TH watch\.sh 1 "[^"]*"/.TH watch.sh 1 "${HUMAN_DATE}"/' sources/watch.sh.1
 	read -p 'Have you written RELEASE_NOTES? [N/y] > '; [[ "$$REPLY" =~ ^[yY]$$ ]] \
 		|| { echo -e "Please write.\nAborted by user." >&2; exit 3; }
-#   This is to not touch the file if it wan’t modified, so Emacs wouldn’t ask
+#   This is to not touch the file if it wasn’t modified, so Emacs wouldn’t ask
 #     about rereading it from the disk.
 	sed -r '1 s/^.*(\[.*)$$/===] ${HUMAN_DATE} \1/' sources/RELEASE_NOTES >/tmp/RELEASE_NOTES
-	diff sources/RELEASE_NOTES /tmp/RELEASE_NOTES &>/dev/null \
-		|| mv /tmp/RELEASE_NOTES source/RELEASE_NOTES
+	diff sources/RELEASE_NOTES /tmp/RELEASE_NOTES  \
+		|| mv /tmp/RELEASE_NOTES sources/RELEASE_NOTES
 	$$EDITOR sources/RELEASE_NOTES
 	mkdir ${P}
 	cp sources/* ${P}
 	@read -d $$"\n" maj min <<< $$(tar --version | sed -nr '1s/.*\s([0-9]+)\.([0-9]+).*$$/\1\n\2/p'); \
 		[[ "$$maj" =~ ^[0-9]+$$ && "$$min" =~ ^[0-9]+$$ ]] \
 			&& ( [ $$maj -eq 1 -a $$min -ge 27 ] || [ $$maj -gt 1 ] ) \
-			|| { echo -e "This version of tar doesn’t support --exclude-backups yes.\nThat is not okay." >&2; exit 4; }
+			|| { echo -e "This version of tar doesn’t support --exclude-backups.\nThat is not okay." >&2; exit 4; }
 	fakeroot tar czf ${TARBALL} --exclude-backups ${P}
 	@rm -rf ${P}
 
@@ -63,7 +63,7 @@ deb:
 	cd ${P} \
 		&& cp -R ../debian ./ \
 		&& echo 9 > debian/compat \
-		&& echo -e "${PN} (${PV}${REV}) unstable; urgency=low\n\n  * WHY\n\n -- ${DEBFULLNAME} <${DEBEMAIL}>  ${DEB_CHANGELOG_DATE}\n" > debian/changelog \
+		&& echo -e "${PN} (${PV}${REV}) unstable; urgency=low\n\n  * NUISANCE\n\n -- ${DEBFULLNAME} <${DEBEMAIL}>  ${DEB_CHANGELOG_DATE}\n" > debian/changelog \
 		&& dpkg-buildpackage -A -k9F0D2DC6 -pgpg2
 #		&& $$EDITOR debian/changelog \ #↑↑
 	cd ../
@@ -81,14 +81,14 @@ rpm:
 	cd ~/rpmbuild \
 		&& rpmbuild -ba SPECS/${PN}.spec
 
-#		rm -rf ~/watch.sh.local;
-#		cp -R ~/watch.sh ~/watch.sh.local;
 deb_and_rpm: prepare
-# with vm-* aliases can be found in the “dotfiles” repo nearby.
-# Don’t forget that ssh requires -t or "RequestTTY force". Also -X for pinentry
+# vm-* aliases can be found in the bashrc/home.sh of the “dotfiles” repo nearby.
+# Don’t forget that ssh requires -t or "RequestTTY force". Also -X for pinentry.
+#   Also timeout, which I set to three minutes.
 	ps axu |& grep -v grep | grep -q "qemu.*debean" || { vm-d.sh && sleep 5; }
 	ps axu |& grep -v grep | grep -q "qemu.*feedawra" || { vm-f.sh && sleep 5; }
 	ssh vmdebean "grep -q 'watch.sh' /proc/mounts && { \
+		export LANG=C; \
 		export EDITOR='nano -w'; \
 		[ -d /tmp/decrypted ] || scp -r home:/tmp/decrypted /tmp/; \
 		ln -sf /tmp/decrypted/.gnupg ~/.gnupg; \
@@ -99,6 +99,7 @@ deb_and_rpm: prepare
 		[ 1 -eq 1 ]; \
 	}||{ echo 'ERROR: ~/watch.sh is not mounted.' >&2; exit 3; }" \
 	&& ssh vmfeedawra "grep -q 'watch.sh' /proc/mounts && { \
+		export LANG=C; \
 		export EDITOR='nano -w'; \
 		cd ~/watch.sh/; \
 		make rpm && { \
@@ -107,8 +108,17 @@ deb_and_rpm: prepare
 		} ; \
 		[ 1 -eq 1 ]; \
 	}||{ echo 'ERROR: ~/watch.sh is not mounted.' >&2; exit 3; }" \
-	&& ssh root@vmdebean "init 0" && ssh root@vmfeedawra "init 0"
+	&& set -x; for m in vmdebean vmfeedawra; do ssh root@$$m "init 0"; done
 
-test:
-	pgrep -af "qemu.*debean" ; echo $$?
-	echo $$ME
+upload:
+	git status
+	@read -n1 -p 'Continue? [Y/n] > '; [[ ! "$$REPLY" =~ ^[Nn]$$ ]] || exit 3
+	git add --all .
+	git commit
+# Just in case I may need to --amend
+	read -n1 -p 'Tag and push? [Y/n] > '; [[ ! "$$REPLY" =~ ^[Nn]$$ ]] || exit 3
+	git tag v${PV}
+	git push
+	git push --tags
+
+all: deb_and_rpm upload ebuild
