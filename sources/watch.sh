@@ -240,7 +240,7 @@ Check your --subfolders pattern.";;
 			[ "$KEYWORD" ] && msg+='\nThis was probably caused by a record at the end of journal and happened because\n  cleansing of broken entries is not implemented yet.';;
 		nothing_to_restore)
 			code=34; msg="Not enough data to restore.
-Couldn’t rereive $not_found_vars from the journal.
+Couldn’t retreive $not_found_vars from the journal.
 This might be caused by a broken file, truncated entry at the end of the journal (though such entries shouldn’t exist) or a new update that changed the mechanism of file searching and thus, the list of required variables.";;
 		cant_retrieve_journal_size)
 			code=35; msg='Couldn’t retrieve journal size.';;
@@ -1969,7 +1969,7 @@ export_session_data() {
 		local data="KEYWORD='$(escape_for_sed_replacement "$KEYWORD")'"
 		# [ -v T ] && data+="\nSTAMP=\\\"`date`\\\""
 		data+="\nKEYWORD_FIND_PATTERNS='$(escape_for_sed_replacement "$KEYWORD_FIND_PATTERNS")'"
-		[ -v FIXED_STRING ] && data+="\nFIXED_STRING=${FIXED_STRING:-f}"
+		data+="\nFIXED_STRING=${FIXED_STRING:-f}"
 		data+="\nMODE='$MODE'"
 		data+="\nBASEPATH='$(escape_for_sed_replacement "$BASEPATH")'"
 		data+="\nFIRST_MATCH='$(escape_for_sed_replacement "$FIRST_MATCH")'" # Remember? No slashes here, “&” and “'” only
