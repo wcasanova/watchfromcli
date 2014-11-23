@@ -1217,7 +1217,7 @@ create_patterns_for_the_list() {
 				# Incremental patterns: to match the current line of
 				#   $LIST_TO_CHOOSE_FROM but with number substituted with
 				#   an incremented one to define a sequence presence.
- 				inc_patterns=( "^$left_part$inc_num.*$" \
+ 			   inc_patterns=( "^$left_part$inc_num.*$" \
 					"^.*$inc_num$right_part$" \
 					"^$inc_num$right_part$" \
 					"^$left_part$inc_num$right_part$" ) # Both parts — the last!
@@ -1257,9 +1257,9 @@ create_patterns_for_the_list() {
 				[ -v D ] && declare -p inc_patterns multinum_patterns \
 					| sed -r 's/\[[0-9]+]="[^"]+"/\t&\n/g'>>$dbg_file
 
-				# If either of left or right parts appear empty, this will cause
+				# If either left or right parts appear empty, this will cause
 				#   the non-empty one and the pattern with both of them
-				#  (whicht is supposed to be the last element) to be the same,
+				#  (which is supposed to be the last element) to be the same,
 				#   causing a bug with duplication.
 				[ -z "$left_part" -o -z "$right_part" ] && {
 					unset inc_patterns[${#inc_patterns}]
@@ -1332,7 +1332,7 @@ escape_for_sed_pattern() {
 	str=${str//\*/\\*}
 	# Your syntax checker may fail here,
 	#   and indentaion may also be fucked up, but it’s ok.
-	str=${str//\[/\\[} 	# …add round parentheses too?
+	str=${str//\[/\\[}   # …add round parentheses too?
 	# str=${str//\]/\\]}
 	# Just in case. There must be no slashes. If sed suddenly starts
 	#   throw errors like
@@ -1439,10 +1439,10 @@ This is not a bug.' >>$dbg_file
 			}
 			# Removing leading zeroes just to avoid possible misinterpretation as octal.
 			subst_pattern=$(echo "${mapfile_patterns[i]}" | sed 's/\(\[0-9]\\+\)/0*\\([0-9]\\+\\)/' )
- 			# We’re going to do a bubble sort against $matches_*, and that
+			# We’re going to do a bubble sort against $matches_*, and that
 			#   way we shall run this number extractor twice at every ite-
 			#   ration to compare numbers, but creating a list of numbers
-			#   and doing comparsion among them is 11 times faster.
+			#   and doing comparsion among them is faster.
 			unset matches_as_array matches_as_numbers
 			readarray -t matches_as_array < <(echo -e "${mapfile_matches[i]}")
 			readarray -t matches_as_numbers < <(echo -e "${mapfile_matches[i]}" | sed -n "s/$subst_pattern/\1/p")
