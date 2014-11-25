@@ -88,7 +88,7 @@ deb_and_rpm: prepare
 	ps axu |& grep -v grep | grep -q "qemu.*debean" || { vm-d.sh && sleep 5; }
 	ps axu |& grep -v grep | grep -q "qemu.*feedawra" || { vm-f.sh && sleep 5; }
 	ssh vmdebean "grep -q 'watch.sh' /proc/mounts && { \
-		export LANG=C; \
+		export LC_ALL=C; \
 		export EDITOR='nano -w'; \
 		[ -d /tmp/decrypted ] || scp -r home:/tmp/decrypted /tmp/; \
 		ln -sf /tmp/decrypted/.gnupg ~/.gnupg; \
@@ -99,7 +99,7 @@ deb_and_rpm: prepare
 		[ 1 -eq 1 ]; \
 	}||{ echo 'ERROR: ~/watch.sh is not mounted.' >&2; exit 3; }" \
 	&& ssh vmfeedawra "grep -q 'watch.sh' /proc/mounts && { \
-		export LANG=C; \
+		export LC_ALL=C; \
 		export EDITOR='nano -w'; \
 		cd ~/watch.sh/; \
 		make rpm && { \

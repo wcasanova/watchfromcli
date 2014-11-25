@@ -1,5 +1,30 @@
 #! /usr/bin/env bash
 
+# MAKE A GROUP OF LEFTOVER FILES TO BE A LAST GROUP OR 1-FILE GROUPS?
+    # Отловить все «уникальные файлы» в create_patterns
+    # Назначить им паттерны «имени себя», проэкранированные ф-ей escape_for_sed_pattern
+    # Для каждой группы ПОСЛЕ ПОДТВЕРЖДЕНИЯ её состояния определить EP_PATTERN_1_14, EP_PATTERN_1$
+    # Запоминать паттерны для каждой группы
+
+# FIND THE PLACE WHERE PERL IS NEEDED AND WRITE IT IN PERL
+
+# alter 3-rd or maker 4-th heuristics level, when it sorts by ep numbers attached to groups.
+    # No-no-no. Just assign leftover files to each own group.
+    # 4-th level be manual correction of the list
+
+# Heu 3 (experimental features)
+# Heu 2 ()
+# Heu 1 (use division by groups of sequences)
+# Heu off (use `sort`)
+
+
+# Create hournal header to contain version for compatibility reasons.
+
+# Strange bug in multinum patterns. 4 in ….mp4 is substituted twice?
+
+
+
+
 # watch.sh
 # A shell wrapper for mpv/MPlayer to run videos easy via CLI.
 # watch.sh © 2013,2014 deterenkelt.
@@ -197,9 +222,12 @@ err() {
 		opt_inputinvalid)
 			code=15; msg='RESERVED';;
 		opt_jentries)
-			code=16; msg='Option -j|--list-journal takes\n  - a number between 1 and 65535;\n  - a single letter “a” or “all” to display all keywords.';;
+			code=16; msg='Option -j|--list-journal takes
+  - a number between 1 and 65535;
+  - a single letter “a” or “all” to display all keywords.';;
 		opt_journalsize)
-			code=17; msg='Option --journal-max-size requires an argument to be a number of bytes that\n  may be followed by one of these suffixes: K M G to represent *2^10 once,\n  twice or three times.';;
+			code=17; msg='Option --journal-max-size requires an argument to be a number of bytes that
+  may be followed by one of these suffixes: K M G to represent *2^10 once,\n  twice or three times.';;
 		opt_jpegcompression)
 			code=18; msg='Option --jpeg-compression takes an argument that has to be a number between 0 and 100.';;
 		opt_lepshowafter)
@@ -223,8 +251,7 @@ err() {
 			# FIRST_MATCH shall be set at the time of possibility of this error,
 			#   so BASEPATH shouldn’t be an array already.
 			code=27; msg="I couldn’t find any video files in
-$BASEPATH${FIRST_MATCH:-}${SUBFOLDERS:-}
-Check your --subfolders pattern.";;
+  $BASEPATH${FIRST_MATCH:-}${SUBFOLDERS:+$SUBFOLDERS\nConsider checking your --subfolders pattern.}";;
 		chosen_one_is_unreadable)
 			code=28; msg="“$FIRST_MATCH” is not readable!";;
 		user_declined_input)
@@ -935,11 +962,11 @@ choose_from() {
 	LIST_TO_CHOOSE_FROM=`sort <<<"$1"`
 	LIST_ITEMS_COUNT=`echo -e "$LIST_TO_CHOOSE_FROM" | wc -l`
 	local cols=`tput cols`
-	unset CHOSEN_NUMBER list_variants_available ROTATE_PATTERN_LIST mapfile_patterns MAPPAT_INDEX_OFFSET
+	unset CHOSEN_NUMBER list_variants_available ROTATE_PATTERN_LIST group_patterns GROUP_INDEX
 	until [ -v CHOSEN_NUMBER ]; do
 		[ ${FUNCNAME[1]} = watch ] && [ $HEURISTICS_LEVEL -ne 0 ] && {
 			[ -v D ] && dbg_file="$DEBUG_DIR/choose_from_[watch]"
-			[ -v mapfile_patterns ] || create_patterns_for_the_list || return $?
+			[ -v group_patterns ] || create_groups_for_the_list || return $?
 			build_the_list || return $?
 		}
 		[ ${FUNCNAME[1]} = watch ] && VIDEOFILES="$LIST_TO_CHOOSE_FROM"
@@ -992,26 +1019,26 @@ choose_from() {
 			unset used_matches
 			[ -v D ] && {
 				dbg_file="$DEBUG_DIR/choose_from_while_in_watch"
-				declare -p mapfile_patterns mapfile_matches mapfile_matches_count | tee -a $dbg_file
+				declare -p group_patterns group_matches group_matches_count | tee -a $dbg_file
 			}
-			for ((i=0; i<${#mapfile_patterns[@]}; i++)); do
-				for ((j=0; j<${mapfile_matches_count[i]}; j++)); do
-					pat_for_grep=${mapfile_patterns[i]%\[^0-9]\.\**}
-					[ "$pat_for_grep" = "${mapfile_patterns[i]}" ] \
-						&& pat_for_grep=${mapfile_patterns[i]#^\.\*\[^0-9]}
+			for ((i=0; i<${#group_patterns[@]}; i++)); do
+				for ((j=0; j<${group_matches_count[i]}; j++)); do
+					local pat_for_grep=${group_patterns[i]%\[^0-9]\.\**}
+					[ "$pat_for_grep" = "${group_patterns[i]}" ] \
+						&& pat_for_grep=${group_patterns[i]#^\.\*\[^0-9]}
 					unset new_match_found
 					until [ -v new_match_found ]; do
-						match=`sed -n $((j+1))p <<<"${mapfile_matches[i]}"`
+						match=`sed -n $((j+1))p <<<"${group_matches[i]}"`
 						[ $i -eq 0 ] && break # matches of the 1st pattern are unique
 						if  echo -e "$used_matches" | grep -qF "$match";  then
-							[ $((++j)) -eq ${mapfile_matches_count[i]} ] && break 2
+							[ $((++j)) -eq ${group_matches_count[i]} ] && break 2
 						else  local new_match_found=t;  fi
 					done
 					echo -en "${g}$lcount:${s}"
-					[ -v D ] && echo -en "${g}$i:${s}"
+					[ -v SHOW_GROUP_INDICATOR ] && echo -en "${g}$b-$i-${s}"
 					echo "$match" | grep -iG "$pat_for_grep" # BGE, basic regex
 					used_matches="${used_matches:+$used_matches\n}$match"
-					# We use mapfile_matches[i], because HEU LVL2 does sorting in place
+					# We use group_matches[i], because HEU LVL2 does sorting in place
 					[ $((++lcount)) -gt $LIST_ITEMS_COUNT ] && break 2
 				done
 			done
@@ -1042,27 +1069,35 @@ This could happen if there was just a file with a unique name or some file has
 		}|| echo -e "$LIST_TO_CHOOSE_FROM" | grep -niG "\($KEYWORD\|$\)"
 
 		unset another_view prompt_heuristics_up prompt_heuristics_down
-		local prompt_numbers="Pick $g<number>$s"
-		[ $HEURISTICS_LEVEL -gt 0 ] && [ -v list_variants_available ] \
-			&& local another_view="View: $b[${MAPPAT_INDEX_OFFSET:=1}/${#mapfile_patterns[@]}]$s, $g<Tab>$s to alter, "
-		[ $HEURISTICS_LEVEL -lt $MAX_HEURISTICS_LEVEL ] \
-			&& local prompt_heuristics_up="$g<H>$s to raise heuristics level"
-		[ $HEURISTICS_LEVEL -gt 0 ] && {
-			unset hl comma
-			[ ! -v prompt_heuristics_up ] && local hl=' heuristics level' || local comma=', '
-			local prompt_heuristics_down="${comma:-}$g<h>$s to lower${hl:-}"
+		[ ${FUNCNAME[1]} = watch -a -v RUN_IN_CYCLE ] && {
+			[ $HEURISTICS_LEVEL -gt 0 -a -v list_variants_available ] && {
+				local another_view="View: $b[${GROUP_INDEX:=1}/${#group_patterns[@]}]$s, $g<Tab>$s to alter. "
+			}
+#		[ $HEURISTICS_LEVEL -lt $MAX_HEURISTICS_LEVEL ] \
+#			&& local prompt_heuristics_up="$g<H>$s to raise heuristics level"
+			case $HEURISTICS_LEVEL in
+				0) local heu_lvl_as_txt='Off';;
+				1) local heu_lvl_as_txt='Normal';;
+				2) local heu_lvl_as_txt='Extended';;
+			esac
+			local prompt_heuristics_up="H. level: $b[$heu_lvl_as_txt]$s, $g<h>$s to change."
+#		[ $HEURISTICS_LEVEL -gt 0 ] && {
+#			unset hl comma
+#			[ ! -v prompt_heuristics_up ] && local hl=' heuristics level' || local comma=', '
+#			local prompt_heuristics_down="${comma:-}$g<h>$s to lower${hl:-}"
+#		}
 		}
 		[ -v NO_AID ] || {
 			local num_choosing_hint="[$MY_DECREMENT↓0-9↑$MY_INCREMENT] "
 			echo ' ↙ Commands to rebuild the list in other way, if possible.'
 		}
-		local prompt_1st_line="${another_view:-}${prompt_heuristics_up}${prompt_heuristics_down}."
+		local prompt_1st_line="${another_view:-}${prompt_heuristics_up:-}${prompt_heuristics_down:-}"
 		[ ${FUNCNAME[1]} = screenshots_preprocessing ] \
 			&& local return_or_skip='skip' \
 			|| local return_or_skip='return'
-		local prompt_2nd_line="$prompt_numbers or press $g<Return>$s to $return_or_skip ${num_choosing_hint:-}> "
-		local prompt="${prompt_1st_line}\n${prompt_2nd_line}"
-		echo -ne "$prompt"
+		local prompt_2nd_line="Pick line $g<number>$s or press $g<Return>$s to $return_or_skip ${num_choosing_hint:-}> "
+		local prompt="${prompt_1st_line:+$prompt_1st_line\n}${prompt_2nd_line}"
+		echo -en "$prompt"
 
 		# local is poinless for the second one, because big cycle and <TAB>.
 		unset reply reply_is_ready
@@ -1073,26 +1108,41 @@ This could happen if there was just a file with a unique name or some file has
 			[ ${#reply} -gt 5 ] && reply=${reply:0:5}
 			read -sn1 -p "$reply"
 			[ "$REPLY" = $'\e' ] && read -sn2 rest && REPLY+="$rest"
-			[ $HEURISTICS_LEVEL -eq 0 ] || {
+#			[ $HEURISTICS_LEVEL -eq 0 ] || {
+#
+#			}
+
+			[ "$REPLY" ] && {
 				[ "$REPLY" = $'\t' ] && {
 					[ -v list_variants_available ] && ROTATE_PATTERN_LIST=t
 					echo && continue 2
 				}
-				[ "$REPLY" = 'H' ] && {
-					[ $HEURISTICS_LEVEL -lt $MAX_HEURISTICS_LEVEL ] &&
-					let HEURISTICS_LEVEL++
-					MAPPAT_INDEX_OFFSET=1
-					echo && continue 2
-				}
+				# [ "$REPLY" = 'H' ] && {
+				# 	[ $HEURISTICS_LEVEL -lt $MAX_HEURISTICS_LEVEL ] &&
+				# 	let HEURISTICS_LEVEL++
+				# 	GROUP_INDEX=1
+				# 	echo && continue 2
+				# }
+				# [ "$REPLY" = 'h' ] && {
+				# 	[ $HEURISTICS_LEVEL -gt 0 ] &&
+				# 	let HEURISTICS_LEVEL--
+				# 	GROUP_INDEX=1
+				# 	echo && continue 2
+				# }
 				[ "$REPLY" = 'h' ] && {
-					[ $HEURISTICS_LEVEL -gt 0 ] &&
-					let HEURISTICS_LEVEL--
-					MAPPAT_INDEX_OFFSET=1
+					let HEURISTICS_LEVEL++
+					[ $HEURISTICS_LEVEL -gt $MAX_HEURISTICS_LEVEL ] \
+						&& HEURISTICS_LEVEL=0
+					GROUP_INDEX=1
 					echo && continue 2
 				}
-			}
+				[ "$REPLY" = 'i' ] && {
+					[ -v SHOW_GROUP_INDICATOR ] \
+						&& unset SHOW_GROUP_INDICATOR \
+						|| SHOW_GROUP_INDICATOR=t
+					echo && continue 2
+				}
 
-			[ "$REPLY" ] && {
 				if [ "$REPLY" = "$backspace" ]; then
 					[ ${#reply} -gt 0 ] && reply=${reply::-1}
 				elif [ "$REPLY" = "$up" -o "$REPLY" = "$MY_INCREMENT" ]; then
@@ -1114,7 +1164,7 @@ This could happen if there was just a file with a unique name or some file has
 				else
 					[[ "$REPLY" =~ ^[0-9]$ ]] && reply="$reply$REPLY"
 				fi
-				echo -ne "\r\e[K$prompt_2nd_line" # \K lear line
+				echo -en "\r\e[K$prompt_2nd_line" # \K lear line
 			}||{ reply_is_ready=t; echo; }
 		done
 
@@ -1135,12 +1185,12 @@ return 0
 #   path match against, so build_the_list() could build (and rebuild)
 #   the file list in accordance with the conception that we must line up
 #   the list in the correct order of episodes.
-create_patterns_for_the_list() {
+create_groups_for_the_list() {
 	[ -v D ] && {
 		dbg_file="$DEBUG_DIR/patterns"
 		echo "$LIST_TO_CHOOSE_FROM" >"$DEBUG_DIR/patterns_ltcf"
 	}
-	unset mapfile_patterns mapfile_matches mapfile_matches_count
+	unset group_patterns group_matches group_matches_count
 	# In origin this function was a part of another function where is was
 	#   checking the list of possible candidates to $VIDEOFILE variable
 	#   (at the end of the “eval” in watch()), and those ones were really
@@ -1150,11 +1200,11 @@ create_patterns_for_the_list() {
 	#
 	# Just don’t believe ↙that “filename” is an actual filename. I just couldn’t
 	#   imagine a more proper name.
-	while read filename; do
+	while IFS= read -r filename; do
 		[ -v D ] && echo "FN: “$filename”." >>$dbg_file
 		# Match current filename against known patterns
-		[ -v mapfile_patterns ] && {
-			for pattern in "${mapfile_patterns[@]}"; do
+		[ -v group_patterns ] && {
+			for pattern in "${group_patterns[@]}"; do
 				# if pattern does match, drop that filename
 				echo "$filename" | sed 's/'"$pattern"'/&/;T;Q1' >/dev/null || {
 					[ -v D ] && echo -e "\tMatches against pattern: “$pattern”.\nDROP.\n" >>$dbg_file
@@ -1198,7 +1248,8 @@ create_patterns_for_the_list() {
 				echo -en "\n\tLeft part: “$left_part”.\n\tRight part: “$right_part.”
 \tIs this a number?\t" >>$dbg_file
 			}
-			if  [ "${MAPFILE[i]//[^0-9]/}" ];  then
+			unset inc_patterns_found_a_sequence_for_this_file
+			if  [[ "${MAPFILE[i]}" =~ ^[0-9]+$ ]];  then
 				[ -v D ] && echo 'Yes.' >>$dbg_file
 				# parts combined beforehands if D is set
 				[ -v parts_combined ] || combine_left_and_right_parts
@@ -1215,7 +1266,7 @@ create_patterns_for_the_list() {
 				[ -v D ] && echo -e "\tInc. number: “$inc_num”." >>$dbg_file
 
 				# Incremental patterns: to match the current line of
-				#   $LIST_TO_CHOOSE_FROM but with number substituted with
+				#   $LIST_TO_CHOOSE_FROM with number substituted with
 				#   an incremented one to define a sequence presence.
  			   inc_patterns=( "^$left_part$inc_num.*$" \
 					"^.*$inc_num$right_part$" \
@@ -1228,11 +1279,14 @@ create_patterns_for_the_list() {
 				#   and, because \b matches letters, digits and underscores
 				#   as a single word, this caused patterns to fail on such
 				#   names. That’s why \b was replaced by a “possible non-
-				#   number” — [^0-9]\?
-				multinum_patterns=( "^$left_part[0-9]\+[^0-9].*$" \
-					"^.*[^0-9][0-9]\+$right_part$" \
-					"^[0-9]\+$right_part$" \
-					"^$left_part[0-9]\+$right_part$" ) # Both parts — the last!
+				#   number” — [^0-9]\?. It should be replaced with pre-condition
+				#   when I got my hands to perl.
+				# multinum counterparts are used to hook all the filenames
+				#   within a sequence defined by an inc_pattern.
+				multinum_patterns=( "^$left_part\([0-9]\+\)[^0-9].*$" \
+					"^.*[^0-9]\([0-9]\+\)$right_part$" \
+					"^\([0-9]\+\)$right_part$" \
+					"^$left_part\([0-9]\+\)$right_part$" ) # Both parts — the last!
 				# If you noticed that the two last elements of both arrays with
 				#   regular expressions are redundant. That’s because I’ve rea-
 				#   lized only at this point, that sed capabilities are not
@@ -1266,11 +1320,11 @@ create_patterns_for_the_list() {
 					[ -v D ] && echo -e '\t Unsetting pattern with incremented number and both (left and right) parts
 \t   of the filename in attempt to avoid pattern duplicate.' >>$dbg_file
 				}
-
 				for ((j=0; j<${#inc_patterns[@]}; j++)) do
 				[ -v D ] && echo -en "\t\tInc. pattern: “${inc_patterns[j]}”.\n\t\t\tSequence found? " >>$dbg_file
 				matches=$(echo "$LIST_TO_CHOOSE_FROM" | sed -n '/'"${inc_patterns[j]}"'/p' )
 				if  [ "$matches" ];  then
+					local inc_patterns_found_a_sequence=t
 					[ -v D ] && echo 'Yes.' >>$dbg_file
 					# Okay, there is at least two files that show sequence in that place.
 					#   I mean, at this part of filename, MAPFILE[i].
@@ -1283,10 +1337,10 @@ create_patterns_for_the_list() {
 					#   but may be also a string with a pattern; tl;dr -gt 1 means 2 or more
 					if  [[ "$matches_count" =~ ^[0-9]+$ ]] && [ $matches_count -gt 1 ];  then
 						[ -v D ] && echo -en "\t\t\tUnique? " >>$dbg_file
-						unset same_matches_found
+						unset same_matches_found # better than 2 unsets, because the one inside for cycle may occur and may not.
 						# Now check if any pattern already produced the same list of matches.
-						for ((k=0; k<${#mapfile_matches[@]}; k++)); do
-							[ "$matches" = "${mapfile_matches[k]}" ] && {
+						for ((k=0; k<${#group_matches[@]}; k++)); do
+							[ "$matches" = "${group_matches[k]}" ] && {
 								same_matches_found=t
 								[ -v D ] && echo 'No.' >>$dbg_file
 								break
@@ -1295,18 +1349,48 @@ create_patterns_for_the_list() {
 						[ -v same_matches_found ] || {
 							[ -v D ] && echo -e "Yes.\nADD\t\t\tMultinum pattern: “${multinum_patterns[j]}”." >>$dbg_file
 							# TODO: make some flag to define the situation when no number is present. # Er… how’s that?
-							# I thouhgt about renaming these variables to fname_*, but  mapfile_* clearly points at the place of origin.
-							mapfile_patterns[${#mapfile_patterns[@]}]="${multinum_patterns[j]}"
-							mapfile_matches[${#mapfile_patterns[@]}-1]="$matches"
-							mapfile_matches_count[${#mapfile_patterns[@]}-1]=$matches_count
+							# I thouhgt about renaming these variables to fname_*, but  group_* clearly points at the place of origin.
+							group_patterns[${#group_patterns[@]}]="${multinum_patterns[j]}"
+							group_matches[${#group_patterns[@]}-1]="$matches"
+							group_matches_count[${#group_patterns[@]}-1]=$matches_count
+							group_occupied_numbers[${#group_patterns[@]}-1]=`sed`
+
+# must somehow extract numbers from all the filenames that matched against the multinum pattern
+#   and write them to another array group_occupied_numbers
+
+
+
+
 						} # list of matches is unique
 					else  [ -v D ] && echo -e "\n#\t\t\tMULTINUM EXPRESSION FAILED!
 \t\t\tSequence was found, but multinum pattern couldn’t find even two filenames.\n" >>$dbg_file; fi # multinumber pattern found two or more matches
-				else  [ -v D ] && echo 'No.' >>$dbg_file;  fi # inc_pattern[j] found a sequence (non-empty match list)
+				else
+					[ -v D ] && echo 'No.' >>$dbg_file
+					# If this test was for the last number found in filename,
+					#   and this was the last inc_pattern tested against this
+					#   filename, and there is still nothing, that means we’ve
+					#   found a unique file that doesn’t form a sequence and
+					#   will never form a group of itself if we won’t do it here
+					#   and now.
+					[ $i -eq $((${#MAPFILE[@]}-1)) ] \
+						&& [ $j -eq $((${#inc_patterns[@]}-1))] \
+						&& [ ! -v inc_patterns_found_a_sequence_for_this_file ] && {
+						[ -v D ] && echo 'And this file happened to be unique enough to create a group of its own!' >>$dbg_file
+						group_patterns[${#group_patterns[@]}]="$(escape_for_sed_pattern "$filename")"
+						group_matches[${#group_patterns[@]}-1]="$filename"
+						group_matches_count[${#group_patterns[@]}-1]=1
+
+# must find all the numbers and leave only those that match any of numbers in sequence groups by lenght (usually it must be 2)
+# So, if there would be a “hole” in numbers, we could replace insufficient filenames from the uniques. But only if lenght matches,
+#  and this substitute is the only possible.
+
+
+					}
+				fi # inc_pattern[j] found a sequence (non-empty match list)
 				done # for j in inc_patterns[@]
 			else [ -v D ] && echo 'No.' >>$dbg_file;  fi  # MAPFILE[i] is a number
 		done # for i in MAPFILE[@]
-	done  < <(echo "$LIST_TO_CHOOSE_FROM")  # $LIST_TO_CHOOSE_FROM _never_ has a '\n' here.
+	done  < <(echo "$LIST_TO_CHOOSE_FROM")  # $LIST_TO_CHOOSE_FROM _never_ has literal '\n' here.
 return 0
 }
 
@@ -1341,31 +1425,31 @@ escape_for_sed_pattern() {
 	#     sed: -e expression #1, char 102: Invalid range end
 	#   especially when BASEPATH is an array, this may mean that folder paths
 	#   have appeared in the pattern when they should not, because
-	#   create_patterns_for_the_list() must only process _file names_ when
+	#   create_groups_for_the_list() must only process _file names_ when
 	#   MODE == episodes and choose_from() was called from watch().
 	# P.S. Slashes are used in do_initial_search() when removing
 	#   duplicates from d.
 	str=${str//\//\\/}
 	str=${str//\^/\\^}
-	echo -ne "$str" # TODO: check for what purpose is -e here
+	echo -en "$str" # TODO: check for what purpose is -e here
 }
 
 
 build_the_list() {
 	[ -v D ] && {
 		dbg_file="$DEBUG_DIR/pattern_groups"
-		declare -p mapfile_patterns mapfile_matches mapfile_matches_count >>$dbg_file
+		declare -p group_patterns group_matches group_matches_count >>$dbg_file
 	}
 	# If we have no patterns and therefore, no matches, that’s bad
 	#   and we have to fallback, there’s no error produced since
 	#   the list_to_choose_from still exist, so we just don’t touch it.
-	[ ${#mapfile_patterns[@]} -eq 0 ] && {
+	[ ${#group_patterns[@]} -eq 0 ] && {
 		[ -v D ] && echo 'No patterns.' >>$dbg_file
 		return 0
 	}
 
-	[ ${#mapfile_patterns[@]} -gt 1 ] \
-		&& list_variants_available=${#mapfile_matches_count[@]}
+	[ ${#group_patterns[@]} -gt 1 ] \
+		&& list_variants_available=${#group_matches_count[@]}
 
 	[ -v list_variants_available ] && {
 		[ -v D ] && echo "List variants available: $list_variants_available." >>$dbg_file
@@ -1375,40 +1459,40 @@ build_the_list() {
 			# ┌─────────────────────>──────────┐
 			# ^   TAB in menu rotates groups   v
 			# └──────────<─────────────────────┘
-			patterns_buffer="${mapfile_patterns[0]}"
-			matches_buffer="${mapfile_matches[0]}"
-			matches_count_buffer="${mapfile_matches_count[0]}"
-			for ((i=1; i<${#mapfile_patterns[@]}; i++)); do
-				mapfile_patterns[i-1]="${mapfile_patterns[i]}"
-				mapfile_matches[i-1]="${mapfile_matches[i]}"
-				mapfile_matches_count[i-1]="${mapfile_matches_count[i]}"
+			patterns_buffer="${group_patterns[0]}"
+			matches_buffer="${group_matches[0]}"
+			matches_count_buffer="${group_matches_count[0]}"
+			for ((i=1; i<${#group_patterns[@]}; i++)); do
+				group_patterns[i-1]="${group_patterns[i]}"
+				group_matches[i-1]="${group_matches[i]}"
+				group_matches_count[i-1]="${group_matches_count[i]}"
 			done
-			mapfile_patterns[${#mapfile_patterns[@]}-1]="$patterns_buffer"
-			mapfile_matches[${#mapfile_patterns[@]}-1]="$matches_buffer"
-			mapfile_matches_count[${#mapfile_patterns[@]}-1]="$matches_count_buffer"
-			[ $((++MAPPAT_INDEX_OFFSET)) -gt ${#mapfile_patterns[@]} ] && MAPPAT_INDEX_OFFSET=1 # why not 0?
-			[ -v D ] && declare -p MAPPAT_INDEX_OFFSET >>$dbg_file
+			group_patterns[${#group_patterns[@]}-1]="$patterns_buffer"
+			group_matches[${#group_patterns[@]}-1]="$matches_buffer"
+			group_matches_count[${#group_patterns[@]}-1]="$matches_count_buffer"
+			[ $((++GROUP_INDEX)) -gt ${#group_patterns[@]} ] && GROUP_INDEX=1 # why not 0?
+			[ -v D ] && declare -p GROUP_INDEX >>$dbg_file
 			unset ROTATE_PATTERN_LIST
 		}||{
 			[ -v D ] && echo 'SORTING' >>$dbg_file
 			# Do initial groups sorting.
 			# Sort patterns descending by the number of matches OR
 			#   lexicographically if numbers are equal
-			for (( i=0; i<${#mapfile_patterns[@]}-1; i++)); do
-				for (( j=$i+1; j<${#mapfile_patterns[@]}; j++)); do
-					( [ ${mapfile_matches_count[i]} -lt ${mapfile_matches_count[j]} ] ||
-						( [ ${mapfile_matches_count[i]} -eq ${mapfile_matches_count[j]} ] &&
-							[[ "${mapfile_patterns[i]}" > "${mapfile_patterns[j]}" ]] ) ) && {
+			for (( i=0; i<${#group_patterns[@]}-1; i++)); do
+				for (( j=$i+1; j<${#group_patterns[@]}; j++)); do
+					( [ ${group_matches_count[i]} -lt ${group_matches_count[j]} ] ||
+						( [ ${group_matches_count[i]} -eq ${group_matches_count[j]} ] &&
+							[[ "${group_patterns[i]}" > "${group_patterns[j]}" ]] ) ) && {
 						# Biggest number of matches → to the top of the array.
-						buffer="${mapfile_patterns[i]}"
-						mapfile_patterns[i]="${mapfile_patterns[j]}"
-						mapfile_patterns[j]="$buffer"
-						buffer="${mapfile_matches[i]}"
-						mapfile_matches[i]="${mapfile_matches[j]}"
-						mapfile_matches[j]="$buffer"
-						buffer="${mapfile_matches_count[i]}"
-						mapfile_matches_count[i]="${mapfile_matches_count[j]}"
-						mapfile_matches_count[j]="$buffer"
+						buffer="${group_patterns[i]}"
+						group_patterns[i]="${group_patterns[j]}"
+						group_patterns[j]="$buffer"
+						buffer="${group_matches[i]}"
+						group_matches[i]="${group_matches[j]}"
+						group_matches[j]="$buffer"
+						buffer="${group_matches_count[i]}"
+						group_matches_count[i]="${group_matches_count[j]}"
+						group_matches_count[j]="$buffer"
 					}
 				done
 			done
@@ -1418,36 +1502,36 @@ build_the_list() {
 	[ -v D ] && {
 		echo 'Some elements may span on multiple lines if they contain double quotes.
 This is not a bug.' >>$dbg_file
-		declare -p mapfile_patterns mapfile_matches mapfile_matches_count >>$dbg_file
+		declare -p group_patterns group_matches group_matches_count >>$dbg_file
 	}
 
-	# Resort all matches in each mapfile_matches[i] comparing numbers as numbers.
+	# Resort all matches in each group_matches[i] comparing numbers as numbers.
 	[ $HEURISTICS_LEVEL -gt 1 ] && {
 		[ -v D ] && echo -e '\n\nHEU LVL 2 start.' >>$dbg_file
 		# Careful from here. This seems to build that way to work for both
 		#   heuristic levels, so don’t accidentally put the cycle inside [ $HEU -gt 1 ]
-		for ((i=0; i<${#mapfile_matches[@]}; i++)); do
+		for ((i=0; i<${#group_matches[@]}; i++)); do
 			# Okay, we have them. But now it’s not much far away from the “sort” command.
 			# Sort would find these numbers too (and put 1 after 10), we are a step forward
 			#   only by finding a hint for a presence of sequence in those numbers.
 			#   Now arrange these numbers to make them reflect this sequence.
 			# Change pattern so it could grab found number in ([0-9]+).
 			[ -v D ] && {
-				echo -e "\tProcessing mapfile_matches[$i]\n\tList:" >>$dbg_file
-				echo "${mapfile_matches[i]}" | sed 's/.*/\t\t“&”/g' >>$dbg_file
-				echo -e "\tCount: ${mapfile_matches_count[i]}" >>$dbg_file
+				echo -e "\tProcessing group_matches[$i]\n\tList:" >>$dbg_file
+				echo "${group_matches[i]}" | sed 's/.*/\t\t“&”/g' >>$dbg_file
+				echo -e "\tCount: ${group_matches_count[i]}" >>$dbg_file
 			}
 			# Removing leading zeroes just to avoid possible misinterpretation as octal.
-			subst_pattern=$(echo "${mapfile_patterns[i]}" | sed 's/\(\[0-9]\\+\)/0*\\([0-9]\\+\\)/' )
+			subst_pattern=$(echo "${group_patterns[i]}" | sed 's/\(\[0-9]\\+\)/0*\\([0-9]\\+\\)/' )
 			# We’re going to do a bubble sort against $matches_*, and that
 			#   way we shall run this number extractor twice at every ite-
 			#   ration to compare numbers, but creating a list of numbers
 			#   and doing comparsion among them is faster.
 			unset matches_as_array matches_as_numbers
-			readarray -t matches_as_array < <(echo -e "${mapfile_matches[i]}")
-			readarray -t matches_as_numbers < <(echo -e "${mapfile_matches[i]}" | sed -n "s/$subst_pattern/\1/p")
+			readarray -t matches_as_array < <(echo -e "${group_matches[i]}")
+			readarray -t matches_as_numbers < <(echo -e "${group_matches[i]}" | sed -n "s/$subst_pattern/\1/p")
 			[ -v D ] && declare -p matches_as_array matches_as_numbers >>$dbg_file
-			unset mapfile_matches[i]
+			unset group_matches[i]
 			for ((j=0; j<${#matches_as_array[@]}-1; j++)); do
 				for ((k=$j+1; k<${#matches_as_array[@]}; k++)); do
 					# Big numbers (of an episode) → to the end of the list
@@ -1463,18 +1547,18 @@ This is not a bug.' >>$dbg_file
 					}
 				done
 				# Each j should be the smallest number from what’s left, i.e. 1, 2, 3…
-				mapfile_matches[i]="${mapfile_matches[i]:+${mapfile_matches[i]}\n}${matches_as_array[j]}"
+				group_matches[i]="${group_matches[i]:+${group_matches[i]}\n}${matches_as_array[j]}"
 			done
 			# We deleted the original item, remember? And now the last
 			#  (and the biggest) match wasn’t added to the original array
 			#   element back. Don’t be confused with a similar sort above,
 			#   there was no deleteion of original mapfile elements!
-			mapfile_matches[i]="${mapfile_matches[i]}\n${matches_as_array[j]}"
-			mapfile_matches[i]=`echo -e "${mapfile_matches[i]}"` # `\n`
+			group_matches[i]="${group_matches[i]}\n${matches_as_array[j]}"
+			group_matches[i]=`echo -e "${group_matches[i]}"` # `\n`
 			[ -v D ] && {
 				echo -e "\tList after resorting:" >>$dbg_file
-				echo "${mapfile_matches[i]}" | sed 's/.*/\t\t“&”/g' >>$dbg_file
-				echo -e "\tCount: ${mapfile_matches_count[i]}\n" >>$dbg_file
+				echo "${group_matches[i]}" | sed 's/.*/\t\t“&”/g' >>$dbg_file
+				echo -e "\tCount: ${group_matches_count[i]}\n" >>$dbg_file
 			}
 		done
 	}
@@ -1507,7 +1591,7 @@ screenshots_preprocessing() {
 				}|| SCREENSHOT_DIR+="/$screens_path"
 			else
 				warn 'No appropriate directory for screenshots found.'
-				echo -e "\nType a long, correct name to create one or hit $g<Return>$s to skip > "
+				echo -en "\nType a long, correct name to create one or hit $g<Return>$s to skip > "
 				read
 				[ "$REPLY" ] && {
 					SCREENSHOT_DIR+="/$REPLY"
@@ -1594,14 +1678,18 @@ watch() {
 					choose_from "$VIDEOFILES" || return $?
 					VIDEOFILE="$CHOSEN_ITEM"
 					VIDEO_NUMBER=$CHOSEN_NUMBER
+				}||{
+					[ -v RUN_IN_CYCLE ] && {
+						warn 'Cannot start watching cycle: only one video file.'
+						unset RUN_IN_CYCLE
+					}
 				}
 			fi
 			# Storing chosen pattern to EP_PATTERN
 			#  (cycle has just started and the variable doesn’t exist yet).
 			[ -v EP_PATTERN ] \
-				|| EP_PATTERN=`sed -r 's/\[0-9]\\\\\+/\\\(&\\\)/' \
-						               <<<${mapfile_patterns[0]}`
-			episode_number=`sed -n "s/$EP_PATTERN/\1/p" <<<"$VIDEOFILE"`
+				|| EP_PATTERN=${group_patterns[0]}
+			episode_number="$(sed -n "s/$EP_PATTERN/\1/p" <<<"$VIDEOFILE")"
 			[[ "$episode_number" =~ ^[0-9]+$ ]] || {
 				msg "Couldn’t get value for $episode_number. Reverting to VIDEO_NUMBER==$VIDEO_NUMBER."
 				episode_number=$VIDEO_NUMBER
@@ -1692,16 +1780,16 @@ Consider switching to the latest mpv if you want to load multiple tracks
 	# BASEPATH      VIDEOFILE
 	#
 	# 2. Videofile inside of a folder found in BASEPATH
-	# /home/video/  Azumanga_Daioh       /            Azumanga_Daioh_01.mkv
-	# BASEPATH      FIRST_MATCH           SUBFOLDERS  VIDEOFILE
+	# /home/video/  Azumanga_Daioh       /           Azumanga_Daioh_01.mkv
+	# BASEPATH      FIRST_MATCH          SUBFOLDERS  VIDEOFILE
 	#
 	# 3. Videofile found inside of a subfolder under the folder found in BASEPATH
-	# /home/video/  Exosquad             /Season_1/   Exosquad_01.mkv
-	# BASEPATH      FIRST_MATCH           SUBFOLDERS  VIDEOFILE
+	# /home/video/  Exosquad             /Season_1/  Exosquad_01.mkv
+	# BASEPATH      FIRST_MATCH          SUBFOLDERS  VIDEOFILE
 	#
 	# 4.a. The same goes for videofiles in VIDEO_TS folder, when option IGNORE_DISKS is set.
-	# /home/video/  Zeta_Project_Disk_1  /VIDEO_TS/   VTS_04_01.VOB
-	# BASEPATH      FIRST_MATCH           SUBFOLDERS  VIDEOFILE
+	# /home/video/  Zeta_Project_Disk_1  /VIDEO_TS/  VTS_04_01.VOB
+	# BASEPATH      FIRST_MATCH          SUBFOLDERS  VIDEOFILE
 	#
 	# 4.b. If IGNORE_DISKS is not present, then the folder containing disk stuff
 	#      and matched KEYWORD becomes the path.
@@ -1710,6 +1798,17 @@ Consider switching to the latest mpv if you want to load multiple tracks
 	#
 	# NB: FIRST_MATCH never has surrounding slashes. Neither in front nor behind.
 	#     VIDEOFILE never has a slash in front of it.
+	#
+	# If something is still not clear enough, here are the rules:
+	#
+	# part        |         whether it can be
+	# of the path |  a folder    a file   not present
+	# ------------+-----------------------------------
+	# BASEPATH    |     ✔           ✘          ✘
+	# FIRST_MATCH |     ✔           ✔          ✘
+	# SUBFOLDERS  |     ✔           ✘          ✔
+	# VIDEOFILE   |     ✘           ✔          ✔
+
 	local path_to_videofile="$BASEPATH$FIRST_MATCH${SUBFOLDERS:-}${VIDEOFILE:-}"
 	[ -v D ] && dbg_file="$DEBUG_DIR/mpv_run"
 	[ -v TASKSET_CPULIST ] && which taskset >/dev/null &&
@@ -1955,7 +2054,7 @@ escape_for_sed_replacement() {
 	# str=${str//\'/\\\'} # as it was before 20140915
 	str=${str//\//\\/}
 	# str=${str//\"/\\\"} # Just for the case if a bug will appear
-	echo -ne "$str"
+	echo -en "$str"
 }
 
 # SETS:
@@ -1973,7 +2072,7 @@ export_session_data() {
 		data+="\nMODE='$MODE'"
 		data+="\nBASEPATH='$(escape_for_sed_replacement "$BASEPATH")'"
 		data+="\nFIRST_MATCH='$(escape_for_sed_replacement "$FIRST_MATCH")'" # Remember? No slashes here, “&” and “'” only
-		[ "$SUBFOLDERS" ] && data+="\nSUBFOLDERS='$(escape_for_sed_replacement "$SUBFOLDERS")'"
+		data+="\nSUBFOLDERS='$(escape_for_sed_replacement "$SUBFOLDERS")'"
 		[ $MODE = single ] \
 			&& data+="\nVIDEOFILE='$(escape_for_sed_replacement "$VIDEOFILE")'"
 		[ $MODE = episodes ] && {
@@ -2043,7 +2142,7 @@ until [ -v STOP ]; do
 		&& print_last_shown_episode_number
 		[ -v STOP ] || {
 			[ -v RUN_IN_CYCLE ] && {
-				echo -ne "Press $g<Space>$s to stop > "
+				echo -en "Press $g<Space>$s to stop > "
 				read -n1 -t3
 				# Avoiding [C to get to mpv’s input in case right arrow
 				#   is still hold. If mpv reads them, it’ll try to interpret
