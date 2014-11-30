@@ -1573,6 +1573,7 @@ watch() {
 			# See adding subs/tracks after esac.
 			;;
 		episodes)
+			MATCH_NUMBER=t
 			# Add check for -L option limiting the number of
 			#   sequentially playing files to LIMIT_SEQUNCE.
 			# Add check to stop cycle when last episode finished?
