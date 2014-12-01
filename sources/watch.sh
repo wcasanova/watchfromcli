@@ -1,12 +1,8 @@
 #! /usr/bin/env bash
 
-# MAKE A GROUP OF LEFTOVER FILES TO BE A LAST GROUP OR 1-FILE GROUPS?
-    # Отловить все «уникальные файлы» в create_patterns
-    # Назначить им паттерны «имени себя», проэкранированные ф-ей escape_for_sed_pattern
+
     # Для каждой группы ПОСЛЕ ПОДТВЕРЖДЕНИЯ её состояния определить EP_PATTERN_1_14, EP_PATTERN_1$
     # Запоминать паттерны для каждой группы
-
-# FIND THE PLACE WHERE PERL IS NEEDED AND WRITE IT IN PERL
 
 # alter 3-rd or maker 4-th heuristics level, when it sorts by ep numbers attached to groups.
     # No-no-no. Just assign leftover files to each own group.
@@ -18,11 +14,11 @@
 # Heu off (use `sort`)
 
 
-# Create hournal header to contain version for compatibility reasons.
+# Create journal header to contain version for compatibility check.
 
 # Strange bug in multinum patterns. 4 in ….mp4 is substituted twice?
 
-
+# Write bash completion module (at least for -r)
 
 
 # watch.sh
@@ -87,7 +83,7 @@ To start watching cycle:
 To resume watching cycle:
     watch.sh [optional arguments] -[r|R]  [keyword]
 
-Checking journal
+List recently entered keywords (useful for -r)
     watch.sh -j
 
 Checking for update
@@ -964,12 +960,6 @@ choose_from() {
 	local cols=`tput cols`
 	unset CHOSEN_NUMBER list_variants_available ROTATE_PATTERN_LIST group_patterns GROUP_INDEX
 	until [ -v CHOSEN_NUMBER ]; do
-		[ ${FUNCNAME[1]} = watch ] && [ $HEURISTICS_LEVEL -ne 0 ] && {
-			[ -v D ] && dbg_file="$DEBUG_DIR/choose_from_[watch]"
-			[ -v group_patterns ] || create_groups_for_the_list || return $?
-			build_the_list || return $?
-		}
-		[ ${FUNCNAME[1]} = watch ] && VIDEOFILES="$LIST_TO_CHOOSE_FROM"
 		# Showing current paths:
 		# V: here is shown where the script looks for videofiles at this moment
 		[ -v NO_AID ] || echo ' ↙ I currently look for videofiles here.'
@@ -1009,67 +999,16 @@ choose_from() {
 			[ -v NO_AID ] || echo ' ↙ Screenshot directory as it was passed.'
 			echo "S: $safe_screenshot_dir"
 		}
-		[ -v NO_AID ] ||
-		echo ' ↙ Pick a number from the list.'
-		[ ${FUNCNAME[1]} = watch -a $HEURISTICS_LEVEL -gt 0 ] && {
-			# The idea is providing a “new-list-to-choose-from” which would be
-			#   an array, so we could highlight not a keyword and hypotetic(?)
-			#   episode number, but a part of line that matched current pattern.
-			local lcount=1 match
-			unset used_matches
-			[ -v D ] && {
-				dbg_file="$DEBUG_DIR/choose_from_while_in_watch"
-				declare -p group_patterns group_matches group_matches_count | tee -a $dbg_file
-			}
-			for ((i=0; i<${#group_patterns[@]}; i++)); do
-				for ((j=0; j<${group_matches_count[i]}; j++)); do
-					local pat_for_grep=${group_patterns[i]%\[^0-9]\.\**}
-					[ "$pat_for_grep" = "${group_patterns[i]}" ] \
-						&& pat_for_grep=${group_patterns[i]#^\.\*\[^0-9]}
-					unset new_match_found
-					until [ -v new_match_found ]; do
-						match=`sed -n $((j+1))p <<<"${group_matches[i]}"`
-						[ $i -eq 0 ] && break # matches of the 1st pattern are unique
-						if  echo -e "$used_matches" | grep -qF "$match";  then
-							[ $((++j)) -eq ${group_matches_count[i]} ] && break 2
-						else  local new_match_found=t;  fi
-					done
-					echo -en "${g}$lcount:${s}"
-					[ -v SHOW_GROUP_INDICATOR ] && echo -en "${g}$b-$i-${s}"
-					echo "$match" | grep -iG "$pat_for_grep" # BGE, basic regex
-					used_matches="${used_matches:+$used_matches\n}$match"
-					# We use group_matches[i], because HEU LVL2 does sorting in place
-					[ $((++lcount)) -gt $LIST_ITEMS_COUNT ] && break 2
-				done
-			done
-
-			[ -v D ] && declare -p used_matches | tee -a $dbg_file
-			# This is subject for testing. Since each filename that doesn’t
-			#   conform to a known pattern must start a new sequence, there
-			#   shouldn’t be any filenames “on their own”. But to be sure
-			#   we won’t lost them if they’ve suddenly appeared…
-			# used_matches=`echo -e "$used_matches"`
-			unique_lines=`echo -e "${used_matches:+${used_matches}\n}$LIST_TO_CHOOSE_FROM" | sort | uniq -u`
-			[ "$unique_lines" ] && {
-				used_matches="${used_matches:+${used_matches}\n}$unique_lines"
-				used_matches=`echo -e "$used_matches"`
-				while read unique_line; do
-					echo -en "${g}$((lcount++)):${s}"
-					[ -v D ] && echo -en "${g}-:${s}"
-					grep -iG "\($KEYWORD\|$\)" <<<"$unique_line"
-				done < <(echo "$unique_lines")
-				[ -v D ] && echo -e "\nThe new list contains line(s), which has(ve) no pattern.
-unique_lines [--->\n$unique_lines\n<---]
-This could happen if there was just a file with a unique name or some file has
-  managed to appear more than once via another pattern, and another file became
-  an outsider due to LIST_ITEMS_COUNT limit, then that’s a problem." >>$dbg_file
-			}
-			VIDEOFILES=`echo -e "$used_matches"`
-			LIST_TO_CHOOSE_FROM="$VIDEOFILES"
+		[ -v NO_AID ] || echo ' ↙ Pick a number from the list.'
+		[ ${FUNCNAME[1]} = watch ] && [ $HEURISTICS_LEVEL -ne 0 ] && {
+				[ -v D ] && dbg_file="$DEBUG_DIR/choose_from_[watch]"
+				[ -v group_patterns ] || create_groups_for_the_list || return $? # L1 HEU
+				arrange_groups || return $?                                      # L1 HEU
+				build_the_list || return $?                                      # L1/L2 HEU
 		}|| echo -e "$LIST_TO_CHOOSE_FROM" | grep -niG "\($KEYWORD\|$\)"
 
 		unset another_view prompt_heuristics_up prompt_heuristics_down
-		[ ${FUNCNAME[1]} = watch -a -v RUN_IN_CYCLE ] && {
+		[ ${FUNCNAME[1]} = watch -a "$MODE" = episodes ] && {
 			[ $HEURISTICS_LEVEL -gt 0 -a -v list_variants_available ] && {
 				local another_view="View: $b[${GROUP_INDEX:=1}/${#group_patterns[@]}]$s, $g<Tab>$s to alter. "
 			}
@@ -1077,8 +1016,8 @@ This could happen if there was just a file with a unique name or some file has
 #			&& local prompt_heuristics_up="$g<H>$s to raise heuristics level"
 			case $HEURISTICS_LEVEL in
 				0) local heu_lvl_as_txt='Off';;
-				1) local heu_lvl_as_txt='Normal';;
-				2) local heu_lvl_as_txt='Extended';;
+				1) local heu_lvl_as_txt='On';;
+				2) local heu_lvl_as_txt='On+Ext.';;
 			esac
 			local prompt_heuristics_up="H. level: $b[$heu_lvl_as_txt]$s, $g<h>$s to change."
 #		[ $HEURISTICS_LEVEL -gt 0 ] && {
@@ -1101,9 +1040,8 @@ This could happen if there was just a file with a unique name or some file has
 
 		# local is poinless for the second one, because big cycle and <TAB>.
 		unset reply reply_is_ready
-		local up=$'\e[A'        # Use C-v <key> to print its escape sequence.
-		local down=$'\e[B'
-		local backspace=$'\177'     # Octals work, too!
+		# Use C-v <key> to print its escape sequence. P.S. Octals work, too!
+		local up=$'\e[A' down=$'\e[B' backspace=$'\177' F1=$'\e[11~' # requires second read to catch 4 chars, wat do?
 		until [ -v reply_is_ready ]; do
 			[ ${#reply} -gt 5 ] && reply=${reply:0:5}
 			read -sn1 -p "$reply"
@@ -1113,10 +1051,10 @@ This could happen if there was just a file with a unique name or some file has
 #			}
 
 			[ "$REPLY" ] && {
-				[ "$REPLY" = $'\t' ] && {
-					[ -v list_variants_available ] && ROTATE_PATTERN_LIST=t
-					echo && continue 2
-				}
+				[ ${FUNCNAME[1]} = watch -a "$REPLY" = $'\t' ] \
+					&& [ -v list_variants_available ] && ROTATE_PATTERN_LIST=t \
+					&& echo && continue 2
+
 				# [ "$REPLY" = 'H' ] && {
 				# 	[ $HEURISTICS_LEVEL -lt $MAX_HEURISTICS_LEVEL ] &&
 				# 	let HEURISTICS_LEVEL++
@@ -1161,8 +1099,10 @@ This could happen if there was just a file with a unique name or some file has
 								&& reply=$LIST_ITEMS_COUNT \
 								|| let reply--
 					}
+				elif [ "$REPLY" = "$F1" ]; then
+					[ -v NO_AID ] && unset NO_AID || NO_AID=t
 				else
-					[[ "$REPLY" =~ ^[0-9]$ ]] && reply="$reply$REPLY"
+					[[ "$REPLY" =~ ^[0-9]$ ]] && reply+="$REPLY"
 				fi
 				echo -en "\r\e[K$prompt_2nd_line" # \K lear line
 			}||{ reply_is_ready=t; echo; }
@@ -1181,8 +1121,59 @@ This could happen if there was just a file with a unique name or some file has
 return 0
 }
 
+# A “group” is nothing more, but its index.
+# Data of each record are contained in group_* arrays elements having
+#   corresponding index. No variable should be named with prefix “group_”
+#   unless it is supposed to contain the actual group data of some sort
+#  (certain functions operating on groups use this prefix for automatization,
+#   because it would be a pain to rewrite all these keys every now and then if
+#   something changes).
+
+# TAKES:
+#     $1 — pattern
+#     $2 — matches
+#     $3 — matches_count
+#     $4 — occupied numbers
+#     $5 — maximum number length
+group_create() {
+	group_patterns[${#group_patterns[@]}]=$1
+	group_matches[${#group_patterns[@]}-1]=$2
+	group_matches_count[${#group_patterns[@]}-1]=$3
+	group_occupied_numbers[${#group_patterns[@]}-1]=$4
+	group_max_number_length[${#group_patterns[@]}-1]=$5
+}
+
+# TAKES:
+#     $1 — source group index
+#     $2 — destination group index
+group_copy() {
+	local group
+	for group in ${!group_@}; do
+		local group1=$group[$1]
+		local group2=$group[$2]
+		eval $group2=\""${!group1}"\"
+	done
+}
+
+# TAKES:
+#     $1 — index of the group to delete
+group_delete() {
+	for group in ${!group_@}; do unset $group[$1]; done
+}
+
+# TAKES:
+#     $1 — index of the group A
+#     $2 — index of the group B
+group_swap() {
+	local buffer_index=${#group_patterns[@]}
+	group_copy $1 $buffer_index
+	group_copy $2 $1
+	group_copy $buffer_index $2
+	group_delete $buffer_index
+}
+
 # This function’s purpose is to create patterns that file names in the current
-#   path match against, so build_the_list() could build (and rebuild)
+#   path match against, so arrange_groups() could build (and rebuild)
 #   the file list in accordance with the conception that we must line up
 #   the list in the correct order of episodes.
 create_groups_for_the_list() {
@@ -1190,16 +1181,14 @@ create_groups_for_the_list() {
 		dbg_file="$DEBUG_DIR/patterns"
 		echo "$LIST_TO_CHOOSE_FROM" >"$DEBUG_DIR/patterns_ltcf"
 	}
+
+	# Level 1 heuristics.
+	# If some filenames conform with a certain pattern, then numbers in them
+	#   must show sequence presence. Each such pattern will be called a group.
+	#   Several patterns may comprise same elements, thus allowing to signifi-
+	#   cantly change the order by simply rearranging those groups.
+	# Filename which don’t belong to any sequence forms a group from itself.
 	unset group_patterns group_matches group_matches_count
-	# In origin this function was a part of another function where is was
-	#   checking the list of possible candidates to $VIDEOFILE variable
-	#   (at the end of the “eval” in watch()), and those ones were really
-	#   existed files. But now it’s part of “choose_from” function, so
-	#   the list passing to it may be list of folders, subfolders, video,
-	#   subtitle files et cetera.
-	#
-	# Just don’t believe ↙that “filename” is an actual filename. I just couldn’t
-	#   imagine a more proper name.
 	while IFS= read -r filename; do
 		[ -v D ] && echo "FN: “$filename”." >>$dbg_file
 		# Match current filename against known patterns
@@ -1233,6 +1222,7 @@ create_groups_for_the_list() {
 			parts_combined=t
 		}
 
+		unset inc_patterns_found_a_sequence_for_this_file
 		for ((i=0; i<${#MAPFILE[@]}; i++)); do
 			unset parts_combined
 			[ -v D ] && {
@@ -1248,7 +1238,6 @@ create_groups_for_the_list() {
 				echo -en "\n\tLeft part: “$left_part”.\n\tRight part: “$right_part.”
 \tIs this a number?\t" >>$dbg_file
 			}
-			unset inc_patterns_found_a_sequence_for_this_file
 			if  [[ "${MAPFILE[i]}" =~ ^[0-9]+$ ]];  then
 				[ -v D ] && echo 'Yes.' >>$dbg_file
 				# parts combined beforehands if D is set
@@ -1320,11 +1309,11 @@ create_groups_for_the_list() {
 					[ -v D ] && echo -e '\t Unsetting pattern with incremented number and both (left and right) parts
 \t   of the filename in attempt to avoid pattern duplicate.' >>$dbg_file
 				}
-				for ((j=0; j<${#inc_patterns[@]}; j++)) do
+				for ((j=0; j<${#inc_patterns[@]}; j++)); do
 				[ -v D ] && echo -en "\t\tInc. pattern: “${inc_patterns[j]}”.\n\t\t\tSequence found? " >>$dbg_file
 				matches=$(echo "$LIST_TO_CHOOSE_FROM" | sed -n '/'"${inc_patterns[j]}"'/p' )
 				if  [ "$matches" ];  then
-					local inc_patterns_found_a_sequence=t
+					local inc_patterns_found_a_sequence_for_this_file=t
 					[ -v D ] && echo 'Yes.' >>$dbg_file
 					# Okay, there is at least two files that show sequence in that place.
 					#   I mean, at this part of filename, MAPFILE[i].
@@ -1350,48 +1339,46 @@ create_groups_for_the_list() {
 							[ -v D ] && echo -e "Yes.\nADD\t\t\tMultinum pattern: “${multinum_patterns[j]}”." >>$dbg_file
 							# TODO: make some flag to define the situation when no number is present. # Er… how’s that?
 							# I thouhgt about renaming these variables to fname_*, but  group_* clearly points at the place of origin.
-							group_patterns[${#group_patterns[@]}]="${multinum_patterns[j]}"
-							group_matches[${#group_patterns[@]}-1]="$matches"
-							group_matches_count[${#group_patterns[@]}-1]=$matches_count
-							group_occupied_numbers[${#group_patterns[@]}-1]=`sed`
-
-# must somehow extract numbers from all the filenames that matched against the multinum pattern
-#   and write them to another array group_occupied_numbers
-
-
-
-
+							group_create \
+								"${multinum_patterns[j]}" \
+								"$matches" \
+								$matches_count \
+								"$(sed -n "s/${multinum_patterns[j]}/\1/p" <<<"$matches")" \
+								0
+							while IFS= read number; do
+								[ "${#number}" -gt "${group_max_number_length[${#group_patterns[@]}-1]}" ] \
+									&& group_max_number_length[${#group_patterns[@]}-1]=${#number}
+							done < <(echo "${group_occupied_numbers[${#group_patterns[@]}-1]}")
 						} # list of matches is unique
-					else  [ -v D ] && echo -e "\n#\t\t\tMULTINUM EXPRESSION FAILED!
-\t\t\tSequence was found, but multinum pattern couldn’t find even two filenames.\n" >>$dbg_file; fi # multinumber pattern found two or more matches
-				else
-					[ -v D ] && echo 'No.' >>$dbg_file
-					# If this test was for the last number found in filename,
-					#   and this was the last inc_pattern tested against this
-					#   filename, and there is still nothing, that means we’ve
-					#   found a unique file that doesn’t form a sequence and
-					#   will never form a group of itself if we won’t do it here
-					#   and now.
-					[ $i -eq $((${#MAPFILE[@]}-1)) ] \
-						&& [ $j -eq $((${#inc_patterns[@]}-1))] \
-						&& [ ! -v inc_patterns_found_a_sequence_for_this_file ] && {
-						[ -v D ] && echo 'And this file happened to be unique enough to create a group of its own!' >>$dbg_file
-						group_patterns[${#group_patterns[@]}]="$(escape_for_sed_pattern "$filename")"
-						group_matches[${#group_patterns[@]}-1]="$filename"
-						group_matches_count[${#group_patterns[@]}-1]=1
-
-# must find all the numbers and leave only those that match any of numbers in sequence groups by lenght (usually it must be 2)
-# So, if there would be a “hole” in numbers, we could replace insufficient filenames from the uniques. But only if lenght matches,
-#  and this substitute is the only possible.
-
-
-					}
-				fi # inc_pattern[j] found a sequence (non-empty match list)
+					else
+						[ -v D ] && echo -e "\n#\t\t\tMULTINUM EXPRESSION FAILED!
+\t\t\tSequence was found, but multinum pattern couldn’t find even two filenames.\n" >>$dbg_file
+					fi # if multinumber pattern found two or more matches
+				else  [ -v D ] && echo 'No.' >>$dbg_file;  fi # if inc_pattern[j] found a sequence (non-empty match list)
 				done # for j in inc_patterns[@]
-			else [ -v D ] && echo 'No.' >>$dbg_file;  fi  # MAPFILE[i] is a number
+			else [ -v D ] && echo 'No.' >>$dbg_file;  fi  # if MAPFILE[i] is a number
 		done # for i in MAPFILE[@]
+		[ ! -v inc_patterns_found_a_sequence_for_this_file ] && {
+			[ -v D ] && \
+				echo 'This file happened to be unique enough to create a group from itself!' >>$dbg_file
+			group_create \
+				"$(escape_for_sed_pattern "$filename")" \
+				"$filename" \
+				1 \
+				"$(sed -r 's/[^0-9]+/ /g; s/^\s//; s/\s$//  #hypotetical!'<<<"$filename"))" \
+				-1 # because potential episode numbers are only hypotetical
+		}
 	done  < <(echo "$LIST_TO_CHOOSE_FROM")  # $LIST_TO_CHOOSE_FROM _never_ has literal '\n' here.
-return 0
+
+
+# Придумать как сделать заполнение дыр.
+
+# Функции для переброски значений массивов, создания новой записи в массивах?
+
+# Побольше readarray? matches_as_numbers прямо в create_groups…?
+
+
+	return 0
 }
 
 # EXPECTS:
@@ -1435,7 +1422,16 @@ escape_for_sed_pattern() {
 }
 
 
-build_the_list() {
+arrange_groups() {
+# echo -----
+# echo 'ENTERED ARRANGE_GROUPS (start)'
+# echo -----
+# local group
+# for group in ${!group_@}; do declare -p $group; done
+# unset group
+# echo -----
+# echo 'ENTERED ARRANGE_GROUPS (end)'
+# echo -----
 	[ -v D ] && {
 		dbg_file="$DEBUG_DIR/pattern_groups"
 		declare -p group_patterns group_matches group_matches_count >>$dbg_file
@@ -1449,7 +1445,7 @@ build_the_list() {
 	}
 
 	[ ${#group_patterns[@]} -gt 1 ] \
-		&& list_variants_available=${#group_matches_count[@]}
+		&& list_variants_available=${#group_patterns[@]}
 
 	[ -v list_variants_available ] && {
 		[ -v D ] && echo "List variants available: $list_variants_available." >>$dbg_file
@@ -1459,19 +1455,26 @@ build_the_list() {
 			# ┌─────────────────────>──────────┐
 			# ^   TAB in menu rotates groups   v
 			# └──────────<─────────────────────┘
-			patterns_buffer="${group_patterns[0]}"
-			matches_buffer="${group_matches[0]}"
-			matches_count_buffer="${group_matches_count[0]}"
+# set -x
+			local buffer_index=${#group_patterns[@]}
+			group_copy 0 $buffer_index
 			for ((i=1; i<${#group_patterns[@]}; i++)); do
-				group_patterns[i-1]="${group_patterns[i]}"
-				group_matches[i-1]="${group_matches[i]}"
-				group_matches_count[i-1]="${group_matches_count[i]}"
+				group_copy $i $((i-1))
 			done
-			group_patterns[${#group_patterns[@]}-1]="$patterns_buffer"
-			group_matches[${#group_patterns[@]}-1]="$matches_buffer"
-			group_matches_count[${#group_patterns[@]}-1]="$matches_count_buffer"
+			group_copy $buffer_index $((${#group_patterns[@]}-2))
+			group_delete $buffer_index
+# set +x
 			[ $((++GROUP_INDEX)) -gt ${#group_patterns[@]} ] && GROUP_INDEX=1 # why not 0?
 			[ -v D ] && declare -p GROUP_INDEX >>$dbg_file
+# echo -----
+# echo 'AFTER ROTATION ARRANGE_GROUPS (start)'
+# echo -----
+# local group
+# for group in ${!group_@}; do declare -p $group; done
+# unset group
+# echo -----
+# echo 'AFTER_ROTATION ARRANGE_GROUPS (end)'
+# echo -----
 			unset ROTATE_PATTERN_LIST
 		}||{
 			[ -v D ] && echo 'SORTING' >>$dbg_file
@@ -1484,15 +1487,7 @@ build_the_list() {
 						( [ ${group_matches_count[i]} -eq ${group_matches_count[j]} ] &&
 							[[ "${group_patterns[i]}" > "${group_patterns[j]}" ]] ) ) && {
 						# Biggest number of matches → to the top of the array.
-						buffer="${group_patterns[i]}"
-						group_patterns[i]="${group_patterns[j]}"
-						group_patterns[j]="$buffer"
-						buffer="${group_matches[i]}"
-						group_matches[i]="${group_matches[j]}"
-						group_matches[j]="$buffer"
-						buffer="${group_matches_count[i]}"
-						group_matches_count[i]="${group_matches_count[j]}"
-						group_matches_count[j]="$buffer"
+						group_swap $j $i
 					}
 				done
 			done
@@ -1504,12 +1499,89 @@ build_the_list() {
 This is not a bug.' >>$dbg_file
 		declare -p group_patterns group_matches group_matches_count >>$dbg_file
 	}
+	return 0
+}
 
-	# Resort all matches in each group_matches[i] comparing numbers as numbers.
-	[ $HEURISTICS_LEVEL -gt 1 ] && {
+build_the_list() {
+
+# EP_NUMBERS=()
+#    watch needs a variable containing list of episodes. 1 2 3 4? (guessed by HEU2) L5 (list item 5),
+#    because we can’t store patterns like that: EP_PATTERN1_14 EP_PATTERN_15_25, while HEU2 will be able
+#    to break groups.
+# ${#EP_NUMBERS[@]}
+#    will serve as the total count of files
+
+# MANUAL_ARRRANGEMENT
+	for ((i=0; i<${#group_patterns[@]}; i++)); do
+ :
+	done
+
+	[ $HEURISTICS_LEVEL -lt 2 ] && {
+		# The idea is providing a “new-list-to-choose-from” which would be
+		#   an array, so we could highlight not a keyword and hypotetic(?)
+		#   episode number, but a part of line that matched current pattern.
+		local lcount=1 match
+		unset used_matches
+		[ -v D ] && {
+			dbg_file="$DEBUG_DIR/choose_from_while_in_watch"
+			declare -p group_patterns group_matches group_matches_count >>$dbg_file
+		}
+		for ((i=0; i<${#group_patterns[@]}; i++)); do
+			for ((j=0; j<${group_matches_count[i]}; j++)); do
+				local pat_for_grep=${group_patterns[i]%\[^0-9]\.\**}
+				[ "$pat_for_grep" = "${group_patterns[i]}" ] \
+					&& pat_for_grep=${group_patterns[i]#^\.\*\[^0-9]}
+				unset new_match_found
+				until [ -v new_match_found ]; do
+					match=`sed -n $((j+1))p <<<"${group_matches[i]}"`
+					[ $i -eq 0 ] && break # matches of the 1st pattern are unique
+					if  echo -e "$used_matches" | grep -qF "$match";  then
+						[ $((++j)) -eq ${group_matches_count[i]} ] && break 2
+					else  local new_match_found=t;  fi
+				done
+				echo -en "${g}$lcount:${s}"
+				[ -v SHOW_GROUP_INDICATOR ] && \
+					echo -en "${g}$b«$i» «${group_occupied_numbers[i]}» «${group_max_number_length[i]}»${s}"
+				echo "$match" | grep -iG "$pat_for_grep" # BGE, basic regex
+				used_matches="${used_matches:+$used_matches\n}$match"
+				# We use group_matches[i], because HEU LVL2 does sorting in place
+				[ $((++lcount)) -gt $LIST_ITEMS_COUNT ] && break 2
+			done
+		done
+
+		[ -v D ] && declare -p used_matches >>$dbg_file
+		# This is subject for testing. Since each filename that doesn’t
+		#   conform to a known pattern must start a new sequence, there
+		#   shouldn’t be any filenames “on their own”. But to be sure
+		#   we won’t lost them if they’ve suddenly appeared…
+		# used_matches=`echo -e "$used_matches"`
+# 		unique_lines=`echo -e "${used_matches:+${used_matches}\n}$LIST_TO_CHOOSE_FROM" | sort | uniq -u` # not "sort -u"!
+# 		[ "$unique_lines" ] && {
+# echo -e  "\n ЕСТЬ unique lines!\n"
+# 			used_matches="${used_matches:+${used_matches}\n}$unique_lines"
+# 			used_matches=`echo -e "$used_matches"`
+# 			while read unique_line; do
+# 				echo -en "${g}$((lcount++)):${s}"
+# 				[ -v D ] && echo -en "${g}-:${s}"
+# 				grep -iG "\($KEYWORD\|$\)" <<<"$unique_line"
+# 			done < <(echo "$unique_lines")
+# 			[ -v D ] && echo -e "\nThe new list contains line(s), which has(ve) no pattern.
+# unique_lines [--->\n$unique_lines\n<---]
+# This could happen if there was just a file with a unique name or some file has
+#   managed to appear more than once via another pattern, and another file became
+#   an outsider due to LIST_ITEMS_COUNT limit, then that’s a problem." >>$dbg_file
+# 		}
+		VIDEOFILES=`echo -e "$used_matches"`
+		LIST_TO_CHOOSE_FROM="$VIDEOFILES"
+	}||{
+	# Level 2 heuristics.
+	# We discard the way of building LIST_TO_CHOOSE_FROM by arranging groups
+	#   and try to deeper, into where sequences don’t spread. It is case
+	#   when the folder contains a hodge-podge, or there are several tiny
+	#   sequences.
+	# Many conflict situations may rise, so the place swapping is only performed
+	#   when there are not more than one candidate for that place.
 		[ -v D ] && echo -e '\n\nHEU LVL 2 start.' >>$dbg_file
-		# Careful from here. This seems to build that way to work for both
-		#   heuristic levels, so don’t accidentally put the cycle inside [ $HEU -gt 1 ]
 		for ((i=0; i<${#group_matches[@]}; i++)); do
 			# Okay, we have them. But now it’s not much far away from the “sort” command.
 			# Sort would find these numbers too (and put 1 after 10), we are a step forward
@@ -1523,11 +1595,12 @@ This is not a bug.' >>$dbg_file
 			}
 			# Removing leading zeroes just to avoid possible misinterpretation as octal.
 			subst_pattern=$(echo "${group_patterns[i]}" | sed 's/\(\[0-9]\\+\)/0*\\([0-9]\\+\\)/' )
-			# We’re going to do a bubble sort against $matches_*, and that
-			#   way we shall run this number extractor twice at every ite-
-			#   ration to compare numbers, but creating a list of numbers
-			#   and doing comparsion among them is faster.
-			unset matches_as_array matches_as_numbers
+			# We’re going to do a bubble sort against $matches_*,
+			#   and to accomplish that, we save matched filenames and what
+			#   is supposed to be episode numbers which formed a sequence,
+			#   into respective arrays, so we could rebuild group_matches[i]
+			#   not from scratch, but in a new way.
+			local matches_as_array matches_as_numbers buffer
 			readarray -t matches_as_array < <(echo -e "${group_matches[i]}")
 			readarray -t matches_as_numbers < <(echo -e "${group_matches[i]}" | sed -n "s/$subst_pattern/\1/p")
 			[ -v D ] && declare -p matches_as_array matches_as_numbers >>$dbg_file
@@ -1536,7 +1609,7 @@ This is not a bug.' >>$dbg_file
 				for ((k=$j+1; k<${#matches_as_array[@]}; k++)); do
 					# Big numbers (of an episode) → to the end of the list
 					[[ "${matches_as_numbers[j]}" =~ ^[0-9]+$
-							&& "${matches_as_numbers[k]}" =~ ^[0-9]+$ ]] ||	return `err heu2_nan`
+							&& "${matches_as_numbers[k]}" =~ ^[0-9]+$ ]]  || return `err heu2_nan`
 					[ ${matches_as_numbers[j]} -gt ${matches_as_numbers[k]} ] && {
 						buffer="${matches_as_array[j]}"
 						matches_as_array[j]="${matches_as_array[k]}"
@@ -1661,24 +1734,29 @@ watch() {
 			#   sequentially playing files to LIMIT_SEQUNCE.
 			# Add check to stop cycle when last episode finished?
 			#   -e for “stop at the end”?
-			if [ -v IT_IS_NEXT_ITERATION ]; then
+			if  [ -v IT_IS_NEXT_ITERATION ];  then
 				# If playback was interrupted, play last watched episode
 				#   once again, otherwise increment episode number and play
 				#   the next one otherwise.
 				[ -v RESUME_AND_REPLAY ] || let VIDEO_NUMBER++
-				[ -v RESUME_FROM_PREVIOUS ] \
-					&& [ $VIDEO_NUMBER -gt 0 ] && let VIDEO_NUMBER--
+				[ -v RESUME_FROM_PREVIOUS ] && {
+					[ $VIDEO_NUMBER -gt 0 ] \
+						&& let VIDEO_NUMBER-- \
+						|| VIDEO_NUMBER=$VIDEOFILES_COUNT
+				}
 				unset RESUME_AND_REPLAY RESUME_FROM_PREVIOUS
 				[ $VIDEO_NUMBER -gt `echo -e "$VIDEOFILES" | wc -l` ] \
-					&& VIDEO_NUMBER=1
+					&& VIDEO_NUMBER=1 && STOP=t && return 0 # needs a test case
 				VIDEOFILE=`echo -e "$VIDEOFILES" | sed -n "$VIDEO_NUMBER p"`
 			else
 				# The beginning of watching cycle
 				[ `echo "$VIDEOFILES" | wc -l` -gt 1 ] && {
 					choose_from "$VIDEOFILES" || return $?
+					VIDEOFILES="$LIST_TO_CHOOSE_FROM" # now rearranged
+					VIDEOFILES_COUNT="LIST_ITEMS_COUNT"
 					VIDEOFILE="$CHOSEN_ITEM"
 					VIDEO_NUMBER=$CHOSEN_NUMBER
-				}||{
+				}||{ # eh? 1 videofile in eps mode?!
 					[ -v RUN_IN_CYCLE ] && {
 						warn 'Cannot start watching cycle: only one video file.'
 						unset RUN_IN_CYCLE
@@ -1699,14 +1777,15 @@ watch() {
 			[ -v REMEMBER_SUB_AND_AUDIO_DELAY ] && MPLAYER_OPTS+=" --write-filename-in-watch-later-config"
 			;;
 		dvd|bd)
+			local device protocol
 			unset VIDEOFILE
 			if [ $MODE = dvd ]; then
-				[ -v DVD_BD_NAV ] && local protocol=dvdnav || local protocol=dvd
-				local device='dvd-device'
+				[ -v DVD_BD_NAV ] && protocol=dvdnav || protocol=dvd
+				device='dvd-device'
 			else
 				# bdnav is only supported by the mpv mplayer.
-				[ -v DVD_BD_NAV ] && local protocol=bdnav || local protocol=${mp_opts[bd-protocol]}
-				local device='bluray-device'
+				[ -v DVD_BD_NAV ] && protocol=bdnav || protocol=${mp_opts[bd-protocol]}
+				device='bluray-device'
 			fi
 
 			# Replace it with MPLAYER_OPTS+=" ${dashes}profile protocol.$protocol"
@@ -1983,6 +2062,9 @@ screenshots_postprocessing() {
 				echo -e "$new_screenshots" | ${taskset_cmd:-} parallel --eta compress_screenshot
 				export -nf compress_screenshot
 			else
+				cpu_cores=`grep -c processor /proc/cpuinfo`
+				[[ "$cpu_cores" =~ ^[0-9]+$ && "$cpu_cores" -gt 1 ]] \
+					&& warn 'No parallel was found. Using 1 CPU core.'
 				for shot in $new_screenshots; do
 					${taskset_cmd:-} compress_screenshot "$shot"
 				done
@@ -2079,10 +2161,12 @@ export_session_data() {
 			# NB extra backslash in sed replacement. It’s there because sed called in a subshell.
 			local videofiles_in_one_row="`echo -n "$(escape_for_sed_replacement "$VIDEOFILES")" | sed ':be N; s/\n/\\\n/g; b be'`"
 			data+="\nVIDEOFILES='$videofiles_in_one_row'"
+			data+="\nVIDEOFILES_COUNT=$VIDEOFILES_COUNT"
 			data+="\nVIDEO_NUMBER=$VIDEO_NUMBER"
 			# For what reason escape_for_sed_pattern was used here?
 			#   was it just a mistake or not?
-			data+="\nEP_PATTERN='$(escape_for_sed_replacement "${EP_PATTERN//\\/\\\\\\}")'"
+#data+="\nEP_NUMBERS"
+data+="\nEP_PATTERN='$(escape_for_sed_replacement "${EP_PATTERN//\\/\\\\\\}")'"
 			data+="\nINTERRUPTED=${INTERRUPTED:-f}"
 		}
 		data+="\nSCREENSHOT_DIR='$(escape_for_sed_replacement "$SCREENSHOT_DIR")'"
