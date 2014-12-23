@@ -1,24 +1,12 @@
 #! /usr/bin/env bash
 
-
-    # Для каждой группы ПОСЛЕ ПОДТВЕРЖДЕНИЯ её состояния определить EP_PATTERN_1_14, EP_PATTERN_1$
-    # Запоминать паттерны для каждой группы
-
-# alter 3-rd or maker 4-th heuristics level, when it sorts by ep numbers attached to groups.
-    # No-no-no. Just assign leftover files to each own group.
-    # 4-th level be manual correction of the list
-
-# Heu 3 (experimental features)
-# Heu 2 ()
-# Heu 1 (use division by groups of sequences)
-# Heu off (use `sort`)
-
-
+### Multiple manual rearrangement is broken.
+## Проверить на Wiki пример, -A → --no-hints
+## EP_NUMBERS как экспортируется, как печатается номер последнего эпизода, как играется после resume
+## EP_NUMBERS[i] надо подсвечивать для одиночек в выхлопе, когда есть эвристика
 # Create journal header to contain version for compatibility check.
-
-# Strange bug in multinum patterns. 4 in ….mp4 is substituted twice?
-
-# Write bash completion module (at least for -r)
+#? Write bash completion module (at least for -r)
+#? А ещё myanimelist
 
 
 # watch.sh
@@ -86,7 +74,7 @@ To resume watching cycle:
 List recently entered keywords (useful for -r)
     watch.sh -j
 
-Checking for update
+Check for updates
     watch.sh -u
 
 For the complete list of options see man watch.sh or call this script like
@@ -156,11 +144,13 @@ EOF
 }
 
 # Respect the environment.
-[ -v r ] || r='\e[0;31m'    # red
-[ -v g ] || g='\e[0;32m'    # green
-[ -v y ] || y='\e[0;33m'    # yellow
+[ -v d ] || d='\e[39m'    # default fg
+[ -v r ] || r='\e[31m'    # red
+[ -v g ] || g='\e[32m'    # green
+[ -v y ] || y='\e[33m'    # yellow
 [ -v s ] || s='\e[0m'    # stop
 [ -v b ] || b='\e[1m'    # bright/bold
+[ -v rb ] || rb='\e[21m'    # reset bold/bright
 [ -v u ] || u='\e[4m'    # underlined
 
 # I’ve read changelog to v4.3 and can say that the single useful option, i.e.
@@ -275,6 +265,10 @@ This might be caused by a broken file, truncated entry at the end of the journal
 			code=38; msg='Aborted by user.';;
 		opt_requires_an_arg)
 			code=39; msg="Option “$option” requires an argument.";;
+		opt_interval)
+			code=40; msg="Option “interval” requires a number of seconds to wait as an argument.";;
+		opt_gind)
+			code=41; msg="Option “group-indicator” takes four characters.";;
 		*)
 			code=107; msg='Unknown error.';;
 	esac
@@ -305,6 +299,7 @@ HEURISTICS_LEVEL=0
 
 JOURNAL=~/.watch.sh/journal
 JOURNAL_MAX_SIZE="64K" # w/o suffix for bytes, K for KiB, M for MiB etc.
+JOURNAL_MINVER='20141222'
 [ -d ~/.watch.sh ] || {
 	mkdir -m755 ~/.watch.sh/ >/dev/null \
 		|| exit `err homedir`
@@ -313,6 +308,9 @@ JOURNAL_MAX_SIZE="64K" # w/o suffix for bytes, K for KiB, M for MiB etc.
 VERSION="20141121"
 CHECK_FOR_UPDATES=21 # each N days
 updater_timestamp=~/.watch.sh/updater_timestamp
+[ -f $updater_timestamp ] || touch $updater_timestamp
+
+GROUP_INDICATOR='┌│└⋅'
 
 # DEBUG MODE
 # No function aggregator for debug messages because test [ -v D ]
@@ -330,16 +328,18 @@ updater_timestamp=~/.watch.sh/updater_timestamp
 #   independetly of whether the -a|--alternative option is passed.
 opts=`getopt \
              --options \
-                       aAcCd:eEFhH:Ij::JlM:m:nNrRs:S:t:uTv \
+                       acCd:eEFhH:Ij::JlM:m:nNrRs:S:t:uTv \
              --longoptions \
 basedir:,basepath:,\
 bashrc::,\
 check-for-update::,\
 compat:,\
 dvd-bd-nav,\
+group-indicator:,\
 help,\
 heuristics-level:,\
 ignore-disks,\
+interval:,\
 list-journal::,\
 journal-max-size:,\
 jpeg-compression::,\
@@ -352,7 +352,7 @@ mplayer-command:,\
 mplayer-opts:,\
 my-increment:,\
 my-decrement:,\
-no-aid,\
+no-hints,\
 no-color,\
 no-journal,\
 remember-sub-and-audio-delay,\
@@ -384,8 +384,8 @@ while true; do
 			MATCH_NUMBER=t # implies -n
 			shift
 			;;
-		-A|'--no-aid') # hide hints
-			NO_AID=t
+		'--no-hints') # hide hints
+			NO_HINTS=t
 			shift
 			;;
 		'--bashrc') # I know I could simply add -i to shebang in order to make
@@ -427,6 +427,10 @@ while true; do
 				&& HEURISTICS_LEVEL=$MAX_HEURISTICS_LEVEL
 			shift
 			;;
+		'--group-indicator')
+			[[ "$2" =~ .{4} ]] && GROUP_INDICATOR="$2" || exit `opt_gind`
+			shift 2
+			;;
 		'--heuristics-level')
 			[[ "$2" =~ ^[0-9]+$ ]] \
 				&& [ $2 -le $MAX_HEURISTICS_LEVEL ] \
@@ -466,6 +470,10 @@ while true; do
 		-I|'--ignore-disks')
 			IGNORE_DISKS=t
 			shift
+			;;
+		'--interval')
+			[[ "$2" =~ ^[0-9]$ ]] && INTERVAL="$2" || exit `err opt_interval`
+			shift 2
 			;;
 		-j|'--list-journal')
 			[ -z "$2" ] && JOURNAL_ENTRIES=10 || {
@@ -832,12 +840,10 @@ do_initial_search() {
 			[ -v IGNORE_DISKS ] && EXPECTED_SUBFOLDERS+=" VIDEO_TS BDMV "
 			unset same_path # important!
 			check_for_subfolders || return $?
-			[ -v IGNORE_DISKS ] || {
-				[ "`find "$BASEPATH/$FIRST_MATCH${SUBFOLDERS:-}" -type d -name "VIDEO_TS"`" ] \
-					&& MODE='dvd'
-				[ "`find "$BASEPATH/$FIRST_MATCH${SUBFOLDERS:-}" -type d -name "BDMV"`" ] \
-					&& MODE='bd'
-			}
+			[ "`find "$BASEPATH/$FIRST_MATCH${SUBFOLDERS:-}" -type d -name "VIDEO_TS"`" ] \
+				&& { [ -v IGNORE_DISKS ] && INTERVAL=0 || MODE='dvd'; }
+			[ "`find "$BASEPATH/$FIRST_MATCH${SUBFOLDERS:-}" -type d -name "BDMV"`" ] \
+				&& { [ -v IGNORE_DISKS ] && INTERVAL=0 ||  MODE='bd'; }
 # FIXME: Here must be check for the count of VIDEOFILES found at the end of
 #        the path (with SUBFOLDERS). If count==1, change mode to single and
 #        correct paths for “single” case appropriately. If there are
@@ -958,11 +964,12 @@ choose_from() {
 	LIST_TO_CHOOSE_FROM=`sort <<<"$1"`
 	LIST_ITEMS_COUNT=`echo -e "$LIST_TO_CHOOSE_FROM" | wc -l`
 	local cols=`tput cols`
-	unset CHOSEN_NUMBER list_variants_available ROTATE_PATTERN_LIST group_patterns GROUP_INDEX
+	unset CHOSEN_NUMBER list_variants_available ROTATE_PATTERN_LIST group_patterns INDEX_AT_THE_TOP
 	until [ -v CHOSEN_NUMBER ]; do
+		unset EP_NUMBERS
 		# Showing current paths:
 		# V: here is shown where the script looks for videofiles at this moment
-		[ -v NO_AID ] || echo ' ↙ I currently look for videofiles here.'
+		[ -v NO_HINTS ] || echo ' ↙ I currently look for videofiles here.'
 		for ((i=0; i<${#BASEPATH[@]}; i++)); do
 			local path_to_video="${BASEPATH[i]}${FIRST_MATCH:-}${SUBFOLDERS:-}"
 			local max_width=$(($cols-4))
@@ -971,7 +978,7 @@ choose_from() {
 		done
 		# C: current working directory (CWD), the directory in which the shell
 		#    operates.
-		[ -v NO_AID ] || echo ' ↙ The directory I’m currently in.'
+		[ -v NO_HINTS ] || echo ' ↙ The directory I’m currently in.'
 		local cwd="$PWD"
 		[ ${#cwd} -gt $max_width ] && cwd="…${cwd:0-$max_width:$max_width}"
 		echo -e "C: $cwd"  | grep -iG "\($KEYWORD\|$\)"
@@ -996,127 +1003,122 @@ choose_from() {
 		[ ${FUNCNAME[1]} = screenshots_preprocessing ] && {
 			local safe_screenshot_dir="$SCREENSHOT_DIR"
 			[ ${#safe_screenshot_dir} -gt $max_width ] && ="…${safe_screenshot_dir:0-$max_width:$max_width}"
-			[ -v NO_AID ] || echo ' ↙ Screenshot directory as it was passed.'
+			[ -v NO_HINTS ] || echo ' ↙ Screenshot directory as it was passed.'
 			echo "S: $safe_screenshot_dir"
 		}
-		[ -v NO_AID ] || echo ' ↙ Pick a number from the list.'
+		[ -v NO_HINTS ] || echo ' ↙ Pick a number from the list.'
 		[ ${FUNCNAME[1]} = watch ] && [ $HEURISTICS_LEVEL -ne 0 ] && {
 				[ -v D ] && dbg_file="$DEBUG_DIR/choose_from_[watch]"
 				[ -v group_patterns ] || create_groups_for_the_list || return $? # L1 HEU
 				arrange_groups || return $?                                      # L1 HEU
 				build_the_list || return $?                                      # L1/L2 HEU
 		}|| echo -e "$LIST_TO_CHOOSE_FROM" | grep -niG "\($KEYWORD\|$\)"
+		# Just not leaving this empty if heuristics is not enabled.
+		[ -v EP_NUMBERS ] || readarray -t EP_NUMBERS < <(seq 1 $LIST_ITEMS_COUNT)
 
-		unset another_view prompt_heuristics_up prompt_heuristics_down
+		unset another_view prompt_heuristics
 		[ ${FUNCNAME[1]} = watch -a "$MODE" = episodes ] && {
-			[ $HEURISTICS_LEVEL -gt 0 -a -v list_variants_available ] && {
-				local another_view="View: $b[${GROUP_INDEX:=1}/${#group_patterns[@]}]$s, $g<Tab>$s to alter. "
+			[ $HEURISTICS_LEVEL -eq 1 -a -v list_variants_available ] && {
+				local another_view="View: $b[${INDEX_AT_THE_TOP:=1}/${#group_patterns[@]}]$s, $g<Tab>$s to rearrange. "
 			}
-#		[ $HEURISTICS_LEVEL -lt $MAX_HEURISTICS_LEVEL ] \
-#			&& local prompt_heuristics_up="$g<H>$s to raise heuristics level"
 			case $HEURISTICS_LEVEL in
-				0) local heu_lvl_as_txt='Off';;
-				1) local heu_lvl_as_txt='On';;
-				2) local heu_lvl_as_txt='On+Ext.';;
+				0) local heu_lvl_as_txt="${r}Off";;
+				1) local heu_lvl_as_txt="${g}On";;
+				2) local heu_lvl_as_txt="${g}On$rb$y+$b";;
 			esac
-			local prompt_heuristics_up="H. level: $b[$heu_lvl_as_txt]$s, $g<h>$s to change."
-#		[ $HEURISTICS_LEVEL -gt 0 ] && {
-#			unset hl comma
-#			[ ! -v prompt_heuristics_up ] && local hl=' heuristics level' || local comma=', '
-#			local prompt_heuristics_down="${comma:-}$g<h>$s to lower${hl:-}"
-#		}
+			local prompt_heuristics="Heuristics: $b[$heu_lvl_as_txt$d]$s, ${g}<h>${s} to switch. "
 		}
-		[ -v NO_AID ] || {
+		[ ${FUNCNAME[1]} = watch -a ! -v NO_HINTS ] && {
 			local num_choosing_hint="[$MY_DECREMENT↓0-9↑$MY_INCREMENT] "
 			echo ' ↙ Commands to rebuild the list in other way, if possible.'
 		}
-		local prompt_1st_line="${another_view:-}${prompt_heuristics_up:-}${prompt_heuristics_down:-}"
+		local prompt_1st_line="${another_view:-}${prompt_heuristics:-}${g}<?>${s} hints."
 		[ ${FUNCNAME[1]} = screenshots_preprocessing ] \
-			&& local return_or_skip='skip' \
-			|| local return_or_skip='return'
-		local prompt_2nd_line="Pick line $g<number>$s or press $g<Return>$s to $return_or_skip ${num_choosing_hint:-}> "
+			&& local prompt_2nd_line="Pick line $g<number>$s or press $g<Enter>$s to skip ${num_choosing_hint:-}> " \
+			|| local prompt_2nd_line="Pick line $g<number>$s and press $g<Enter>$s to confirm ${num_choosing_hint:-}> "
 		local prompt="${prompt_1st_line:+$prompt_1st_line\n}${prompt_2nd_line}"
 		echo -en "$prompt"
 
 		# local is poinless for the second one, because big cycle and <TAB>.
-		unset reply reply_is_ready
+		unset input input_is_ready
 		# Use C-v <key> to print its escape sequence. P.S. Octals work, too!
-		local up=$'\e[A' down=$'\e[B' backspace=$'\177' F1=$'\e[11~' # requires second read to catch 4 chars, wat do?
-		until [ -v reply_is_ready ]; do
-			[ ${#reply} -gt 5 ] && reply=${reply:0:5}
-			read -sn1 -p "$reply"
+		local up=$'\e[A' down=$'\e[B' backspace=$'\177' F1=$'\e[11~' # F1 requires another read to catch 4 chars, wat do?
+		until [ -v input_is_ready ]; do
+			[ ${#input} -gt 30 ] && input=${input:0:30}
+			read -sn1 -p "$input"
 			[ "$REPLY" = $'\e' ] && read -sn2 rest && REPLY+="$rest"
-#			[ $HEURISTICS_LEVEL -eq 0 ] || {
-#
-#			}
-
 			[ "$REPLY" ] && {
-				[ ${FUNCNAME[1]} = watch -a "$REPLY" = $'\t' ] \
-					&& [ -v list_variants_available ] && ROTATE_PATTERN_LIST=t \
-					&& echo && continue 2
-
-				# [ "$REPLY" = 'H' ] && {
-				# 	[ $HEURISTICS_LEVEL -lt $MAX_HEURISTICS_LEVEL ] &&
-				# 	let HEURISTICS_LEVEL++
-				# 	GROUP_INDEX=1
-				# 	echo && continue 2
-				# }
-				# [ "$REPLY" = 'h' ] && {
-				# 	[ $HEURISTICS_LEVEL -gt 0 ] &&
-				# 	let HEURISTICS_LEVEL--
-				# 	GROUP_INDEX=1
-				# 	echo && continue 2
-				# }
-				[ "$REPLY" = 'h' ] && {
-					let HEURISTICS_LEVEL++
-					[ $HEURISTICS_LEVEL -gt $MAX_HEURISTICS_LEVEL ] \
-						&& HEURISTICS_LEVEL=0
-					GROUP_INDEX=1
-					echo && continue 2
-				}
-				[ "$REPLY" = 'i' ] && {
-					[ -v SHOW_GROUP_INDICATOR ] \
-						&& unset SHOW_GROUP_INDICATOR \
-						|| SHOW_GROUP_INDICATOR=t
-					echo && continue 2
+				# Commands that must be only available in the watch function.
+				[ ${FUNCNAME[1]} = watch ] && {
+					case "$REPLY" in
+						$'\t')
+							[ -v list_variants_available ] && ROTATE_PATTERN_LIST=t \
+								&& echo && continue 2
+							;;
+						'h')
+							let HEURISTICS_LEVEL++
+							[ $HEURISTICS_LEVEL -gt $MAX_HEURISTICS_LEVEL ] \
+								&& HEURISTICS_LEVEL=0
+							INDEX_AT_THE_TOP=1
+							echo && continue 2
+							;;
+						'-'|'>'|',')
+							[[ "$input" =~ ^[-0-9,\>]+$ ]] && input+="$REPLY";;
+					esac
 				}
 
-				if [ "$REPLY" = "$backspace" ]; then
-					[ ${#reply} -gt 0 ] && reply=${reply::-1}
-				elif [ "$REPLY" = "$up" -o "$REPLY" = "$MY_INCREMENT" ]; then
-					[ "$reply" ] || reply=0
-					[[ "$reply" =~ ^[0-9]+$ ]] \
-						&& [ $reply -lt $LIST_ITEMS_COUNT ] \
-						&& let reply++ || {
-							[ $reply -gt $LIST_ITEMS_COUNT ] \
-								&& reply=$LIST_ITEMS_COUNT
-					}
-				elif [ "$REPLY" = "$down" -o "$REPLY" = "$MY_DECREMENT" ]; then
-					[ "$reply" ] || reply=1
-					[[ "$reply" =~ ^[0-9]+$ ]] \
-						&& [ $reply -gt 1 ] && {
-							[ $reply -gt $LIST_ITEMS_COUNT ] \
-								&& reply=$LIST_ITEMS_COUNT \
-								|| let reply--
-					}
-				elif [ "$REPLY" = "$F1" ]; then
-					[ -v NO_AID ] && unset NO_AID || NO_AID=t
-				else
-					[[ "$REPLY" =~ ^[0-9]$ ]] && reply+="$REPLY"
-				fi
+				# Commands that are related to number selection in any list.
+				case "$REPLY" in
+					"$backspace")
+						[ ${#input} -gt 0 ] && input=${input::-1}
+						;;
+					"$up"|"$MY_INCREMENT")
+						[ "$input" ] || input=0
+						[[ "$input" =~ ^[0-9]+$ ]] \
+							&& [ $input -lt $LIST_ITEMS_COUNT ] \
+							&& let input++ || {
+							[ $input -gt $LIST_ITEMS_COUNT ] \
+								&& input=$LIST_ITEMS_COUNT
+						}
+						;;
+					"$down"|"$MY_DECREMENT")
+						[ "$input" ] || input=1
+						[[ "$input" =~ ^[0-9]+$ ]] \
+							&& [ $input -gt 1 ] && {
+							[ $input -gt $LIST_ITEMS_COUNT ] \
+								&& input=$LIST_ITEMS_COUNT \
+								|| let input--
+						}
+						;;
+					'?')
+						[ -v NO_HINTS ] && unset NO_HINTS || NO_HINTS=t
+						echo -en '\n\n' && continue 2
+						;;
+					[0-9])
+						input+="$REPLY"
+						;;
+					esac
 				echo -en "\r\e[K$prompt_2nd_line" # \K lear line
-			}||{ reply_is_ready=t; echo; }
+			}||{
+				echo
+				[[ "$input" =~ ^[0-9]+$ || ! "$input" ]] && {
+					input_is_ready=t
+				}||{
+					MANUAL_REARRANGEMENT="$input"
+					continue 2
+				}
+			}
 		done
 
 		unset CHOSEN_ITEM # may be left from some previous call
-		[ "$reply" ] && {
-			[[ "$reply" =~ ^[0-9]+$ ]] && {
-				[ $reply -le $LIST_ITEMS_COUNT ] && [ $reply -gt 0 ] \
-					&& CHOSEN_ITEM=`echo -e "$LIST_TO_CHOOSE_FROM" | sed -n "$reply p"` \
+		[ "$input" ] && {
+			[[ "$input" =~ ^[0-9]+$ ]] && {
+				[ $input -le $LIST_ITEMS_COUNT ] && [ $input -gt 0 ] \
+					&& CHOSEN_ITEM=`echo -e "$LIST_TO_CHOOSE_FROM" | sed -n "$input p"` \
 					|| warn "Number must be a correct line number, from 1 to $LIST_ITEMS_COUNT." # copypaste, C-v etc.
-			}|| warn "“$reply” must be a number."
+			}|| warn "“$input” must be a number."
 		}
-		[ -v CHOSEN_ITEM ] && CHOSEN_NUMBER="$reply" || return `err user_declined_input`
+		[ -v CHOSEN_ITEM ] && CHOSEN_NUMBER="$input" || return `err user_declined_input`
 	done
 return 0
 }
@@ -1373,11 +1375,6 @@ create_groups_for_the_list() {
 
 # Придумать как сделать заполнение дыр.
 
-# Функции для переброски значений массивов, создания новой записи в массивах?
-
-# Побольше readarray? matches_as_numbers прямо в create_groups…?
-
-
 	return 0
 }
 
@@ -1432,6 +1429,7 @@ arrange_groups() {
 # echo -----
 # echo 'ENTERED ARRANGE_GROUPS (end)'
 # echo -----
+	[ -v MANUAL_REARRANGEMENT ] && return 0
 	[ -v D ] && {
 		dbg_file="$DEBUG_DIR/pattern_groups"
 		declare -p group_patterns group_matches group_matches_count >>$dbg_file
@@ -1440,8 +1438,9 @@ arrange_groups() {
 	#   and we have to fallback, there’s no error produced since
 	#   the list_to_choose_from still exist, so we just don’t touch it.
 	[ ${#group_patterns[@]} -eq 0 ] && {
+		# That can’t be.
 		[ -v D ] && echo 'No patterns.' >>$dbg_file
-		return 0
+		return 106
 	}
 
 	[ ${#group_patterns[@]} -gt 1 ] \
@@ -1464,8 +1463,9 @@ arrange_groups() {
 			group_copy $buffer_index $((${#group_patterns[@]}-2))
 			group_delete $buffer_index
 # set +x
-			[ $((++GROUP_INDEX)) -gt ${#group_patterns[@]} ] && GROUP_INDEX=1 # why not 0?
-			[ -v D ] && declare -p GROUP_INDEX >>$dbg_file
+			[ $((++INDEX_AT_THE_TOP)) -gt ${#group_patterns[@]} ] \
+				&& INDEX_AT_THE_TOP=1 # why not 0?
+			[ -v D ] && declare -p INDEX_AT_THE_TOP >>$dbg_file
 # echo -----
 # echo 'AFTER ROTATION ARRANGE_GROUPS (start)'
 # echo -----
@@ -1503,77 +1503,236 @@ This is not a bug.' >>$dbg_file
 }
 
 build_the_list() {
-
 # EP_NUMBERS=()
 #    watch needs a variable containing list of episodes. 1 2 3 4? (guessed by HEU2) L5 (list item 5),
-#    because we can’t store patterns like that: EP_PATTERN1_14 EP_PATTERN_15_25, while HEU2 will be able
-#    to break groups.
 # ${#EP_NUMBERS[@]}
 #    will serve as the total count of files
+	[ -v D ] && {
+		dbg_file=$DEBUG_DIR/build_the_list
+		declare -p group_patterns group_matches group_matches_count >>$dbg_file
+	}
+	[ -v MANUAL_REARRANGEMENT ] && {
+		readarray -t <<<"`echo -e ${MANUAL_REARRANGEMENT//,/\\\n}`"
+		unset MANUAL_REARRANGEMENT
+		for ((i=0; i<${#MAPFILE[@]}; i++)); do
+			[[ "${MAPFILE[i]}" =~ ^[0-9]+(-[0-9]+)?\>[0-9]+$ ]] || {
+				warn "“${MAPFILE[i]}” is not a valid rearrangement instruction."
+				warn "The format is: “10>1”, “9-11>2”, “1-3>5,7-8>1,…”."
+				return 0
+			}
+			local start="${MAPFILE[i]%>*}" \
+			      end="${MAPFILE[i]%>*}" \
+			      dest="${MAPFILE[i]#*>}"
+			      put_dest_line_first=f
+			local start="${start%-*}" \
+			      end="${end#*-}"
+			[ $start -gt $LIST_ITEMS_COUNT ] && {
+				warn "“${MAPFILE[i]}”: start value must be lower than $LIST_ITEMS_COUNT."
+				return 0
+			}
+			[ $end -lt $start ] && {
+				warn "“${MAPFILE[i]}”: end value must be lower than start value."
+				return 0
+			}
+			[ $dest -gt $LIST_ITEMS_COUNT ] && {
+				warn "“${MAPFILE[i]}”: destination value must be lower than $LIST_ITEMS_COUNT."
+				return 0
+			}
+			[ $start -eq $dest ] && {
+				warn "“${MAPFILE[i]}”: what’s the point in this?.."
+				return 0
+			}
+			[ $dest -gt $end ] && {
+				# For moves like 4>3, i.e. from the down to top, it works as you suppose it to.
+				#   When you give it a command to put something from up to down, it _would_ work,
+				#   but _not_ as you expect it to, e.g. 4>3 swaps the third line with the fourth,
+				#   while 3>4 would seem to do nothing. This is because in general case the source,
+				#   i.e. 3rd line in our example, is removed from the list, the list then shifted
+				#   for one line up, and then the time comes to put destination to the new place.
+				#   But before placing the destination [line], it must put what’s in the buffer,
+				#   i.e. the 3rd line, before, and only after—the destination, what was the 4th line.
+				# Since it makes the operation obscure to the user, we put the destination before
+				#   what is in the buffer in that case, so it would act like the user expects it to.
+				local put_dest_line_first=t
+			}
+			# Forming a queue.
+			local queue_start[${#queue_start[@]}]=$start
+			local queue_end[${#queue_end[@]}]=$end
+			local queue_dest[${#queue_dest[@]}]=$dest
+			local queue_size[${#queue_size[@]}]=$((queue_end[i] - queue_start[i] +1))
+			local queue_put_dest_line_first[${#queue_put_dest_line_first[@]}]=$put_dest_line_first
+		done
+		# Testing the queue for intersections
 
-# MANUAL_ARRRANGEMENT
-	for ((i=0; i<${#group_patterns[@]}; i++)); do
- :
-	done
+		for ((i=0; i<${#queue_start[@]}-1; i++)); do
+			for ((j=i+1; j<${#queue_start[@]}; j++)); do
+				unset list_is_before list_is_after
+				[ ${queue_start[j]} -lt ${queue_start[i]} -a ${queue_end[j]} -lt ${queue_start[i]} ] \
+					&& list_is_before=t
+				[ ${queue_start[j]} -gt ${queue_end[i]} -a ${queue_end[j]} -gt ${queue_end[i]} ] \
+					&& list_is_after=t
+				[ -v list_is_before -o -v list_is_after ] && [ ${queue_dest[j]} -ne ${queue_dest[i]} ] || {
+					warn "An intersection was found between ${queue_start[i]}-${queue_end[i]}>${queue_dest[i]} and ${queue_start[j]}-${queue_end[j]}>${queue_dest[j]}."
+					return 0
+				}
+			done
+			# If we’re here, we’re safe.
+			# Now the numbers in the queue must be shifted by -1, because the actual
+			#   indices of the list items are starting from 0.
+			let queue_start[i]-- queue_end[i]--
+			# Okay, now to remember where which destination was would be a burden,
+			#   and, since the possible conflicts are solved, we can simply replace
+			#   the destination numbers with respective file names from the list.
+			#   Usually, filesystem doesn’t allow two files with the same name
+			#   to exist within one folder.
+			# This will save us a cycle later.
+			#   There’s no need to seek for the destination for the first rearrangement,
+			#   because only operations after it move dest to a place unknown.
+			[ $i -eq 0 ] && local queue_dest_index[0]=$((queue_dest[i]-1))
+			local queue_dest[i]=${LIST_ITEMS[${queue_dest[i]}-1]} \
 
-	[ $HEURISTICS_LEVEL -lt 2 ] && {
-		# The idea is providing a “new-list-to-choose-from” which would be
-		#   an array, so we could highlight not a keyword and hypotetic(?)
-		#   episode number, but a part of line that matched current pattern.
-		local lcount=1 match
-		unset used_matches
-		[ -v D ] && {
-			dbg_file="$DEBUG_DIR/choose_from_while_in_watch"
-			declare -p group_patterns group_matches group_matches_count >>$dbg_file
-		}
-		for ((i=0; i<${#group_patterns[@]}; i++)); do
-			for ((j=0; j<${group_matches_count[i]}; j++)); do
-				local pat_for_grep=${group_patterns[i]%\[^0-9]\.\**}
-				[ "$pat_for_grep" = "${group_patterns[i]}" ] \
-					&& pat_for_grep=${group_patterns[i]#^\.\*\[^0-9]}
-				unset new_match_found
-				until [ -v new_match_found ]; do
-					match=`sed -n $((j+1))p <<<"${group_matches[i]}"`
-					[ $i -eq 0 ] && break # matches of the 1st pattern are unique
-					if  echo -e "$used_matches" | grep -qF "$match";  then
-						[ $((++j)) -eq ${group_matches_count[i]} ] && break 2
-					else  local new_match_found=t;  fi
-				done
-				echo -en "${g}$lcount:${s}"
-				[ -v SHOW_GROUP_INDICATOR ] && \
-					echo -en "${g}$b«$i» «${group_occupied_numbers[i]}» «${group_max_number_length[i]}»${s}"
-				echo "$match" | grep -iG "$pat_for_grep" # BGE, basic regex
-				used_matches="${used_matches:+$used_matches\n}$match"
-				# We use group_matches[i], because HEU LVL2 does sorting in place
-				[ $((++lcount)) -gt $LIST_ITEMS_COUNT ] && break 2
+		done
+		# Since the cycle above was generally made for looking for intersections,
+		#   last element wasn’t affected by the additional (to the cycle’s task) shifting.
+		let queue_start[i]-- queue_end[i]--
+		[ $i -eq 0 ] && local queue_dest_index[0]=$((queue_dest[i]-1))
+		local queue_dest[i]=${LIST_ITEMS[${queue_dest[i]}-1]}
+		# Finally, the rearrangement.
+		for ((i=0; i<${#queue_start[@]}; i++)); do
+			unset dest_index buffer buffer_gids
+			[ $i -eq 0 ] \
+				&& local dest_index=${queue_dest_index[0]} \
+				|| for ((j=0; j<LIST_ITEMS_COUNT; j++)); do
+				[ "${LIST_ITEMS[j]}" = "${queue_dest[i]}" ] \
+					&& dest_index=$j && break
+			done
+			for ((j=0; j<${queue_size[i]}; j++)); do
+				# Copy what will be moving to the new destination to the buffer.
+				local buffer[j]=${LIST_ITEMS[queue_start[i]+j]} \
+				      buffer_gids[j]=${LIST_ITEMS_GIDS[queue_start[i]+j]}
+				unset LIST_ITEMS[queue_start[i]+j] \
+				      LIST_ITEMS_GIDS[queue_start[i]+j]
+			done
+			# Now we must shift the items so the ‘hole’ appear in the appropriate place.
+			# We’ll create LIST_ITEMS from scratch, using its double.
+			local gap=0 \
+			      _list_items=("${LIST_ITEMS[@]}") \
+			      _list_items_gids=("${LIST_ITEMS_GIDS[@]}") # indices will be consecutive!
+			for ((j=0; j<${#_list_items[@]}; j++)); do
+				unset dest_line_is_already_put
+				# Going through the double, place the elements until the destination item is found.
+				[ "${_list_items[j]}" = "${queue_dest[i]}" ] && {
+					local gap=${queue_size[i]}
+# declare -p j gap LIST_ITEMS _list_items
+					# Then decide what we shall put first—what’s in the buffer or the dest line.
+					[ "${queue_put_dest_line_first[i]}" = t ] \
+						&& LIST_ITEMS[j]=${_list_items[j]} \
+						&& LIST_ITEMS_GIDS[j]=${_list_items_gids[j]} \
+						&& local dest_line_is_already_put=t
+						# Placing the buffer.
+					for ((k=0; k<gap; k++)); do
+						LIST_ITEMS[      j+k ${dest_line_is_already_put:+ +1} ]=${buffer[k]}
+						LIST_ITEMS_GIDS[ j+k ${dest_line_is_already_put:+ +1} ]=${buffer_gids[k]}
+					done
+				}
+				# Don’t put the line from double if it was destination
+				#   and it was already put back to the LIST_ITEMS.
+				[ -v dest_line_is_already_put ] || {
+					LIST_ITEMS[gap+j]=${_list_items[j]}
+					LIST_ITEMS_GIDS[gap+j]=${_list_items_gids[j]}
+				}
 			done
 		done
 
-		[ -v D ] && declare -p used_matches >>$dbg_file
-		# This is subject for testing. Since each filename that doesn’t
-		#   conform to a known pattern must start a new sequence, there
-		#   shouldn’t be any filenames “on their own”. But to be sure
-		#   we won’t lost them if they’ve suddenly appeared…
-		# used_matches=`echo -e "$used_matches"`
-# 		unique_lines=`echo -e "${used_matches:+${used_matches}\n}$LIST_TO_CHOOSE_FROM" | sort | uniq -u` # not "sort -u"!
-# 		[ "$unique_lines" ] && {
-# echo -e  "\n ЕСТЬ unique lines!\n"
-# 			used_matches="${used_matches:+${used_matches}\n}$unique_lines"
-# 			used_matches=`echo -e "$used_matches"`
-# 			while read unique_line; do
-# 				echo -en "${g}$((lcount++)):${s}"
-# 				[ -v D ] && echo -en "${g}-:${s}"
-# 				grep -iG "\($KEYWORD\|$\)" <<<"$unique_line"
-# 			done < <(echo "$unique_lines")
-# 			[ -v D ] && echo -e "\nThe new list contains line(s), which has(ve) no pattern.
-# unique_lines [--->\n$unique_lines\n<---]
-# This could happen if there was just a file with a unique name or some file has
-#   managed to appear more than once via another pattern, and another file became
-#   an outsider due to LIST_ITEMS_COUNT limit, then that’s a problem." >>$dbg_file
-# 		}
-		VIDEOFILES=`echo -e "$used_matches"`
-		LIST_TO_CHOOSE_FROM="$VIDEOFILES"
-	}||{
+		local manual_rearrangement_was_in_effect=t
+	}
+
+	[ -v manual_rearrangement_was_in_effect ] || {
+	# At this point we need to assign an episode number to each match, and
+	#   thus operate with 2 arrays, but at the same time we still need groups,
+	#   because keeping a sequence raises the chance of building list
+	#   in the correct order.
+	unset EP_NUMBERS LIST_ITEMS LIST_ITEMS_GIDS pat_for_grep
+	# LIST_ITEMS* are actually used only within this function, but need
+	#   to persist between runs, so the list wouldn’t be empty if
+	#   manual rearrangement will fail.
+	# EP_NUMBERS[0]='Left unused in order to conform with list numbering.'
+	local i j k lcount=1  list_indicators=() \
+		match new_match_found _ep_number sequence_started_at
+	for ((i=0; i<${#group_patterns[@]}; i++)); do
+		pat_for_grep[i]=${group_patterns[i]%\[^0-9]\.\**}
+		[ "${pat_for_grep[i]}" = "${group_patterns[i]}" ] \
+			&& pat_for_grep[i]=${group_patterns[i]#^\.\*\[^0-9]}
+		for ((j=0; j<${group_matches_count[i]}; j++)); do
+			unset new_match_found
+			until [ -v new_match_found ]; do
+				match=`sed -n $((j+1))p <<<"${group_matches[i]}"`
+				[ $i -eq 0 ] && break # matches of the 1st pattern are unique
+				new_match_found=t
+				for ((k=0; k<${#LIST_ITEMS[@]}; k++)); do
+					[ "${LIST_ITEMS[k]}" = "$match" ] && unset new_match_found
+				done
+				[ -v new_match_found ] || {
+					# If there are no new matches, it will simply accumulate until j reaches its limit
+					[ $((++j)) -eq ${group_matches_count[i]} ] && break 2 # Yes, it works. Think!
+				}
+			done
+			_ep_number="$(sed -n "s/${group_patterns[i]}/\1/p" <<<"$match" 2>>${dbg_file:-/dev/null})"
+			[[ "$_ep_number" =~ ^[0-9]+$ ]] \
+				&& EP_NUMBERS[${#EP_NUMBERS[@]}]=$_ep_number \
+				|| { # it’s a match that formed a group from itself
+				_ep_number="$(sed -r 's/[^0-9]+/ /g; s/^\s//; s/\s$//  #hypotetical numbers!'<<<"${group_patterns[j]}")"
+				[[ "$_ep_number" =~ ^[0-9\s]+$ ]] \
+					&& EP_NUMBERS[${#EP_NUMBERS[@]}]="$_ep_number" \
+					|| EP_NUMBERS[${#EP_NUMBERS[@]}]="L${#EP_NUMBERS[@]}" # i.e. ‘Line number #’
+			}
+			LIST_ITEMS[${#LIST_ITEMS[@]}]=$match
+			LIST_ITEMS_GIDS[${#LIST_ITEMS_GIDS[@]}]=$i
+			[ $((++lcount)) -gt $LIST_ITEMS_COUNT ] && break 2
+		done
+	done
+
+	# Composing group indicators.
+	# It is better to be done outside the cycle above.
+	# Much more readable and clearer this way.
+	LIST_ITEMS_GIDS[${#LIST_ITEMS_GIDS[@]}]='dummy'
+	for ((i=1; i<${#LIST_ITEMS_GIDS[@]}; i++)); do
+		[ "${LIST_ITEMS_GIDS[i]}" = "${LIST_ITEMS_GIDS[i-1]}" ] || {
+			# A consecutive sequence has ended and a new one just started.
+			# Let’s look at the sequence to know how we should transform it
+			[ -v sequence_started_at ] || sequence_started_at=0
+			[ $((i-sequence_started_at)) -ge 2 ] && {
+				list_indicators[sequence_started_at]=${GROUP_INDICATOR:0:1} # ┌
+				list_indicators[i-1]=${GROUP_INDICATOR:2:1} # └
+			}
+			[ $((i-sequence_started_at)) -ge 3 ] && {
+				for ((j=sequence_started_at+1; j<i-1; j++ )); do
+					list_indicators[j]=${GROUP_INDICATOR:1:1} # │
+				done
+			}
+			[ $sequence_started_at -eq $((i-1)) ] \
+				&& list_indicators[i-1]=${GROUP_INDICATOR:3:1} # ⋅
+			local sequence_started_at=$i
+		}
+	done
+
+# declare -p EP_NUMBERS
+
+# Заполнение дырок:
+# Это кандидат с номером, который подходит к дырке
+#  Это единственный кандидат на это место
+# ???↑
+# В группах встречается EP_PATTERN
+# У кандидата есть EP_PATTERN
+
+#	[ $HEURISTICS_LEVEL -gt 1 ] && {
+
+# Всё переделать.
+# Найти подходящие по ширине числа в униках.
+# Отсортировать по возрастанию!
+
+
+
 	# Level 2 heuristics.
 	# We discard the way of building LIST_TO_CHOOSE_FROM by arranging groups
 	#   and try to deeper, into where sequences don’t spread. It is case
@@ -1581,60 +1740,77 @@ build_the_list() {
 	#   sequences.
 	# Many conflict situations may rise, so the place swapping is only performed
 	#   when there are not more than one candidate for that place.
-		[ -v D ] && echo -e '\n\nHEU LVL 2 start.' >>$dbg_file
-		for ((i=0; i<${#group_matches[@]}; i++)); do
-			# Okay, we have them. But now it’s not much far away from the “sort” command.
-			# Sort would find these numbers too (and put 1 after 10), we are a step forward
-			#   only by finding a hint for a presence of sequence in those numbers.
-			#   Now arrange these numbers to make them reflect this sequence.
-			# Change pattern so it could grab found number in ([0-9]+).
-			[ -v D ] && {
-				echo -e "\tProcessing group_matches[$i]\n\tList:" >>$dbg_file
-				echo "${group_matches[i]}" | sed 's/.*/\t\t“&”/g' >>$dbg_file
-				echo -e "\tCount: ${group_matches_count[i]}" >>$dbg_file
-			}
-			# Removing leading zeroes just to avoid possible misinterpretation as octal.
-			subst_pattern=$(echo "${group_patterns[i]}" | sed 's/\(\[0-9]\\+\)/0*\\([0-9]\\+\\)/' )
-			# We’re going to do a bubble sort against $matches_*,
-			#   and to accomplish that, we save matched filenames and what
-			#   is supposed to be episode numbers which formed a sequence,
-			#   into respective arrays, so we could rebuild group_matches[i]
-			#   not from scratch, but in a new way.
-			local matches_as_array matches_as_numbers buffer
-			readarray -t matches_as_array < <(echo -e "${group_matches[i]}")
-			readarray -t matches_as_numbers < <(echo -e "${group_matches[i]}" | sed -n "s/$subst_pattern/\1/p")
-			[ -v D ] && declare -p matches_as_array matches_as_numbers >>$dbg_file
-			unset group_matches[i]
-			for ((j=0; j<${#matches_as_array[@]}-1; j++)); do
-				for ((k=$j+1; k<${#matches_as_array[@]}; k++)); do
-					# Big numbers (of an episode) → to the end of the list
-					[[ "${matches_as_numbers[j]}" =~ ^[0-9]+$
-							&& "${matches_as_numbers[k]}" =~ ^[0-9]+$ ]]  || return `err heu2_nan`
-					[ ${matches_as_numbers[j]} -gt ${matches_as_numbers[k]} ] && {
-						buffer="${matches_as_array[j]}"
-						matches_as_array[j]="${matches_as_array[k]}"
-						matches_as_array[k]="$buffer"
-						buffer="${matches_as_numbers[j]}"
-						matches_as_numbers[j]="${matches_as_numbers[k]}"
-						matches_as_numbers[k]="$buffer"
-					}
-				done
-				# Each j should be the smallest number from what’s left, i.e. 1, 2, 3…
-				group_matches[i]="${group_matches[i]:+${group_matches[i]}\n}${matches_as_array[j]}"
-			done
-			# We deleted the original item, remember? And now the last
-			#  (and the biggest) match wasn’t added to the original array
-			#   element back. Don’t be confused with a similar sort above,
-			#   there was no deleteion of original mapfile elements!
-			group_matches[i]="${group_matches[i]}\n${matches_as_array[j]}"
-			group_matches[i]=`echo -e "${group_matches[i]}"` # `\n`
-			[ -v D ] && {
-				echo -e "\tList after resorting:" >>$dbg_file
-				echo "${group_matches[i]}" | sed 's/.*/\t\t“&”/g' >>$dbg_file
-				echo -e "\tCount: ${group_matches_count[i]}\n" >>$dbg_file
-			}
-		done
+	[ -v D ] && echo -e '\n\nHEU LVL 2 start.' >>$dbg_file
+# [ $HEURISTICS_LEVEL -eq 2 ] && {
+# 	for ((i=0; i<${#group_matches[@]}; i++)); do
+# 		# Okay, we have them. But now it’s not much far away from the “sort” command.
+# 		# Sort would find these numbers too (and put 1 after 10), we are a step forward
+# 		#   only by finding a hint for a presence of sequence in those numbers.
+# 		#   Now arrange these numbers to make them reflect this sequence.
+# 		# Change pattern so it could grab found number in ([0-9]+).
+# 		[ -v D ] && {
+# 			echo -e "\tProcessing group_matches[$i]\n\tList:" >>$dbg_file
+# 			echo "${group_matches[i]}" | sed 's/.*/\t\t“&”/g' >>$dbg_file
+# 			echo -e "\tCount: ${group_matches_count[i]}" >>$dbg_file
+# 		}
+# 		# Removing leading zeroes just to avoid possible misinterpretation as octal.
+# 		subst_pattern=$(echo "${group_patterns[i]}" | sed 's/\(\[0-9]\\+\)/0*\\([0-9]\\+\\)/' )
+# 		# We’re going to do a bubble sort against $matches_*,
+# 		#   and to accomplish that, we save matched filenames and what
+# 		#   is supposed to be episode numbers which formed a sequence,
+# 		#   into respective arrays, so we could rebuild group_matches[i]
+# 		#   not from scratch, but in a new way.
+# 		local matches_as_array matches_as_numbers buffer
+# 		readarray -t matches_as_array < <(echo -e "${group_matches[i]}")
+# 		readarray -t matches_as_numbers < <(echo -e "${group_matches[i]}" | sed -n "s/$subst_pattern/\1/p")
+# 		[ -v D ] && declare -p matches_as_array matches_as_numbers >>$dbg_file
+# 		unset group_matches[i]
+# 		for ((j=0; j<${#matches_as_array[@]}-1; j++)); do
+# 			for ((k=$j+1; k<${#matches_as_array[@]}; k++)); do
+# 				# Big numbers (of an episode) → to the end of the list
+# 				[[ "${matches_as_numbers[j]}" =~ ^[0-9]+$
+# 						&& "${matches_as_numbers[k]}" =~ ^[0-9]+$ ]]  || return `err heu2_nan`
+# 				[ ${matches_as_numbers[j]} -gt ${matches_as_numbers[k]} ] && {
+# 					buffer="${matches_as_array[j]}"
+# 					matches_as_array[j]="${matches_as_array[k]}"
+# 					matches_as_array[k]="$buffer"
+# 					buffer="${matches_as_numbers[j]}"
+# 					matches_as_numbers[j]="${matches_as_numbers[k]}"
+# 					matches_as_numbers[k]="$buffer"
+# 				}
+# 			done
+# 			# Each j should be the smallest number from what’s left, i.e. 1, 2, 3…
+# 			group_matches[i]="${group_matches[i]:+${group_matches[i]}\n}${matches_as_array[j]}"
+# 		done
+# 		# We deleted the original item, remember? And now the last
+# 		#  (and the biggest) match wasn’t added to the original array
+# 		#   element back. Don’t be confused with a similar sort above,
+# 		#   there was no deleteion of original mapfile elements!
+# 		group_matches[i]="${group_matches[i]}\n${matches_as_array[j]}"
+# 		group_matches[i]=`echo -e "${group_matches[i]}"` # `\n`
+# 		[ -v D ] && {
+# 			echo -e "\tList after resorting:" >>$dbg_file
+# 			echo "${group_matches[i]}" | sed 's/.*/\t\t“&”/g' >>$dbg_file
+# 			echo -e "\tCount: ${group_matches_count[i]}\n" >>$dbg_file
+# 		}
+# 	done
+# }
 	}
+
+	unset LIST_TO_CHOOSE_FROM
+	for ((i=0; i<LIST_ITEMS_COUNT; i++)); do
+	   printf "${g}%*d:${s}" ${#LIST_ITEMS_COUNT} $((i+1))
+		[ -v manual_rearrangement_was_in_effect -o $HEURISTICS_LEVEL -gt 1 ] \
+			|| echo -en "${list_indicators[i]}"
+			# echo -en "${g}$b«$i» «${group_occupied_numbers[i]}» «${group_max_number_length[i]}»${s}"
+		local pattern=${pat_for_grep[${LIST_ITEMS_GIDS[i]}]}
+		# If the match is unique, i.e. pattern is equal to the match itself,
+		#   restrain grep from highlighting the whole string.
+		[ "`grep -oG "$pattern"<<<"${LIST_ITEMS[i]}"`" = "${LIST_ITEMS[i]}" ] \
+			&& echo "${LIST_ITEMS[i]}" | grep -iG "\($KEYWORD\|${EP_NUMBERS[i]}\)" \
+			|| echo "${LIST_ITEMS[i]}" | grep -iG "$pattern"
+		LIST_TO_CHOOSE_FROM="${LIST_TO_CHOOSE_FROM:+$LIST_TO_CHOOSE_FROM\n}${LIST_ITEMS[i]}"
+	done
 	return 0
 }
 
@@ -1664,7 +1840,7 @@ screenshots_preprocessing() {
 				}|| SCREENSHOT_DIR+="/$screens_path"
 			else
 				warn 'No appropriate directory for screenshots found.'
-				echo -en "\nType a long, correct name to create one or hit $g<Return>$s to skip > "
+				echo -en "Type a long, correct name to create one or press $g<Enter>$s to skip > "
 				read
 				[ "$REPLY" ] && {
 					SCREENSHOT_DIR+="/$REPLY"
@@ -1717,7 +1893,9 @@ screenshots_preprocessing() {
 #     VIDEO_NUMBER — line number from the list of VIDEOFILES.
 #     VIDEOFILE — videofile that will be playing, must be unset to play a disk
 #         as a disk.
-#     episode_number — retrieved via EP_PATTERN applied to $VIDEOFILE.
+#     episode_number — retrieved from EP_NUMBERS array. NB that VIDEO_NUMBER
+#         contains the line number, i.e. starts with 1, and this array starts
+#         with 0.
 #     INTERRUPTED — used in “resume” case, means episode wasn’t watched till
 #         the end and must be re-played on resume.
 #     STOP — if MPlayer was interrupted by key, that stops the cycle too.
@@ -1753,7 +1931,8 @@ watch() {
 				[ `echo "$VIDEOFILES" | wc -l` -gt 1 ] && {
 					choose_from "$VIDEOFILES" || return $?
 					VIDEOFILES="$LIST_TO_CHOOSE_FROM" # now rearranged
-					VIDEOFILES_COUNT="LIST_ITEMS_COUNT"
+# Do we really need it?
+VIDEOFILES_COUNT="LIST_ITEMS_COUNT"
 					VIDEOFILE="$CHOSEN_ITEM"
 					VIDEO_NUMBER=$CHOSEN_NUMBER
 				}||{ # eh? 1 videofile in eps mode?!
@@ -1763,15 +1942,7 @@ watch() {
 					}
 				}
 			fi
-			# Storing chosen pattern to EP_PATTERN
-			#  (cycle has just started and the variable doesn’t exist yet).
-			[ -v EP_PATTERN ] \
-				|| EP_PATTERN=${group_patterns[0]}
-			episode_number="$(sed -n "s/$EP_PATTERN/\1/p" <<<"$VIDEOFILE")"
-			[[ "$episode_number" =~ ^[0-9]+$ ]] || {
-				msg "Couldn’t get value for $episode_number. Reverting to VIDEO_NUMBER==$VIDEO_NUMBER."
-				episode_number=$VIDEO_NUMBER
-			}
+			episode_number=${EP_NUMBERS[VIDEO_NUMBER-1]}
 			[ -v SUB_DELAY ] && MPLAYER_OPTS+=" $dashes${mp_opts[sub-delay]}=$SUB_DELAY"
 			[ -v AUDIO_DELAY ] && MPLAYER_OPTS+=" $dashes${mp_opts[audio-delay]}=$AUDIO_DELAY"
 			[ -v REMEMBER_SUB_AND_AUDIO_DELAY ] && MPLAYER_OPTS+=" --write-filename-in-watch-later-config"
@@ -1797,7 +1968,7 @@ watch() {
 				[ $? -eq 0 ] && \
 					MPLAYER_OPTS+=" ${dashes}profile protocol.$protocol"
 			else
-				warn "Your $MPLAYER_COMMAND config doesn’t have profile “protocol.$protocol” set."
+				warn "$MPLAYER_COMMAND config doesn’t have profile “protocol.$protocol” set."
 			fi
 			MPLAYER_OPTS+=" $protocol:// ${dashes}$device "
 			;;
@@ -1984,9 +2155,9 @@ get_other_files() {
 	}
 	[ $MODE = episodes ] && {
 		# This check may be not needed, but it’s safer to have it                    vvv     EP20v2    vvv
-		local match_by_keyword_and_num=`echo "$match_by_keyword" | grep -e "[^0-9a-oA-Oq-zQ-Z]$episode_number[^0-9a-uA-Uw-zW-Z]" | sort`
+		local match_by_keyword_and_num=`echo "$match_by_keyword" | grep -e "[^0-9a-oA-Oq-zQ-Z]${episode_number#L}[^0-9a-uA-Uw-zW-Z]" | sort`
 		OTHER_FILES_LIST="${OTHER_FILES_LIST:+${OTHER_FILES_LIST}\n}$match_by_keyword_and_num"
-		local match_by_num=`echo "$found_other_files" | grep -e "[^0-9]$episode_number[^0-9]" | sort`
+		local match_by_num=`echo "$found_other_files" | grep -e "[^0-9]${episode_number#L}[^0-9]" | sort`
 		[ -v D ] && {
 			echo -e "\nEpisodes: AYE.\nother_files == exact_name + keyword_and_number\n" >>$dbg_file
 			declare -p match_by_keyword_and_num match_by_num >>$dbg_file
@@ -2106,7 +2277,7 @@ import_session_data() {
 			[ "$MODE" = single ] \
 				&& check_required_vars 'VIDEOFILE'
 			[ "$MODE" = episodes ] \
-				&& check_required_vars 'VIDEOFILES' 'VIDEO_NUMBER' 'EP_PATTERN' 'INTERRUPTED' 'REMEMBER_SUB_AND_AUDIO_DELAY'
+				&& check_required_vars 'VIDEOFILES' 'VIDEO_NUMBER' 'EP_NUMBERS' 'INTERRUPTED' 'REMEMBER_SUB_AND_AUDIO_DELAY'
 		}
 		[ -v no_enough_data ] && return `err nothing_to_restore`
 		# Yes, it could be just one variable, but with two names, its purpose
@@ -2166,13 +2337,13 @@ export_session_data() {
 			# For what reason escape_for_sed_pattern was used here?
 			#   was it just a mistake or not?
 #data+="\nEP_NUMBERS"
-data+="\nEP_PATTERN='$(escape_for_sed_replacement "${EP_PATTERN//\\/\\\\\\}")'"
 			data+="\nINTERRUPTED=${INTERRUPTED:-f}"
 		}
 		data+="\nSCREENSHOT_DIR='$(escape_for_sed_replacement "$SCREENSHOT_DIR")'"
 		[ -v SUB_DELAY ] && data+="\nSUB_DELAY='$SUB_DELAY'"
 		[ -v AUDIO_DELAY ] && data+="\nAUDIO_DELAY='$AUDIO_DELAY'"
-		data+="\nREMEMBER_SUB_AND_AUDIO_DELAY=${REMEMBER_SUB_AND_AUDIO_DELAY:-f}" \
+		data+="\nREMEMBER_SUB_AND_AUDIO_DELAY=${REMEMBER_SUB_AND_AUDIO_DELAY:-f}"
+		[ -v INTERVAL ] && data+="\nINTERVAL='$INTERVAL'"
 		# removing old data
 		sed -ri "/^KEYWORD='$(escape_for_sed_pattern "$KEYWORD")'/,/^$/ d" $JOURNAL
 		# exporting last data
@@ -2198,7 +2369,8 @@ data+="\nEP_PATTERN='$(escape_for_sed_replacement "${EP_PATTERN//\\/\\\\\\}")'"
 
 print_last_shown_episode_number() {
 	echo
-	local ep_number=${episode_number##*(0)}
+	[ $HEURISTICS_LEVEL -eq 0 ] && local ep_number_isnt_trustworthy=?
+	local ep_number=${episode_number##*(0)}${ep_number_isnt_trustworthy:-}
 	$LAST_EP_NUMBER_PRINTING_COMMAND < \
 		<( echo -e "${LAST_EP_NUMBER_PRINTING_FORMAT//%n/$ep_number}" )
 }
@@ -2227,7 +2399,7 @@ until [ -v STOP ]; do
 		[ -v STOP ] || {
 			[ -v RUN_IN_CYCLE ] && {
 				echo -en "Press $g<Space>$s to stop > "
-				read -n1 -t3
+				read -n1 -t ${INTERVAL:-3}
 				# Avoiding [C to get to mpv’s input in case right arrow
 				#   is still hold. If mpv reads them, it’ll try to interpret
 				#   them as commands, and [ is usually bound to decrease speed

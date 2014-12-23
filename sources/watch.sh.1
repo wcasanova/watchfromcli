@@ -9,7 +9,7 @@ watch.sh \- a shell wrapper for mpv/MPlayer to run videos easy via CLI.
 .\"
 .SH SYNOPSIS
 .TP 4
-.IP "The simplest form"
+.IP "Simplest form"
 .B watch.sh
 [\fIoptional arguments\fP] \fB-d\fP \fIbasepath  keyword\fP
 .IP "To start watching cycle"
@@ -20,10 +20,10 @@ watch.sh \- a shell wrapper for mpv/MPlayer to run videos easy via CLI.
 .br
 .B watch.sh
 [\fIoptional arguments\fP] \fB-[r|R]\fP  [\fIkeyword\fP]
-.IP "Checking journal"
+.IP "List recently entered keywords (useful for -r)"
 .br
 .B watch.sh -j
-.IP "Checking for update"
+.IP "Check for updates"
 .br
 .B watch.sh -u
 .\"
@@ -95,9 +95,6 @@ Resumes watching cycle. When the \fIkeyword\fP is given (the keyword is an argum
 When the script is looking for external subtitles and tracks, it always picks those matching the video file name, but depending on the mode the script running in, it may add some another. Thus, in the mode when it plays a sequence of \fIepisodes\fP, the search for external subtitles and tracks is also done for those having both \fIkeyword\fP and \fIepisode number\fP in their names. And when it plays a \fIsingle\fP file, it also searches for those matching \fIkeyword\fP. \fB--match-number\fP allows external files having only the \fIepisode number\fP to be included to the list of found subtitles, while \fB--match-all\fP in addition to that includes those having only the \fIkeyword\fP in their names.
 .RE
 .TP
-.B -A, --no-aid
-Do not show hints built-in the interface (for experienced users).
-.TP
 .B --bashrc[=\fIpath to file\fP]
 .br
 Source ~/.bashrc or the file specified as an argument. This is to make aliases available for \fB--mplayer-command\fP.
@@ -128,6 +125,9 @@ See \fBUsing heuristics\fP subsection for details.
 .B -f
 Stands for "fixed string", tells \fIwatch.sh\fP to treat the \fIkeyword\fP as a literal. Don't count on this switch much, it affects the code in merely two places, and fixed strings won't be possible in the future, because there are unavoidable expressions where the \fIkeyword\fP is used in patterns, so if this switch will develop, it would be escaping, not a real fixed string.
 .TP
+.B --group-indicator <\fIchars\fP>
+if, for some reason, your terminal can’t display ASCII graphic characters and the bullet, you can specify another set via this option. \fIchars\fP must be a string of exactly four characters, first for the beginning of a group, second for middle elements, third for the ending and fourth for lone ones.
+.TP
 .B --heuristics-level <0..2>
 Sets heuristics level directly to a specified number.
 .TP
@@ -137,8 +137,14 @@ Shows this man page.
 .B -H <\fIpattern\fP>
 Calls \fBman watch.sh\fP with 'pager' option, specifying \fBless\fP as the pager and passing \fIpattern\fP to it, allowing to open this man page on a specified word, e.g. passing \fB-H '^EXAM'\fP will open  this man page on \fBEXAMPLES OF USE\fP section.
 .TP
+.B --no-hints
+Do not show hints built in the interface (for experienced users).
+.TP
 .B -I, --ignore-disks
 Treat a folder containing DVD of BD stuff like a folder with episodes instead of playing it like an actual DVD or BD (See also \fBPlaying DVD and BD\fP subsection).
+.TP
+.B --interval <\fIseconds\fP>
+Interval between playing episodes, in seconds. It is always set to 0 if mpv must play DVD or BD contents as episodes. The default is 3 seconds.
 .P
 .B -j[\fInumber\fP|a|all]
 .br
