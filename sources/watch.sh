@@ -346,7 +346,7 @@ JOURNAL_MINVER='20150227'
 		|| exit `err homedir`
 }
 
-VERSION="20141121"
+VERSION="20150227"
 CHECK_FOR_UPDATE=21 # each N days
 updater_timestamp=~/.watch.sh/updater_timestamp
 [ -f $updater_timestamp ] || touch $updater_timestamp
