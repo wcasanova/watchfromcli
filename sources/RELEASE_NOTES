@@ -1,5 +1,121 @@
 ===] November 21, 2014 [====================================================
 
+(\ /)
+(°.°) The full scale of those changes is impalpable for Bunny,
+(> <)   but he thinks they are great nevertheless.
+
+Good news to read (you’d better read):
+
+1. Fixed #2.
+2. Fixed colour codes to be more universal and terminal-friendly.
+3. Heuristics restricted to 1st level (No, it’s not bad, what was done
+   earlier in 2nd level is now incorporated in 1st. The 2nd level is
+   totally new code that should do awesome things and is 97 % done).
+4. Journal now versioned, too, and you’ll be warned, if your version
+   will become incompatible (that means that some important variable
+   that must be stored among others for a session in the journal wasn’t
+   found, nothing critical at all, though watch.sh will report what
+   exactly it couldn’t find).
+5. If updater_timestamp didn’t exist, touch it.
+6. Added group indicators! Now you can see what are these groups
+   the man page was talking you about! Indicators can be changed with
+   --group-indicator option that takes four characters (see the man
+   page for details).
+7. As a part of improved heuristics, there’s new option that may
+   help you to say watch.sh what numbers in filenames are definitely
+   not episode numbers (though watch.sh has a number of patterns
+   itself). See --not-epnumbers in the man page for details.
+8. -A is no more exist as a single-letter counterpart for
+   --no-hints.
+9. -l and --loop now tell watch.sh to loop watching cycle, since
+   the work on brushing the code performing cycle was finally fini-
+   shed, and watch.sh stops after the last item by default.
+10. -L and --limit-watching-to tell watch.sh how many episodes
+    you want to watch during the session of watching cycle.
+    E.g. if you’re watching something with 26 episodes and wa-a -r
+    will resume on 4th, you can add -L3 so it would play 4th, 5th
+    and 6th, and then exit.
+11. The new --interval option specifies the interval between episodes
+    in seconds, during which you usually hit Spacebar to stop watching
+    cycle. No need in this if you use -I. See the man page for the de-
+    tails.
+12. The new --ionice-opts parameter will tell watch.sh to prepend
+    the mpv command with ionice(1). This parameter takes options
+    for ionice and passes them as they are. If omitted, passes
+    "-c best-effort -n0" — the best we can do without root access.
+    This option may come handy when there are several processes
+    running in parallel with watch.sh and using the same drive,
+    which makes mpv starving on I/O.
+13. --no-aid changed name to --no-hints and -A is no more.
+14. --taskset changed name to --taskset-opts.
+15. <h> key in the interface switches heuristics levels.
+16. Finally, neat and easy input, fellow console-lovers!
+    The number may be incremented and decremented with arrow keys
+   (↑ and ↓), so there’s no need to press number keys at all!
+    You can also choose your own keys for increment and decrement
+    with --my-increment and --my-decrement options! See the man
+    page for the details. Backspace also works fine and <?> al-
+    lows to switch hints on/off.
+17. As a part of rewritten algorithm performing heuristics,
+    manual rearrangement is now also possible in the interface.
+    Just specify 4>5, 1-2>8, or 2-7>12,14-16>1 and this is it.
+    See the Manual Rearrangement section for the details:
+
+        $ man -P 'less -p "^\s+Using manual rearrangement"' watch.sh
+
+18. Now, if the episode number can’t be guessed by heuristic
+    methods, it is replaced with L# in the aftermessage, printing
+    the last played episode number, where # is the number of a line
+    on which that item standed in the list.
+
+
+The rest what has been done:
+
+1. Removed nomsg from ermes. msg unset—no message.
+2. New error messages for new functions.
+3. All messages are also printed to logs.
+4. Improved debug file building with indentation level and stuff.
+5. --check-for-update parameter now restricted to 7-digit numbers.
+6. Fixed check for --heuristics-level to allow only one number.
+7. More simple check for --list-journal is enough.
+8. --journal-max-size check replaced any number with a 7-digit number.
+9. Same for --jpeg-compression when the number specifying quality
+   is passed, except that the limit was made a 3-digit number.
+10. New hints in the interface.
+11. Almost completely rewritten choose_from(), solved cases which
+    hints are appropriate at which times (depending on the function
+    the call for choose_from() originated from).
+12. Several functions were split, reorganized and added.
+13. Set of functions to provide easy operations on groups.
+14. Saner check for a number on MAPFILE_PATTERNS stage.
+15. After more thorough look at inc_patterns this part was highly
+    improved, as well as its multinum counterpart.
+16. Fixed sad bug with forgotten semicolon on line 1270 //_-
+17. Several new function for heu2 lvl.
+18. Function performing rearrangements on a prepared queue.
+    …
+    Too long to describe.
+19. Special treatment of --loop for the mode of a single file.
+20. Huge part of watch() was also refactored to introsuce saner
+    and unified variable names and to reflect changes made to heuris-
+    tics algorithm.
+21. Added a table under PATH EXPLANATION telling which parts of the path
+    may appear in which case.
+22. Hotfix for bug caused by FIXED_STRING.
+23. After trace yet another bug was spotted that caused
+    export_session_data() to run in cases it better should not.
+    Now we check whether we were in watch() and if we were, then allow
+    export. Also checking whether we have already exported data once.
+24. Added check for available CPU cores to know whether there is a sense
+    in running GNU parallel.
+25. As it was mentioned above, the journal get versionalized, so appro-
+    priate checks were added, so old journals updated safely.
+26. SUBFOLDERS always exported. There was a bug with a certain mode,
+    I don’t remember…
+
+
+===] November 21, 2014 [====================================================
+
    Z z
  _z_   Bunny has den up.
 (_±_)
