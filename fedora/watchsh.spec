@@ -1,5 +1,5 @@
 Name: watchsh
-Version: 20150227
+Version: 20150228
 Release: 1%{?dist}
 Summary: A meta package for a wrapper for mpv/MPlayer to run videos easy via CLI.
 

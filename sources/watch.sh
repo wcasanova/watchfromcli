@@ -128,7 +128,7 @@ EOF
 show_version() {
 cat <<EOF
 watch.sh $VERSION
-Copyright © 2013,2014 deterenkelt.
+Copyright © 2013–2015 deterenkelt.
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
 This is free software: you are free to change and redistribute it.
 There is NO WARRANTY, to the extent permitted by law.
@@ -346,7 +346,7 @@ JOURNAL_MINVER='20150227'
 		|| exit `err homedir`
 }
 
-VERSION="20150227"
+VERSION="20150228"
 CHECK_FOR_UPDATE=21 # each N days
 updater_timestamp=~/.watch.sh/updater_timestamp
 [ -f $updater_timestamp ] || touch $updater_timestamp
@@ -2716,9 +2716,10 @@ Consider switching to the latest mpv if you want to load multiple tracks
 		&& which ionice >/dev/null \
 		&& ionice_cmd="ionice $IONICE_OPTS"
 	# $MPLAYER_OPTS must be right before path because of protocol:// things
+	# --msg-level=all=info because coproc will make mpv spam its status line.
 	{ coproc \
 		{ eval ${ionice_cmd:-} ${taskset_cmd:-} $MPLAYER_COMMAND  ${subtitles:-} ${tracks:-} \
-			"$MPLAYER_OPTS" "\"$path_to_videofile\"" \
+			--msg-level=all=info "$MPLAYER_OPTS" "\"$path_to_videofile\"" \
 			|& sed '$s/End of file/&/p;T;Q1' # Thank God we have sed…
 		} >&3
 	} 3>&1 # let mpv’s output flow to the stdout.
