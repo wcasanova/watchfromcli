@@ -206,6 +206,9 @@ The \fIcommand\fP to run the player. May be an executable or an \fIalias\fP. \fB
 .br
 P.S. mpv's --profile options are cumulative, so one can easily pass --profile=$HOSTNAME and --profile=hdmi for example.
 .TP
+.B --last-item-mark <\fImark\fP>
+When mpv finishes playing the last item, if printing the episode number is enabled, watch.sh can print also a mark, be it a dot "." or a word on the next line "\nEND.". This is to see if the cycle has actually ended in case there were a bunch of screenshots. The thing is, after the last number and \fBparallel\fP header are printed, there is a small pause before parallel’s output goes, so you look at the screen for several seconds for nothing. Having a mark tells when the watching is finished so you can move on to something else while parallel works.
+.TP
 .B --my-increment <\fIchar\fP>
 .RS 0
 .B --my-decrement <\fIchar\fP>

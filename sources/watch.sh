@@ -339,7 +339,7 @@ MAX_HEURISTICS_LEVEL=1
 HEURISTICS_LEVEL=0
 
 JOURNAL=~/.watch.sh/journal
-JOURNAL_MAX_SIZE="64K" # w/o suffix for bytes, K for KiB, M for MiB etc.
+JOURNAL_MAX_SIZE="64K" # w/o suffix for bytes, K for KiB, M for MiB et al.
 JOURNAL_MINVER='20150227'
 [ -d ~/.watch.sh ] || {
 	mkdir -m755 ~/.watch.sh/ >/dev/null \
@@ -395,6 +395,7 @@ jpeg-compression::,\
 last-ep,\
 last-ep-command:,\
 last-ep-format:,\
+last-item-mark:,\
 limit-watching-to:,\
 list-journal::,\
 loop,\
@@ -590,6 +591,10 @@ while true; do
 			[[ "$2" == @(player|screenshots|both) ]] \
 				&& LAST_EP_NUMBER_SHOW_AFTER="$2" && shift 2 || exit `err opt_lepshowafter`
 			;;
+		'--last-item-mark')
+			[ "$2" ] && LAST_ITEM_MARK="$2" & shift 2 \
+				|| exit `err opt_requires_an_arg`
+			;;
 		-M|'--mplayer-command')
 			[ "$2" ] && MPLAYER_COMMAND="$2" && shift 2 || exit `err opt_requires_an_arg`
 			;;
@@ -676,13 +681,15 @@ done
 }
 [ $CHECK_FOR_UPDATE = now ] && {
 	which wget &>/dev/null && {
-		latest_ver=`wget -O- http://github.com/deterenkelt/watchsh/releases \
-		                |& sed -nr '/<h1\s+class="release-title">/ {
-		                                :be N; s|.*</h1>.*|&|; t
-		                                    s/.*v([0-9]{8}).*/\1/p; t qu
-		                                    b be
-		                                :qu Q
-		                            }'`
+		# latest_ver=`wget -O- http://github.com/deterenkelt/watchsh/releases \
+		#                 |& sed -nr '/<h1\s+class="release-title">/ {
+		#                                 :be N; s|.*</h1>.*|&|; t
+		#                                     s/.*v([0-9]{8}).*/\1/p; t qu
+		#                                     b be
+		#                                 :qu Q
+		#                             }'`
+		latest_ver=`wget -O- https://github.com/deterenkelt/watchsh/releases/latest \
+		                |& sed -nr 's_^.*/deterenkelt/watchsh/tree/v([0-9]+)".*$_\1_p;T;Q'`
 		[[ "$latest_ver" =~ ^[0-9]{8}$ ]] || exit `err bad_latestver`
 		touch $updater_timestamp
 		[ $latest_ver -gt $VERSION ] && {
@@ -3064,12 +3071,18 @@ export_session_data() {
 	return 0
 }
 
+is_this_the_last_item() {
+	[ $VIDEO_NUMBER -eq $VIDEOFILES_COUNT \
+   -o $VIDEO_NUMBER -eq ${EXIT_AFTER_THIS_EPISODE:- -1} ]
+}
+
 print_last_shown_episode_number() {
 	echo
 #	declare -p EP_NUMBERS
 	local ep_number=${EP_NUMBERS[VIDEO_NUMBER-1]##*(0)}
+	is_this_the_last_item && local last_item_finishing_mark=$LAST_ITEM_MARK
 	$LAST_EP_NUMBER_PRINTING_COMMAND < \
-		<( echo -e "${LAST_EP_NUMBER_PRINTING_FORMAT//%n/$ep_number}" )
+		<( echo -e "${LAST_EP_NUMBER_PRINTING_FORMAT//%n/$ep_number}${last_item_finishing_mark:-}" )
 }
 
 ## Main algorithm starts here
@@ -3093,8 +3106,7 @@ until [ -v STOP ]; do
 		&& print_last_shown_episode_number
 	[ -v STOP ] || {
 		[ -v RUN_IN_CYCLE ] && {
-			[ $VIDEO_NUMBER -eq $VIDEOFILES_COUNT \
-		   -o $VIDEO_NUMBER -eq ${EXIT_AFTER_THIS_EPISODE:- -1} ] && {
+			is_this_the_last_item && {
 				[ -v LOOP ] || break
 				VIDEO_NUMBER=1
 			}
