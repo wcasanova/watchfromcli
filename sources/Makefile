@@ -4,7 +4,7 @@ sharedir := ${prefix}/share
 mandir := ${sharedir}/man
 man1dir := ${mandir}/man1
 docdir := ${sharedir}/doc/watchsh
-bashcompdir= := ${sharedir}/bash-completion
+bashcompdir := ${sharedir}/bash-completion
 
 build:
 # nothing to build

@@ -1,3 +1,26 @@
+===] March 6, 2015 [====================================================
+
+(\ /)
+(^.^) Bunny forsees a bright future for these changes.
+(> <)
+
+Good news to read (you’d better read):
+
+1. Introducing… bash completion! Now you don’t have to remember
+   what exactly you typed as a KEYWORD.
+2. New key: --last-item-mark. Contains a string to print after episode
+   number when watching cycle is over. Seeing it may help to not look
+   stupid staring at the screen while there’s a pause caused by the
+   GNU parallel.
+
+The rest of what has been done:
+
+1. Correction of error message when there was no such keyword in the
+   journal. There were several chunks of code which roles significantly
+   changed over time and became opposites to what they’ve been. Since
+   the operations on the journal can be considered safe after all these
+   months, the scary message was removed.
+
 ===] February 28, 2015 [====================================================
 
 Hotfix closing #4.

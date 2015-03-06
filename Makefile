@@ -58,7 +58,7 @@ ebuild:
 # Work on copy for debian is necessary because otherwise it will try
 #   to alter ownership on NFS and fail.
 deb:
-	-@rm -rf ${PN}*.deb ${PN}*.orig.tar.gz ${PN}*.changes &>/dev/null
+	-@rm -rf *.deb *.orig.tar.gz *.changes &>/dev/null
 	cp ${TARBALL} ${TARBALL_ORIG}
 	tar xf ${TARBALL_ORIG}
 	cd ${P} \
@@ -97,7 +97,7 @@ deb_and_rpm: prepare
 		cp -Ra ~/watch.sh ~/watch.sh.local; \
 		cd ~/watch.sh.local; \
 		make deb && cp -a ./*{deb,changes} ../watch.sh/ ; \
-		[ 1 -eq 1 ]; \
+		: ; \
 	}||{ echo 'ERROR: ~/watch.sh is not mounted.' >&2; exit 3; }" \
 	&& ssh vmfeedawra "grep -q 'watch.sh' /proc/mounts && { \
 		export LC_ALL=C; \
@@ -107,7 +107,7 @@ deb_and_rpm: prepare
 			cp -a /home/d/rpmbuild/RPMS/noarch/* ~/watch.sh/; \
 			cp -a /home/d/rpmbuild/SRPMS/* ~/watch.sh/; \
 		} ; \
-		[ 1 -eq 1 ]; \
+		: ; \
 	}||{ echo 'ERROR: ~/watch.sh is not mounted.' >&2; exit 3; }" \
 	&& for m in vmdebean vmfeedawra; do ssh root@$$m "init 0"; done
 

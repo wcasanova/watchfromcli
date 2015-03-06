@@ -1,5 +1,5 @@
 Name: watchsh
-Version: 20150228
+Version: 20150306
 Release: 1%{?dist}
 Summary: A meta package for a wrapper for mpv/MPlayer to run videos easy via CLI.
 
@@ -55,6 +55,7 @@ mkdir -p %{buildroot}/usr/{bin,share/{doc/%{name},man/man1,bash-completion}}
 %{_bindir}/watch.sh
 %{_mandir}/man1/watch.sh.1.gz
 %{_docdir}/%{name}/RELEASE_NOTES
+%{_datadir}/bash-completion/watchsh
 
 %clean
 rm -rf $RPM_BUILD_ROOT
