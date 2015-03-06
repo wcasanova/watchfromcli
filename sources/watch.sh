@@ -241,10 +241,9 @@ err() {
 			code=31; msg="No sufficient rights to write to “$SCREENSHOT_DIR”.";;
 		cant_create_scrdir)
 			code=32; msg="Couldn’t create directory “$SCREENSHOT_DIR”.";;
-		cant_retrieve_from_journal)
-			code=33; msg='Couldn’t retrieve data from journal.'
-			[ "$KEYWORD" ] && msg+='\nThis was probably caused by a record at the end of journal and happened because\n  cleansing of broken entries is not implemented yet.';;
-		nothing_to_restore)
+		no_such_keyword_in_journal)
+			code=33; msg='No such keyword.';;
+		not_enough_data_to_restore)
 			code=34; msg="Not enough data to restore.
 Couldn’t retrieve $not_found_vars from the journal.
 This might be caused by a broken file, truncated entry at the end of the journal (though such entries shouldn’t exist) or a new update that changed the mechanism of file searching and thus, the list of required variables.";;
@@ -2912,7 +2911,7 @@ screenshots_postprocessing() {
 # EXPECTS:
 #     ~/.watch.sh/journal to exist and contain at least one \n (for sed).
 # EXIT CODES:
-#     0 if OK, “cant_retrieve_from_journal”, “nothing_to_restore”.
+#     0 if OK, “no_such_keyword_in_journal”, “not_enough_data_to_restore”.
 import_session_data() {
 	[ -v NO_JOURNAL ] || {
 		# Checking journal version
@@ -2923,18 +2922,24 @@ import_session_data() {
 		[ "`stat --format='%s' $JOURNAL`" -gt 1 ] && {
 			if [ "$KEYWORD" ]; then
 				# KEYWORD present, search among entries in the journal
+				# We can’t pass exiot code from sed to eval, since eval’s
+				#   exit code is the result of what it _executes_, and it
+				#   executes either an empty string, if sed found nothing
+				#  (=instant 0), or some variable assignment VAR='value',
+				#   that will most probably result in 0 return value.
+				#   So add some assignment that will tell us we found nothing :D
 				eval "`sed -n "/^KEYWORD='$(escape_for_sed_pattern "$KEYWORD")'/,/^$/ {
-				               s/^declare/declare -g/; p } # Force global namespace—we’re inside function." \
-				       $JOURNAL 2>/dev/null`" || local shell_failed=t
+				               s/^declare/declare -g/; p; /^$/ Q0 }; $ Q1 # Force global namespace—we’re inside function." \
+				       $JOURNAL 2>/dev/null || echo local no_such_keyword=t`"
 			else	# KEYWORD is not given, take 1st one from the journal
 				# If this is the old style journal without header, start with 1st line.
 				sed -rn '1s/^# watch.sh journal v[0-9]+$/&/;T;Q1' $JOURNAL && start_line=1
 				eval "$(sed -n "$start_line,/^$/ {
 				               s/^declare/declare -g/; p } # Force global namespace—we’re inside function." \
-				$JOURNAL 2>/dev/null)" || local shell_failed=t
+				$JOURNAL 2>/dev/null || echo local no_such_keyword=t)"
 			fi
 
-			[ -v shell_failed ] && return `err cant_retrieve_from_journal`
+			[ -v no_such_keyword ] && return `err no_such_keyword_in_journal`
 
 			check_required_vars() {
 				local var
@@ -2953,7 +2958,7 @@ import_session_data() {
 			[ "$MODE" = episodes ] \
 				&& check_required_vars 'VIDEOFILES' 'VIDEO_NUMBER' 'EP_NUMBERS' 'INTERRUPTED' 'REMEMBER_SUB_AND_AUDIO_DELAY'
 		}
-		[ -v not_enough_data ] && return `err nothing_to_restore`
+		[ -v not_enough_data ] && return `err not_enough_data_to_restore`
 		# Yes, it could be just one variable, but with two names, its purpose
 		#   is clearer, hence easier to understand at both stages. Moreover,
 		#   INTERRUPTED can’t be used to launch “until” cycle with “watch”
