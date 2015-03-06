@@ -37,7 +37,7 @@ src_prepare() {
 }
 
 src_install() {
-	mkdir -p ${D}/usr/{bin,share/{doc/${PN},man/man1}}
+	mkdir -p ${D}/usr/{bin,share/{doc/${PN},man/man1,bash-completion}}
 	cd sources
 	emake DESTDIR="${D}" install || die "make install failed"
 }

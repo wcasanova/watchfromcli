@@ -47,7 +47,7 @@ easily resume watching the folder later.
 
 %install
 rm -rf $RPM_BUILD_ROOT
-mkdir -p %{buildroot}/usr/{bin,share/{doc/%{name},man/man1}}
+mkdir -p %{buildroot}/usr/{bin,share/{doc/%{name},man/man1,bash-completion}}
 %make_install
 
 %files base

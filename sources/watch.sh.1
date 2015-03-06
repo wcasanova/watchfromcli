@@ -462,6 +462,31 @@ If you have multiple different folders with videos, it may be convenient to remo
 Authors aliases including those for multimonitor setup should be available on that page:
 .br
 http://github.com/deterenkelt/dotfiles/blob/master/bashrc/home.sh
+.\" -----------------------------------------------------------------------SS--
+.SS Using bash completion
+Completion suggests \fIKEYWORD\fPs entered earlier, for \fB-r\fP, \fB-R\fP and their long counterparts \fB--resume\fP and \fB--resume-from-previous\fP. Completion is available for several other options as well.
+.br
+Every bash completion module consists of two parts: a function doing completion
+.br
+
+.B complete <\fIfuncname\fP> <\fIcommand1\fP> [\fIcommand2\fP, \fIcommand3\fP...]
+
+.br
+And the actual function doing it (<\fIfuncname\fP> in the example above). Both come with watch.sh bash completion module, but since user is encouraged to give the program a short name of his own choice, the environment must be aware of it. In order to add completion for your alias(-es), add the following line somewhere in your ~/.bashrc file:
+.br
+
+.B complete _watchsh \fIalias1\fP \fIalias2\fP \fIalias3\fP
+
+.br
+\[char46]\[char46]\[char46]assuming that the \fI_watch\fP function from the module was already sourced either automatically, if enabled by the bash-completion system, or manually via \fBsource\fP command
+.br
+
+.B source bash_completion.sh
+
+.br
+if you’re using \fBwatch.sh\fP as a local script.
+.br
+By default, completion is enabled only for "watch.sh" command
 .\".RE
 .\" -----------------------------------------------------------------------SS--
 .SS B-but I don't like writing something in the terminal...
@@ -507,7 +532,7 @@ If you run certain lua scripts within \fBmpv\fP, they may intervene in its outpu
 .BR cjpeg (1),
 .BR taskset (1),
 .BR ionice (1).
-.\" \[char46]
+.\"
 .\"
 .\" AUTHOR ---------------------------------------------------------------------
 .\"

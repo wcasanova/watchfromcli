@@ -438,10 +438,6 @@ while true; do
 			MATCH_NUMBER=t # implies -n
 			shift
 			;;
-		'--no-hints') # hide hints
-			NO_HINTS=t
-			shift
-			;;
 		'--bashrc') # I know I could simply add -i to shebang in order to make
 			# the shell interactive and force it to source ~/.bash_profile,
 			# but the chain of sourcing this way may be long and redundant.
@@ -613,6 +609,10 @@ while true; do
 			;;
 		-N|'--dvd-bd-nav')
 			DVD_BD_NAV=t
+			shift
+			;;
+		'--no-hints') # hide hints
+			NO_HINTS=t
 			shift
 			;;
 		'--not-episodes')
