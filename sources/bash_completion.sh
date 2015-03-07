@@ -3,7 +3,7 @@ _watchsh() {
 	_init_completion -s -n : || return
 
 	[[ ${cur} == -* ]] && {
-		COMPREPLY=( $(compgen -W "-a --match-all -c --run-in-cycle -C --no-color --check-for-update --compat -d --basedir|--basepath --group-indicator --heuristics-level -h --help -H -I --ignore-disks --interval --ionice-opts -j --list-journal -J --no-journal --journal-max-size --jpeg-compression -L --limit-watching-to -l --loop --last-ep --last-ep-command --last-ep-format --last-ep-show-after --last-item-mark -M --mplayer-command -m --mplayer-opts --my-increment --my-decrement -n --match-number -N --dvd-bd-nav --not-episodes --remember-sub-and-audio-delay -R --resume-from-previous -r --resume -s --subfolders -S --screenshot-dir --screenshot-dir-skel --taskset-opts -u -v --version" -- ${cur}) )
+		COMPREPLY=( $(compgen -W "-a --match-all -c --run-in-cycle -C --no-color --check-for-update --compat -d --basedir --basepath --group-indicator --heuristics-level -h --help -H -I --ignore-disks --interval --ionice-opts -J --no-journal --journal-max-size --jpeg-compression -L --limit-watching-to -l --loop --last-ep --last-ep-command --last-ep-format --last-ep-show-after --last-item-mark -M --mplayer-command -m --mplayer-opts --my-increment --my-decrement -n --match-number -N --dvd-bd-nav --not-episodes --remember-sub-and-audio-delay -R --resume-from-previous -r --resume -s --subfolders -S --screenshot-dir --screenshot-dir-skel --taskset-opts -u -v --version" -- ${cur}) )
 		return 0
 	}
 	case $prev in

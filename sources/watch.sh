@@ -200,10 +200,6 @@ err() {
 			code=14; msg="Option --heuristics-level requires argument to be a number lower or equal to $MAX_HEURISTICS_LEVEL.";;
 		opt_inputinvalid)
 			code=15; msg='RESERVED';;
-		opt_jentries)
-			code=16; msg='Option -j|--list-journal takes
-  - a number between 1 and 65535;
-  - a single letter “a” or “all” to display all keywords.';;
 		opt_journalsize)
 			code=17; msg='Option --journal-max-size requires argument to be a number of bytes that
   may be followed by one of these suffixes: K M G to represent *2^10 once,\n  twice or three times.';;
@@ -345,7 +341,7 @@ JOURNAL_MINVER='20150227'
 		|| exit `err homedir`
 }
 
-VERSION="20150306"
+VERSION="20150307"
 CHECK_FOR_UPDATE=21 # each N days
 updater_timestamp=~/.watch.sh/updater_timestamp
 [ -f $updater_timestamp ] || touch $updater_timestamp
@@ -376,7 +372,7 @@ NOT_EPNUMBERS=("240p" "360p" "480p" "720p" "1280??(?)?(?)720" "1080p" "1920??(?)
 #   independetly of whether the -a|--alternative option is passed.
 opts=`getopt \
              --options \
-                       acCd:eEFhH:Ij::JlL:m:M:nNrRs:S:uTv \
+                       acCd:eEFhH:IJlL:m:M:nNrRs:S:uTv \
              --longoptions \
 basedir:,basepath:,\
 bashrc::,\
@@ -396,7 +392,6 @@ last-ep-command:,\
 last-ep-format:,\
 last-item-mark:,\
 limit-watching-to:,\
-list-journal::,\
 loop,\
 match-all,\
 match-number,\
@@ -528,16 +523,6 @@ while true; do
 			[ -z "$2" ] && IONICE_OPTS='-c best-effort -n0' && shift || {
 				IONICE_OPTS="$2" && shift 2
 			}
-			;;
-		-j|'--list-journal')
-			[ -z "$2" ] && JOURNAL_ENTRIES=10 || {
-				[ "$2" = a -o "$2" = all ] && JOURNAL_ENTRIES=65535 || {
-					[[ "$2" =~ ^[0-9]{1,5}$ ]] && JOURNAL_ENTRIES=$2 \
-						|| exit `err opt_jentries`
-				}
-			}
-			sed -nr "s/^KEYWORD='(.*)'$/\1/p" $JOURNAL | head -n$JOURNAL_ENTRIES
-			exit 0
 			;;
 		-J|'--no-journal')
 			NO_JOURNAL=t

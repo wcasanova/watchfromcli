@@ -1,3 +1,9 @@
+===] March 7, 2015 [====================================================
+
+1. Extra fixes to the documentation.
+2. Removal of -j|--list-journal, since it was meant as a crutch to com-
+   pensate the lack of now present completion for -r and -R.
+
 ===] March 6, 2015 [====================================================
 
 (\ /)
