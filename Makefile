@@ -114,9 +114,9 @@ deb_and_rpm: prepare
 
 upload:
 	git status
-	@read -n1 -p 'Continue? [Y/n] > '; [[ ! "$$REPLY" =~ ^[Nn]$$ ]] || exit 3
+	@read -n1 -p 'Add all and Continue? [Y/n] > '; [[ ! "$$REPLY" =~ ^[Nn]$$ ]] || exit 3
 	git add --all .
-	git commit
+	git commit -m "Version bump to ${PV}."
 # This assumes we’re on the ‘dev’ branch
 	git checkout master
 	git merge dev
