@@ -63,9 +63,6 @@ To start watching cycle:
 To resume watching cycle:
     watch.sh [optional arguments] -[r|R]  [keyword]
 
-List recently entered keywords (useful for -r)
-    watch.sh -j
-
 Check for updates
     watch.sh -u
 
@@ -2708,30 +2705,44 @@ Consider switching to the latest mpv if you want to load multiple tracks
 		&& ionice_cmd="ionice $IONICE_OPTS"
 	# $MPLAYER_OPTS must be right before path because of protocol:// things
 	# --msg-level=all=info because coproc will make mpv spam its status line.
+	#   It is also used to distinguish the mpv instance that runs
+	#   the video from those that encode webms (see below).
 	{ coproc \
-		{ eval ${ionice_cmd:-} ${taskset_cmd:-} $MPLAYER_COMMAND  ${subtitles:-} ${tracks:-} \
-			--msg-level=all=info "$MPLAYER_OPTS" "\"$path_to_videofile\"" \
-			|& sed '$s/End of file/&/p;T;Q1' # Thank God we have sed…
+		{ eval ${ionice_cmd:-} ${taskset_cmd:-} $MPLAYER_COMMAND --msg-level=all=info \
+			${subtitles:-} ${tracks:-} "$MPLAYER_OPTS" "\"$path_to_videofile\"" \
+			|& sed '/^Exiting\.\.\./ {s/End of file/&/p; t ex1; Q0; :ex1 Q1}' # sed is weird…
 		} >&3
 	} 3>&1 # let mpv’s output flow to the stdout.
+
+
 	local mpvsed_pipe_pid=$!
+	## inotifywait is supposed to catch changes user makes via mpv interface,
+	##  i.e. change sub/audio delays, so it might be better to use mpv_pid instead.
+	##  I leave it here just in case that coproc shell won’t be closing in time again,
+	##  making inotifywait wait for the hanging shell …or sed in it. See bug #6.
+	# until [[ "$mpv_pid" =~ ^[0-9]+$ ]]; do
+	# 	# Do not run convert_script right away when the window apeared, let it check
+	# 	#   for the main mpv instance first!
+	# 	local mpv_pid=`pgrep --session $PPID -xf '^mpv --msg-level.*'`  # NB --msg-level
+	# 	sleep 1
+	# done
+
 	[ -v REMEMBER_SUB_AND_AUDIO_DELAY ] && [ ! -v COMPAT -a "$MODE" = episodes ] && {
 		if which inotifywait pkill &>/dev/null; then
-			local config \
-				watch_later="$HOME/.mpv/watch_later"
+			local config watch_later="$HOME/.mpv/watch_later"
 			local inotifywait_cmd="inotifywait -q --monitor --format %f -e modify $watch_later"
-			while true; do
-				sleep 1
-				[ -e /proc/$mpvsed_pipe_pid ] || {
-					[ -v D ] && {
-						echo "Trying to kill “$inotifywait_cmd” with session id $PPID." >>$dbg_file
-						ps -Ao session,ppid,pid,cmd,start,user | grep -v grep \
-							| grep -E "($PPID|${0##*/}|inotifywait)" >>$dbg_file
-					}
-					pkill -13 --session $PPID -xf "$inotifywait_cmd" # SIGPIPE to suppress the message.
-					break
+			(
+				# This is rare, but mpv may be exited before inotifywait spawns,
+				#   so we need to check for it, too. Better than sleep 1 that was here earlier.
+				# while [ -e /proc/$mpv_pid ] && pgrep --session $PPID -xf "$inotifywait_cmd"; do sleep 1; done
+				while [ -e /proc/$mpvsed_pipe_pid ] && pgrep --session $PPID -xf "$inotifywait_cmd" &>/dev/null; do sleep 1; done
+				[ -v D ] && {
+					echo "Trying to kill “$inotifywait_cmd” with session id $PPID." >>$dbg_file
+					ps -Ao session,ppid,pid,cmd,start,user | grep -v grep \
+						| grep -E "($PPID|${0##*/}|inotifywait)" >>$dbg_file
 				}
-			done &
+				pkill -13 --session $PPID -xf "$inotifywait_cmd" # SIGPIPE to suppress the message.
+			) &
 			while IFS= read -r config; do
 				if [ "`sed -nr '1s/^#\s(.*)$/\1/p' "$watch_later/$config"`" -ef "$path_to_videofile" ];  then
 					# The user must have run write_watch_later_config from mpv.
@@ -2755,6 +2766,7 @@ Consider switching to the latest mpv if you want to load multiple tracks
 			warn 'For --remember-sub-and-audio-delay inotifywait and pkill are required!'
 		fi
 	}
+
 	wait $mpvsed_pipe_pid && {
 		# Should I make a test case and parse the last line for known exit
 		#   messages and ask what to do if none were found? It matters
@@ -2765,6 +2777,7 @@ Consider switching to the latest mpv if you want to load multiple tracks
 	WE_HAVE_BEEN_IN_WATCH_FUNC=t # for export_session_data()
 	return 0
 }
+
 
 # EXPECTS:
 #     findpath — where to search for additional files (subtitles, audiotracks etc.)
@@ -2842,6 +2855,9 @@ get_other_files() {
 #     printing last shown episode number twice.
 screenshots_postprocessing() {
 	# Seeking screenshots
+	# I don’t exactly remember whether it’s really needed to be exported,
+	#   but to be sure…
+	[ -v JPEG_COMPRESSION ] && export JPEG_COMPRESSION="$JPEG_COMPRESSION"
 	[ -d "$SCREENSHOT_DIR" ] && {
 		compress_screenshot() {
 			local shot="$1"

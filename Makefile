@@ -26,7 +26,8 @@ clean:
 prepare: clean
 	sed -i 's/^VERSION=.*$$/VERSION="${PV}"/' sources/watch.sh
 	sed -i '1 s/^.TH watch\.sh 1 "[^"]*"/.TH watch.sh 1 "${HUMAN_DATE}"/' sources/watch.sh.1
-	opts=( $$( sed -rn "/^\s*case \"\\\$$option\" in/,/esac/ { /^\t\t\S+\)$$/ {s/\s//g; s/\)//; s/'//g; s/\|/\n/g; /^(--|\*)$$/d; p} }" ./sources/watch.sh ) ) && _opts="$${opts[@]}" && sed -ri "s/compgen -W \".*\"/compgen -W \"$$_opts\"/" sources/bash_completion.sh
+	opts=( $$( sed -rn "/^\s*case \"\\\$$option\" in/,/esac/ { /^\t\t\S+\)$$/ {s/\s//g; s/\)//; s/'//g; s/\|/\n/g; /^(--|\*)$$/d; p} }" ./sources/watch.sh ) ) \
+		&& _opts="$${opts[@]}" && sed -ri "s/compgen -W \".*\"/compgen -W \"$$_opts\"/" sources/bash_completion.sh
 	read -p 'Have you written RELEASE_NOTES? [N/y] > '; [[ "$$REPLY" =~ ^[yY]$$ ]] \
 		|| { echo -e "Please write.\nAborted by user." >&2; exit 3; }
 #   This is to not touch the file if it wasn’t modified, so Emacs wouldn’t ask
@@ -116,10 +117,15 @@ upload:
 	@read -n1 -p 'Continue? [Y/n] > '; [[ ! "$$REPLY" =~ ^[Nn]$$ ]] || exit 3
 	git add --all .
 	git commit
+# This assumes we’re on the ‘dev’ branch
+	git checkout master
+	git merge dev
 # Just in case I may need to --amend
 	read -n1 -p 'Tag and push? [Y/n] > '; [[ ! "$$REPLY" =~ ^[Nn]$$ ]] || exit 3
 	git tag v${PV}
 	git push
 	git push --tags
+	git checkout dev
+	git merge master
 
 all: deb_and_rpm upload ebuild
