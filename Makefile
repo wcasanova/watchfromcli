@@ -59,7 +59,6 @@ ebuild:
 # Work on copy for debian is necessary because otherwise it will try
 #   to alter ownership on NFS and fail.
 deb:
-	-@rm -rf *.deb *.orig.tar.gz *.changes &>/dev/null
 	cp ${TARBALL} ${TARBALL_ORIG}
 	tar xf ${TARBALL_ORIG}
 	cd ${P} \
@@ -96,9 +95,11 @@ deb_and_rpm: prepare
 		[ -d /tmp/decrypted ] || scp -r home:/tmp/decrypted /tmp/; \
 		ln -sf /tmp/decrypted/.gnupg ~/.gnupg; \
 		rm -rf ~/watch.sh.local; \
+		cd ~/watch.sh/; \
+		rm -rf *.deb *.orig.tar.gz *.changes &>/dev/null; \
 		cp -Ra ~/watch.sh ~/watch.sh.local; \
 		cd ~/watch.sh.local; \
-		make deb && cp -a ./*{deb,changes} ../watch.sh/ ; \
+		make deb && cp -a ./*{deb,changes} ../watch.sh/; \
 		: ; \
 	}||{ echo 'ERROR: ~/watch.sh is not mounted.' >&2; exit 3; }" \
 	&& ssh vmfeedawra "grep -q 'watch.sh' /proc/mounts && { \
@@ -132,4 +133,4 @@ upload:
 all: deb_and_rpm upload ebuild
 
 help:
-	echo 'all = prepare → deb rpm → upload → ebuild'
+	echo 'all = prepare → deb_and_rpm → upload → ebuild'
