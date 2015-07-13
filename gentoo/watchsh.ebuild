@@ -16,21 +16,23 @@ KEYWORDS="~*"
 IUSE="convtojpeg +figlet +parallel +pngcrush +remember-delays toilet +xdg-open"
 
 RDEPEND="|| ( media-video/mpv media-video/mplayer2 media-video/mplayer )
-         >=sys-apps/grep-2.9
-         >=sys-apps/sed-4.2.1
-         >=sys-apps/util-linux-2.20
-         >=app-shells/bash-4.2
-         net-misc/wget
-         remember-delays? ( media-video/mpv
-                            sys-fs/inotify-tools
-                            sys-process/procps )
-         convtojpeg? ( media-libs/netpbm
-                       media-libs/libjpeg-turbo )
-         figlet? ( app-misc/figlet )
-         parallel? ( sys-process/parallel )
-         pngcrush? ( media-gfx/pngcrush )
-         toilet? ( app-misc/toilet )
-         xdg-open? ( x11-misc/xdg-utils )"
+		 >=sys-apps/grep-2.9
+		 >=sys-apps/sed-4.2.1
+		 >=sys-apps/file-5.17
+		 >=sys-apps/util-linux-2.20
+		 >=app-shells/bash-4.2
+		 net-misc/wget
+		 remember-delays? ( media-video/mpv
+		                    sys-fs/inotify-tools
+		                    sys-process/procps
+		                    sys-process/psmisc )
+		 convtojpeg? ( media-libs/netpbm
+		               media-libs/libjpeg-turbo )
+		 figlet? ( app-misc/figlet )
+		 parallel? ( sys-process/parallel )
+		 pngcrush? ( media-gfx/pngcrush )
+		 toilet? ( app-misc/toilet )
+		 xdg-open? ( x11-misc/xdg-utils )"
 
 src_prepare() {
 	epatch_user

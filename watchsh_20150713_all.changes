@@ -1,0 +1,37 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Format: 1.8
+Date: Mon, 13 Jul 2015 13:43:23 +0400
+Source: watchsh
+Binary: watchsh
+Architecture: all
+Version: 20150713
+Distribution: unstable
+Urgency: low
+Maintainer: deterenkelt <deterenkelt.github@gmail.com>
+Changed-By: deterenkelt <deterenkelt.github@gmail.com>
+Description: 
+ watchsh    - A shell wrapper for mpv/MPlayer to run videos easy via CLI.
+Changes: 
+ watchsh (20150713) unstable; urgency=low
+ .
+   * NUISANCE
+Checksums-Sha1: 
+ c7b22a990489e5af9c8cb3e58b0a75e5041ce055 67718 watchsh_20150713_all.deb
+Checksums-Sha256: 
+ a59c8181ee3a393ad8f80bfda7562a6e9313ee4c2de2a5f911b82eebedf34de0 67718 watchsh_20150713_all.deb
+Files: 
+ 006ba451c4517a96ffdbdc960d120dea 67718 video extra watchsh_20150713_all.deb
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQEcBAEBCgAGBQJVo4hLAAoJEHshvfgyULHtgcMH+gK3dRu/5d8/AXn012l+jLKr
+ZO0x6ZXSM8t7Pvef6wY1EYw/kDPpAKkN/MTIr4weX7pkOjmdU1xFJ5f6BdCqowHM
+aOScRwHUsJgweDSl8dDY8H8/zHD/eoBBNc/XdvSFrOh4M3mqPXfrdfrAVYPLU9Tt
+s3Ty+h/HTbqnkxW4rXEa8T/NM1yeIOEBNx2qKAIhp4anKxiwYmHzIQEA4ZGuryhy
+285/2QWw+INEGwsEEH2LrF5Xu5/iIxv1qJ/O0MDQi6rVb7fbsYYcFDtiatpaRevY
+AVq+1eHJK5P5CkzENfJeE67VeowhCHAIZpTfYSPy0EfRkPYfctfzalIAqrKIgvM=
+=UKUH
+-----END PGP SIGNATURE-----

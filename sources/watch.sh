@@ -338,7 +338,7 @@ JOURNAL_MINVER='20150227'
 		|| exit `err homedir`
 }
 
-VERSION="20150708"
+VERSION="20150713"
 CHECK_FOR_UPDATE=21 # each N days
 updater_timestamp=~/.watch.sh/updater_timestamp
 [ -f $updater_timestamp ] || touch $updater_timestamp
@@ -2578,7 +2578,7 @@ watch() {
 				}
 			fi
 			CLEAN_EP_NUMBER=${EP_NUMBERS[VIDEO_NUMBER-1]#L}
-			CLEAN_EP_NUMBER=${CLEAN_EP_NUMBER%?}
+			CLEAN_EP_NUMBER=${CLEAN_EP_NUMBER%\?}
 			[ -v SUB_DELAY ] && MPLAYER_OPTS+=" $dashes${mp_opts[sub-delay]}=$SUB_DELAY"
 			[ -v AUDIO_DELAY ] && MPLAYER_OPTS+=" $dashes${mp_opts[audio-delay]}=$AUDIO_DELAY"
 			[ -v REMEMBER_SUB_AND_AUDIO_DELAY ] && MPLAYER_OPTS+=" --write-filename-in-watch-later-config"
@@ -2713,9 +2713,12 @@ Consider switching to the latest mpv if you want to load multiple tracks
 			|& sed '/^Exiting\.\.\./ {s/End of file/&/p; t ex1; Q0; :ex1 Q1}' # sed is weird…
 		} >&3
 	} 3>&1 # let mpv’s output flow to the stdout.
-
-
 	local mpvsed_pipe_pid=$!
+	[ -v D ] && {
+		echo "mpvsed_pipe_pid = $mpvsed_pipe_pid" >>$dbg_file
+		ps -C mpv -ww -o session=,command= >>$dbg_file
+	}
+
 	## inotifywait is supposed to catch changes user makes via mpv interface,
 	##  i.e. change sub/audio delays, so it might be better to use mpv_pid instead.
 	##  I leave it here just in case that coproc shell won’t be closing in time again,
@@ -2738,8 +2741,7 @@ Consider switching to the latest mpv if you want to load multiple tracks
 				while [ -e /proc/$mpvsed_pipe_pid ] && pgrep --session $PPID -xf "$inotifywait_cmd" &>/dev/null; do sleep 1; done
 				[ -v D ] && {
 					echo "Trying to kill “$inotifywait_cmd” with session id $PPID." >>$dbg_file
-					ps -Ao session,ppid,pid,cmd,start,user | grep -v grep \
-						| grep -E "($PPID|${0##*/}|inotifywait)" >>$dbg_file
+					pstree -ap $PPID >>$dbg_file
 				}
 				pkill -13 --session $PPID -xf "$inotifywait_cmd" # SIGPIPE to suppress the message.
 			) &
@@ -2814,8 +2816,8 @@ get_other_files() {
 	[ $MODE = episodes ] && {
 		# This must be a very thorough check,
 		#    but that‘s all we can afford right now.                                EP               20               v2
-		local match_by_keyword_and_num=`echo "$match_by_keyword" | grep -E "[^0-9a-oA-Oq-zQ-Z]$CLEAN_EP_NUMBER[^0-9a-uA-Uw-zW-Z]" | sort`
-		# That’s no good                                                    ^^^^^^^^^^^^^^^^^^                ^^^^^^^^^^^^^^^^^^
+		local match_by_keyword_and_num=`echo "$match_by_keyword" | grep -E "[^0-9a-oA-Oq-zQ-Z]0*$CLEAN_EP_NUMBER[^0-9a-uA-Uw-zW-Z]" | sort`
+		# That’s no good                                                    ^^^^^^^^^^^^^^^^^^                  ^^^^^^^^^^^^^^^^^^
 		# Shoulda check whether the group_number_at_the_beginning[VIDEO_NUMBER-1] or group_number_at_the_end[VIDEO_NUMBER-1] were set.
 		OTHER_FILES_LIST="${OTHER_FILES_LIST:+${OTHER_FILES_LIST}\n}$match_by_keyword_and_num"
 		local match_by_num=`echo "$found_other_files" | grep -E "[^0-9]$CLEAN_EP_NUMBER[^0-9]" | sort`
@@ -2855,9 +2857,6 @@ get_other_files() {
 #     printing last shown episode number twice.
 screenshots_postprocessing() {
 	# Seeking screenshots
-	# I don’t exactly remember whether it’s really needed to be exported,
-	#   but to be sure…
-	[ -v JPEG_COMPRESSION ] && export JPEG_COMPRESSION="$JPEG_COMPRESSION"
 	[ -d "$SCREENSHOT_DIR" ] && {
 		compress_screenshot() {
 			local shot="$1"
@@ -3140,8 +3139,7 @@ screenshots_postprocessing && [ $MODE = episodes ] \
 # Add ED/OP as something equal to episode numbers in terms of sequences?
 # Make a true check for multiple manual rearrangements expression.
 # Create journal header to contain version for compatibility check.
-# Write bash completion module (at least for -r).
-# And integration with MyAnimeList.
+# And integration with MyAnimeList. (Would be a pain with cases like Tekyuu (see below))
 # Write modular localization.
 # Rewrite it with C++.
 #
@@ -3158,23 +3156,22 @@ screenshots_postprocessing && [ $MODE = episodes ] \
 #   - there are some users who would like to switch heuristics level just because of babyduck syndrome or
 #     unexplainable love to click switches (aka hacky and cool)?
 #   - there are something more I didn’t think about? Test cases are very small.
+#
+# There are cases such as Teekyuu when all the episode can be marked sequentially, i.e. each new season continues
+#   numbering insteadof starting from 01, 02… etc. Should the script try to find this case, if number of subtitle
+#   files matches the number in the first group (simplest case?) But it may work bad in really messed up folders,
+#   which would involve HEU2… when it will be finished.
 
 # WAT DONE
 # ————————
-# Fix bug #2. Good bye, sequences from hashes.
-# Fix bug drawing episode_number twice after cycle has reached the end of the list.
-# Fix division of what’s done for the watch() and the other functions in choose_from().
-# -l goes for --loop. Now watch.sh will stop after reaching the end of the list (in episodes mode),
-#    and will loop the list only when the corresponding option is specified.
-# Fix triggering of export_session_data() for cases when watching wasn’t started.
 
 # TODO
 # ————————
+# Add pstree to deps in deb and rpm.
 # The purpose of this update is^W shoud have been to make HEU1 better (actual sorting by number included) and to make HEU2
 #   ready for use, so this program would put on title ‘version 1.0’ with dignity.
 # GROUP_INDICATOR must be 4 unique chars! Or not? Try to combine an array which would contain indices of groups
 #   and start/end indices of the elements in VIDITEM_FILE[@], so we could use them instead of GI_*. // GI_*
 #   must be unique in that case, and that may be inconvenient for the user and will require another cycle
 #   for checking his own GROUP_INDICATOR.
-# Change 1 to 2 in expressions writing and reading from journal and look if that would be enough to add a header.
 # Group placed at the top, however, will still persist, and the topmost will be used for complementing in HEU2.

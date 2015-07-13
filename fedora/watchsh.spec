@@ -1,5 +1,5 @@
 Name: watchsh
-Version: 20150708
+Version: 20150713
 Release: 1%{?dist}
 Summary: A meta package for a wrapper for mpv/MPlayer to run videos easy via CLI.
 
@@ -7,7 +7,7 @@ License: GPLv3
 URL: http://github.com/deterenkelt/watchsh
 Group: Applications/Multimedia
 BuildArch: noarch
-Requires: watchsh-base, parallel, figlet, pngcrush, libjpeg-turbo-utils, netpbm-progs, inotify-tools, procps-ng, xdg-utils
+Requires: watchsh-base, parallel, figlet, pngcrush, libjpeg-turbo-utils, netpbm-progs, inotify-tools, procps-ng, psmisc, xdg-utils
 
 %description
 %{summary}

@@ -9,7 +9,7 @@ Package: watchsh
 Architecture: all
 Homepage: http://github.com/deterenkelt/watchsh
 Depends: mplayer | mplayer2 | mpv, bash (>= 4.2), sed (>= 4.2.1), grep (>= 2.9), file (>= 5.17), util-linux (>=2.20), wget
-Recommends: parallel, figlet, pngcrush, netpbm, libjpeg-progs, inotify-tools, procps, xdg-utils
+Recommends: parallel, figlet, pngcrush, netpbm, libjpeg-progs, inotify-tools, procps, psmisc, xdg-utils
 Enhances: mplayer, mplayer2, mpv
 Description: A shell wrapper for mpv/MPlayer to run videos easy via CLI.
  watch.sh is written to simplify access to video files and play videos easily.

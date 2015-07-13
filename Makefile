@@ -87,8 +87,9 @@ deb_and_rpm: prepare
 # vm-* aliases can be found in the bashrc/home.sh of the “dotfiles” repo nearby.
 # Don’t forget that ssh requires -t or "RequestTTY force". Also -X for pinentry.
 #   Also timeout, which I set to three minutes.
-	ps axu |& grep -v grep | grep -q "qemu.*debean" || { vm-d.sh && sleep 5; }
-	ps axu |& grep -v grep | grep -q "qemu.*feedawra" || { vm-f.sh && sleep 5; }
+	ps axu |& grep -v grep | grep -q "qemu.*debean" || vm-d.sh
+	ps axu |& grep -v grep | grep -q "qemu.*feedawra" || vm-f.sh
+	sleep 60
 	ssh vmdebean "grep -q 'watch.sh' /proc/mounts && { \
 		export LC_ALL=C; \
 		export EDITOR='nano -w'; \
@@ -114,7 +115,7 @@ deb_and_rpm: prepare
 
 upload:
 	git status
-	@read -n1 -p 'Add all and Continue? [Y/n] > '; [[ ! "$$REPLY" =~ ^[Nn]$$ ]] || exit 3
+	@read -n1 -p 'Confirm changes and continue? [Y/n] > '; [[ ! "$$REPLY" =~ ^[Nn]$$ ]] || exit 3
 	git add --all .
 	git commit -m "Version bump to ${PV}."
 # This assumes we’re on the ‘dev’ branch
@@ -129,3 +130,6 @@ upload:
 	git merge master
 
 all: deb_and_rpm upload ebuild
+
+help:
+	echo 'all = prepare → deb rpm → upload → ebuild'
