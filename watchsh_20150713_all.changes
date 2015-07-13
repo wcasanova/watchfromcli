@@ -2,7 +2,7 @@
 Hash: SHA512
 
 Format: 1.8
-Date: Mon, 13 Jul 2015 13:43:23 +0400
+Date: Mon, 13 Jul 2015 13:47:06 +0400
 Source: watchsh
 Binary: watchsh
 Architecture: all
@@ -18,20 +18,20 @@ Changes:
  .
    * NUISANCE
 Checksums-Sha1: 
- c7b22a990489e5af9c8cb3e58b0a75e5041ce055 67718 watchsh_20150713_all.deb
+ 9a8dd4e304b251b1a2841f9f00d000011698f084 67718 watchsh_20150713_all.deb
 Checksums-Sha256: 
- a59c8181ee3a393ad8f80bfda7562a6e9313ee4c2de2a5f911b82eebedf34de0 67718 watchsh_20150713_all.deb
+ ab125f71aa5d78a84aab1cd606bbf667d4db3c164d338189bc2fdea662c4364a 67718 watchsh_20150713_all.deb
 Files: 
- 006ba451c4517a96ffdbdc960d120dea 67718 video extra watchsh_20150713_all.deb
+ 4a933170ee72f4776410b4ef2ec0ad37 67718 video extra watchsh_20150713_all.deb
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2.0.22 (GNU/Linux)
 
-iQEcBAEBCgAGBQJVo4hLAAoJEHshvfgyULHtgcMH+gK3dRu/5d8/AXn012l+jLKr
-ZO0x6ZXSM8t7Pvef6wY1EYw/kDPpAKkN/MTIr4weX7pkOjmdU1xFJ5f6BdCqowHM
-aOScRwHUsJgweDSl8dDY8H8/zHD/eoBBNc/XdvSFrOh4M3mqPXfrdfrAVYPLU9Tt
-s3Ty+h/HTbqnkxW4rXEa8T/NM1yeIOEBNx2qKAIhp4anKxiwYmHzIQEA4ZGuryhy
-285/2QWw+INEGwsEEH2LrF5Xu5/iIxv1qJ/O0MDQi6rVb7fbsYYcFDtiatpaRevY
-AVq+1eHJK5P5CkzENfJeE67VeowhCHAIZpTfYSPy0EfRkPYfctfzalIAqrKIgvM=
-=UKUH
+iQEcBAEBCgAGBQJVo4k9AAoJEHshvfgyULHtalYH/2ID7ZPgFow1elAMrujHFP6J
+k9gQZVuEEEb7Gvh16qQpqckl6FH43apCNz5r/6rVZ+bB7yRk6R4K3HPm+XMrFbD7
+HSQOUzI/04QxGCn0sjHqceAM3bXgcP0jK8GkhRA1UfCh4tJrzl355M76p34zJkal
+o80r/fZ3iunqk4L9C4zdU5gmEMAYQ7RNG1KHVCy1AI1Yp46Ghkt55OYCx1vcYJLr
+bK+OzVyj7UGb+LfI1PDx4oQ7bWE2Cb3Gr6kGQPNeYdYh2DnkHN+bEJaReVzAhzQk
+ICpmtNYK9q1nO+h/IyRxN68LrVfOd6h6kacIDwV8qBnW1VlpQ+gFoRLARmqJU0w=
+=N5mt
 -----END PGP SIGNATURE-----
