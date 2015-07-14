@@ -338,7 +338,7 @@ JOURNAL_MINVER='20150227'
 		|| exit `err homedir`
 }
 
-VERSION="20150713"
+VERSION="20150714"
 CHECK_FOR_UPDATE=21 # each N days
 updater_timestamp=~/.watch.sh/updater_timestamp
 [ -f $updater_timestamp ] || touch $updater_timestamp
@@ -2735,10 +2735,11 @@ Consider switching to the latest mpv if you want to load multiple tracks
 			local config watch_later="$HOME/.mpv/watch_later"
 			local inotifywait_cmd="inotifywait -q --monitor --format %f -e modify $watch_later"
 			(
-				# This is rare, but mpv may be exited before inotifywait spawns,
-				#   so we need to check for it, too. Better than sleep 1 that was here earlier.
-				# while [ -e /proc/$mpv_pid ] && pgrep --session $PPID -xf "$inotifywait_cmd"; do sleep 1; done
-				while [ -e /proc/$mpvsed_pipe_pid ] && pgrep --session $PPID -xf "$inotifywait_cmd" &>/dev/null; do sleep 1; done
+				# Wait for inotifywait to spawn
+				while ! pgrep --session $PPID -xf "$inotifywait_cmd" &>/dev/null; do sleep 1; done
+				# Wait for mpv to close (mpv_pid could be used instead, but at this time
+				#   it’d be kinda superfluous).
+				while [ -e /proc/$mpvsed_pipe_pid ]; do sleep 1; done
 				[ -v D ] && {
 					echo "Trying to kill “$inotifywait_cmd” with session id $PPID." >>$dbg_file
 					pstree -ap $PPID >>$dbg_file
