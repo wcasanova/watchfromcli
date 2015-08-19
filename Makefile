@@ -17,7 +17,7 @@ export DEBFULLNAME
 export DEBEMAIL
 DEB_CHANGELOG_DATE := $(shell LC_TIME=C date --date='@${DATE}' -R)
 RPM_CHANGELOG_DATE := $(shell LC_TIME=C date --date='@${DATE}' +'%a %b %_d %Y')
-# REV := -1
+REV := -1
 PF := ${PN}-${PV}${REV}
 
 clean:
@@ -123,7 +123,7 @@ upload:
 	git merge dev
 # Just in case I may need to --amend
 	read -n1 -p 'Tag and push? [Y/n] > '; [[ ! "$$REPLY" =~ ^[Nn]$$ ]] || exit 3
-	git tag v${PV}
+	git tag v${PV}${REV}
 	git push
 	git push --tags
 	git checkout dev
