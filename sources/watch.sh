@@ -338,7 +338,7 @@ JOURNAL_MINVER='20150227'
 		|| exit `err homedir`
 }
 
-VERSION="20150714"
+VERSION="20150819"
 CHECK_FOR_UPDATE=21 # each N days
 updater_timestamp=~/.watch.sh/updater_timestamp
 [ -f $updater_timestamp ] || touch $updater_timestamp
@@ -546,9 +546,9 @@ while true; do
 			;;
 		'--last-ep')
 			which figlet &>/dev/null \
-				&& LAST_EP_NUMBER_PRINTING_COMMAND='figlet -t -f clb6x10 -c' \
+				&& LAST_EP_NUMBER_PRINTING_COMMAND='figlet -t -f banner -c' \
 				|| {
-				warn 'figlet is not installed.
+				warn 'I can’t use figlet? Is it and the font installed?
   I will use “cat” to print the last shown episode number.'
 				LAST_EP_NUMBER_PRINTING_COMMAND='cat'
 			}

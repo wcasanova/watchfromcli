@@ -17,7 +17,10 @@ _watchsh() {
 			_filedir -d
 			;;
 		-r|--resume|-R|--resume-from-previous)
-			COMPREPLY=(`sed -nr "s/^KEYWORD='($cur.*)'/\1/p" ~/.watch.sh/journal`)
+			# Separate -r and -R.
+			# -r is for quick remembering — 12 keys
+			# -R is for deep search. Full journal + episodes
+			COMPREPLY=(`sed -nr "s/^KEYWORD='($cur.*)'/\1/p" ~/.watch.sh/journal | head -n 12`)
 			return
 			;;
 		-S|--screenshot-dir)
