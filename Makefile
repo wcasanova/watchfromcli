@@ -82,37 +82,36 @@ rpm:
 	cd ~/rpmbuild \
 		&& rpmbuild -ba SPECS/${PN}.spec
 
-deb_and_rpm: prepare
-# vm-* aliases can be found in the bashrc/home.sh of the “dotfiles” repo nearby.
-# Don’t forget that ssh requires -t or "RequestTTY force". Also -X for pinentry.
-#   Also timeout, which I set to three minutes.
-	ps axu |& grep -v grep | grep -q "qemu.*debean" || vm-d.sh
-	ps axu |& grep -v grep | grep -q "qemu.*feedawra" || vm-f.sh
-	sleep 60
-	ssh vmdebean "grep -q 'watch.sh' /proc/mounts && { \
-		export LC_ALL=C; \
-		export EDITOR='nano -w'; \
-		[ -d /tmp/decrypted ] || scp -r home:/tmp/decrypted /tmp/; \
-		ln -sf /tmp/decrypted/.gnupg ~/.gnupg; \
-		rm -rf ~/watch.sh.local; \
-		cd ~/watch.sh/; \
-		rm -rf *.deb *.orig.tar.gz *.changes &>/dev/null; \
-		cp -Ra ~/watch.sh ~/watch.sh.local; \
-		cd ~/watch.sh.local; \
-		make deb && cp -a ./*{deb,changes} ../watch.sh/; \
-		: ; \
-	}||{ echo 'ERROR: ~/watch.sh is not mounted.' >&2; exit 3; }" \
-	&& ssh vmfeedawra "grep -q 'watch.sh' /proc/mounts && { \
-		export LC_ALL=C; \
-		export EDITOR='nano -w'; \
-		cd ~/watch.sh/; \
-		make rpm && { \
-			cp -a /home/d/rpmbuild/RPMS/noarch/* ~/watch.sh/; \
-			cp -a /home/d/rpmbuild/SRPMS/* ~/watch.sh/; \
-		} ; \
-		: ; \
-	}||{ echo 'ERROR: ~/watch.sh is not mounted.' >&2; exit 3; }" \
-	&& for m in vmdebean vmfeedawra; do ssh root@$$m "init 0"; done
+# deb_and_rpm: prepare
+# # vm-* aliases can be found in the bashrc/home.sh of the “dotfiles” repo nearby.
+# # Don’t forget that ssh requires -t or "RequestTTY force". Also -X for pinentry.
+# #   Also timeout, which I set to three minutes.
+# 	ps axu |& grep -v grep | grep -q "qemu.*debean" || { vm-d.sh; sleep 60; }
+# 	ps axu |& grep -v grep | grep -q "qemu.*feedawra" || { vm-f.sh; sleep 60; }
+# 	ssh vmdebean "grep -q 'watch.sh' /proc/mounts && { \
+# 		export LC_ALL=C; \
+# 		export EDITOR='nano -w'; \
+# 		[ -d /tmp/decrypted ] || scp -r home:/tmp/decrypted /tmp/; \
+# 		ln -sf /tmp/decrypted/.gnupg ~/.gnupg; \
+# 		rm -rf ~/watch.sh.local; \
+# 		cd ~/watch.sh/; \
+# 		rm -rf *.deb *.orig.tar.gz *.changes &>/dev/null; \
+# 		cp -Ra ~/watch.sh ~/watch.sh.local; \
+# 		cd ~/watch.sh.local; \
+# 		make deb && cp -a ./*{deb,changes} ../watch.sh/; \
+# 		: ; \
+# 	}||{ echo 'ERROR: ~/watch.sh is not mounted.' >&2; exit 3; }" \
+# 	&& ssh vmfeedawra "grep -q 'watch.sh' /proc/mounts && { \
+# 		export LC_ALL=C; \
+# 		export EDITOR='nano -w'; \
+# 		cd ~/watch.sh/; \
+# 		make rpm && { \
+# 			cp -a /home/d/rpmbuild/RPMS/noarch/* ~/watch.sh/; \
+# 			cp -a /home/d/rpmbuild/SRPMS/* ~/watch.sh/; \
+# 		} ; \
+# 		: ; \
+# 	}||{ echo 'ERROR: ~/watch.sh is not mounted.' >&2; exit 3; }" \
+# 	&& for m in vmdebean vmfeedawra; do ssh root@$$m "init 0"; done
 
 upload:
 	git status
@@ -130,7 +129,8 @@ upload:
 	git checkout dev
 	git merge master
 
-all: deb_and_rpm upload ebuild
+# +deb_and_rpm
+all: upload ebuild
 
 help:
 	echo 'all = prepare → deb_and_rpm → upload → ebuild'
