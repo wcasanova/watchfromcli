@@ -130,7 +130,8 @@ upload:
 	git merge master
 
 # +deb_and_rpm
-all: upload ebuild
+all: prepare upload ebuild
 
+# all = prepare → deb_and_rpm
 help:
-	echo 'all = prepare → deb_and_rpm → upload → ebuild'
+	echo 'all = prepare → upload → ebuild'

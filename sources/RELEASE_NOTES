@@ -1,6 +1,8 @@
 ===] August 19, 2015 [======================================================
 
 1. Fix #10.
+2. Dropping support fro debean and fedora, open an issue if you need it.
+3. Changes to manpage regarding changes in figlet.
 
 ===] July 14, 2015 [========================================================
 
