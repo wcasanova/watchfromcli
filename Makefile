@@ -17,7 +17,7 @@ export DEBFULLNAME
 export DEBEMAIL
 DEB_CHANGELOG_DATE := $(shell LC_TIME=C date --date='@${DATE}' -R)
 RPM_CHANGELOG_DATE := $(shell LC_TIME=C date --date='@${DATE}' +'%a %b %_d %Y')
-REV := -1
+#REV := -1
 PF := ${PN}-${PV}${REV}
 
 clean:
