@@ -338,7 +338,7 @@ JOURNAL_MINVER='20150227'
 		|| exit `err homedir`
 }
 
-VERSION="20150819"
+VERSION="20150829"
 CHECK_FOR_UPDATE=21 # each N days
 updater_timestamp=~/.watch.sh/updater_timestamp
 [ -f $updater_timestamp ] || touch $updater_timestamp
@@ -660,6 +660,7 @@ done
 		}
 	}
 }
+
 [ $CHECK_FOR_UPDATE = now ] && {
 	which wget &>/dev/null && {
 		# latest_ver=`wget -O- http://github.com/deterenkelt/watchsh/releases \
@@ -670,8 +671,8 @@ done
 		#                                 :qu Q
 		#                             }'`
 		latest_ver=`wget -O- https://github.com/deterenkelt/watchsh/releases/latest \
-		                |& sed -nr 's_^.*/deterenkelt/watchsh/tree/v([0-9]+)".*$_\1_p;T;Q'`
-		[[ "$latest_ver" =~ ^[0-9]{8}$ ]] || exit `err bad_latestver`
+		                |& sed -nr 's_^.*/deterenkelt/watchsh/tree/v([0-9]+)-?[0-9]?".*$_\1_p;T;Q'`
+		[[ "$latest_ver" =~ ^[0-9]{8}$ ]] || err bad_latestver
 		touch $updater_timestamp
 		[ $latest_ver -gt $VERSION ] && {
 			msg 'New version is available!'
