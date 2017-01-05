@@ -1,3 +1,13 @@
+===] January 5, 2017 [======================================================
+
+1. Removed superfluous RUN_IN_CYCLE for $MODEs that are not ‘episodes’
+   in import_session_data(). Let it be set by respective keys (-c/-r/-R).
+2. Improved check for the last item with -1 used in place of VIDEOFILES_COUNT 
+   and EXIT_AFTER_THIS_EPISODE if they are empty/unset.
+3. SCREENSHOT_DIR doesn’t go to the journal, if it was set to dot.
+   Its original value is used instead.
+4. Decided to stay with British English.
+
 ===] August 29, 2015 [======================================================
 
 1. Fix 11.

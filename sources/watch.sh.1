@@ -1,4 +1,4 @@
-.TH watch.sh 1 "August 29, 2015" Linux "User Manuals"
+.TH watch.sh 1 "January 5, 2017" Linux "User Manuals"
 .\"
 .\" NAME ----------------------------------------------------------------------
 .\"
@@ -218,7 +218,8 @@ Prospective subfolders that are likely expected between a folder found in \fIbas
 \fB%keyword\fP in the pattern list will be substituted with actual \fIkeyword\fP passed via command line.
 .TP
 .B -S, --screenshot-dir <\fIscreens path\fP>
-If set, look for a folder in the \fIscreens path\fP containing \fIkeyword\fP in its name. The script will change directory to it, so all the taken screenshots would be put in there. It will also try to compress fresh screenshots of PNG format with \fBpngcrush\fP if it will be found. For subsequent conversion to JPEG see \fB--jpeg-compression\fP.
+If set, makes the script look for a folder *inside* the \fIscreens path\fP containing \fIkeyword\fP in its name. The script will change directory to it, so all the taken screenshots would be put in there. It will also try to compress fresh screenshots of PNG format with \fBpngcrush\fP if it will be found. For subsequent conversion to JPEG see \fB--jpeg-compression\fP.
+There’s no need to use this switch to make mpv use just ONE certain folder, that is not $PWD, for any screenshots you take. Instead, consider adding a \fBcd\fP command to the alias before calling \fBwatch.sh\fP. The player should use it for storing screenshots.
 .TP
 .B --screenshot-dir-skel <\fIdirlist\fP>
 The argument is a list of comma separated directories to be created under the folder specified via \fB--screenshot-dir\fP, e.g. "art,misc".
@@ -240,7 +241,7 @@ Prints version and legal information.
 .\" FILES ---------------------------------------------------------------------
 .\"
 .SH FILES
-\fB~/.watch.sh/journal\fP - here session data are stored.
+\fB~/.watch.sh/journal\fP - stores session data.
 .\"
 .\" EXAMPLES OF USE -----------------------------------------------------------
 .\"

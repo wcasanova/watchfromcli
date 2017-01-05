@@ -23,26 +23,26 @@
 #        watch.sh conforms with 5.17 since v20140807).
 # util-linux >= 2.20 (for getopt that is required, and taskset
 #        which may be of use, but is optional).
-# wget, xdg-open and your browser — to check for updates, and if there are,
+# wget, xdg-open and your browser – to check for updates, and if there are,
 #        suggest to open the current RELEASE_NOTES in the repository on github.
 # mpv, mplayer2 or mplayer. Syntax was optimized
 #        for the first and the latter.
 #
 # Works better with
-# GNU parallel — to compress screenshots faster using all cores available
+# GNU parallel – to compress screenshots faster using all cores available
 #       (or those available after restricting to those specified
 #        to the -t or --taskset option).
-# figlet — to draw last seen episode number with big ASCII art numbers.
-# pngcrush — helps to reduce PNG image size, if you prefer it over JPEG.
+# figlet – to draw last seen episode number with big ASCII art numbers.
+# pngcrush – helps to reduce PNG image size, if you prefer it over JPEG.
 #       (players tend to save PNG in an unoptimized format, which makes
 #        screenshots very large. pngcrush recompresses them without quality
 #        loss).
-# pngtopam and cjpeg — are only needed for converting screenshots from PNG
+# pngtopam and cjpeg – are only needed for converting screenshots from PNG
 #       (if you, for some reason use MPlayer, that can only save them to PNG)
 #        to JPEG by the usage of --jpeg-compression. pngtopam is usually found
 #        in the netpbm package and cjpeg in libjpeg-turbo.
-# inotifywait, ps and pkill — for SUB_DELAY, is of use only with mpv.
-#        The first belongs to intotify-tools and the latter—to procps package.
+# inotifywait, ps and pkill – for SUB_DELAY, is of use only with mpv.
+#        The first belongs to intotify-tools and the latter – to procps package.
 
 
 # extglob for the sake of it, expand_aliases to make aliases available for
@@ -73,7 +73,7 @@ EOF
 }
 
 # TAKES:
-#     $1 — a pattern or a keyword to search on.
+#     $1 – a pattern or a keyword to search on.
 show_manpage() {
 	[ "$1" ] && man -P"less -p '$1'" watch.sh || man watch.sh
 }
@@ -159,10 +159,10 @@ EOF
 }
 
 # TAKES:
-#     $1 — a string that has a message and exit code assigned to it.
+#     $1 – a string that has a message and exit code assigned to it.
 # RETURNS: exit code corresponding to the messsage.
 err() {
-	# Don’t rely on these codes — they tend to shift each time a new one is added.
+	# Don’t rely on these codes – they tend to shift each time a new one is added.
 	# They are assembled here just for the ease of reparsing and future
 	#   localization (if it will be done eventually).
 	local code msg
@@ -174,7 +174,7 @@ err() {
 		homedir)
 			code=7; msg='Couldn’t create directory ~/.watch.sh.';;
 		debugdir)
-			code=8; msg='Couldn’t create directory “$DEBUG_DIR”.';;
+			code=8; msg='Couldn’t create directory ‘$DEBUG_DIR’.';;
 		getopt*)
 			code=9; msg='getopt returned an error while parsing the command line. It was probably\n  caused by ';;&
 		getopt_funcerr)
@@ -190,9 +190,9 @@ err() {
 		opt_chk4upd)
 			code=11; msg='Option --check-for-update takes a number of days between which it should check releases on github as argument.';;
 		opt_compat)
-			code=12; msg='Option --compat requires argument to be one of “mplayer”, “mplayer2” or “mpv-03x”.';;
+			code=12; msg='Option --compat requires argument to be one of ‘mplayer’, ‘mplayer2’ or ‘mpv-03x’.';;
 		opt_basedir)
-			code=13; msg="-d|--basedir: “$arg” is not a readable directory.";;
+			code=13; msg="-d|--basedir: ‘$arg’ is not a readable directory.";;
 		opt_heulevel)
 			code=14; msg="Option --heuristics-level requires argument to be a number lower or equal to $MAX_HEURISTICS_LEVEL.";;
 		opt_inputinvalid)
@@ -214,7 +214,7 @@ err() {
 			code=23; msg='Couldn’t determine the latest version available.
   If it’s not an internet connection problem, report a bug.';;
 		mpcmd_not_found)
-			code=24; msg="No such binary or alias found: “$MPLAYER_COMMAND”.";;
+			code=24; msg="No such binary or alias found: ‘$MPLAYER_COMMAND’.";;
 		no_keyword)
 			code=25; msg='No keyword given.';;
 		no_matches)
@@ -225,15 +225,15 @@ err() {
 			code=27; msg="I couldn’t find any video files in
   $BASEPATH${FIRST_MATCH:-}${SUBFOLDERS:+$SUBFOLDERS\nConsider checking your --subfolders pattern.}";;
 		chosen_one_is_unreadable)
-			code=28; msg="“$FIRST_MATCH” is not readable!";;
+			code=28; msg="‘$FIRST_MATCH’ is not readable!";;
 		user_declined_input)
 			code=29;;
 		heu2_nan)
-			code=30; msg="Error on heuristics 2nd level: “${matches_as_numbers[j]}” and “${matches_as_numbers[k]}” must be numbers.";;
+			code=30; msg="Error on heuristics 2nd level: ‘${matches_as_numbers[j]}’ and ‘${matches_as_numbers[k]}’ must be numbers.";;
 		scrdir_isnt_writeable)
-			code=31; msg="No sufficient rights to write to “$SCREENSHOT_DIR”.";;
+			code=31; msg="No sufficient rights to write to ‘$SCREENSHOT_DIR’.";;
 		cant_create_scrdir)
-			code=32; msg="Couldn’t create directory “$SCREENSHOT_DIR”.";;
+			code=32; msg="Couldn’t create directory ‘$SCREENSHOT_DIR’.";;
 		no_such_keyword_in_journal)
 			code=33; msg='No such keyword.';;
 		not_enough_data_to_restore)
@@ -249,13 +249,15 @@ This might be caused by a broken file, truncated entry at the end of the journal
 		aborted_by_user)
 			code=38; msg='Aborted by user.';;
 		opt_requires_an_arg)
-			code=39; msg="Option “$option” requires an argument.";;
+			code=39; msg="Option ‘$option’ requires an argument.";;
 		opt_interval)
-			code=40; msg="Option “interval” requires a number of seconds to wait as an argument.";;
+			code=40; msg="Option ‘interval’ requires a number of seconds to wait as an argument.";;
 		opt_gind)
-			code=41; msg="Option “group-indicator” takes four characters.";;
+			code=41; msg="Option ‘group-indicator’ takes four characters.";;
 		heu2_queue_is_2big4ahuman)
 			code=42; msg="Debug output of the queue will be too big for a human to read.\n  Please reduce the number of files to 26 at least.";;
+		pushd_fail)
+			code=43; msg='Current path will cause problems, are we in a nonexsisting directory?';;
 		*)
 			code=107; msg='Unknown error.';;
 	esac
@@ -280,7 +282,7 @@ dil=0 # debug indentation level
 di='' # debug indentation
 
 # TAKES:
-#    [$1] — number of times to increment dil.
+#    [$1] – number of times to increment dil.
 dil_inc() {
 	local z count=$1
 	count=${count:-1}
@@ -289,7 +291,7 @@ dil_inc() {
 }
 
 # TAKES:
-#    [$1] — number of times to decrement dil.
+#    [$1] – number of times to decrement dil.
 dil_dec() {
 	local z count=$1
 	count=${count:-1}
@@ -298,7 +300,7 @@ dil_dec() {
 }
 
 # TAKES:
-#    $@ — a set of arguments which can be variable names for declare to print
+#    $@ – a set of arguments which can be variable names for declare to print
 #         to the logfile or empty/newline strings to put there an empty line.
 #         '' is simply shorter to type than $'\n'.
 dput_declare() {
@@ -310,6 +312,7 @@ dput_declare() {
 	done
 }
 
+cd "$PWD" 2>/dev/null || exit `err pushd_fail`
 which getopt &>/dev/null || exit `err no_getopt`
 
 # Checking util-linux version
@@ -338,7 +341,7 @@ JOURNAL_MINVER='20150227'
 		|| exit `err homedir`
 }
 
-VERSION="20150829"
+VERSION="20170105"
 CHECK_FOR_UPDATE=21 # each N days
 updater_timestamp=~/.watch.sh/updater_timestamp
 [ -f $updater_timestamp ] || touch $updater_timestamp
@@ -485,7 +488,7 @@ while true; do
 			;;
 		-F) # Treat KEYWORD as a fixed string (-F for grep).
 			# It’s not actually meant to be in use, since it affects code only
-			#   in two places — when assigning KEYWORD_FIND_PATTERNS and when
+			#   in two places – when assigning KEYWORD_FIND_PATTERNS and when
 			#   looking for _other files_ matching by KEYWORD. In other cases
 			#   job is done by find or grep -G, and -G is unavoidable, so
 			#   further development of this key would actually be escaping to
@@ -549,7 +552,7 @@ while true; do
 				&& LAST_EP_NUMBER_PRINTING_COMMAND='figlet -t -f banner -c' \
 				|| {
 				warn 'I can’t use figlet? Is it and the font installed?
-  I will use “cat” to print the last shown episode number.'
+  I will use ‘cat’ to print the last shown episode number.'
 				LAST_EP_NUMBER_PRINTING_COMMAND='cat'
 			}
 			LAST_EP_NUMBER_PRINTING_FORMAT='%n'
@@ -610,8 +613,10 @@ while true; do
 			RESUME_FROM_PREVIOUS=t
 			;&
 		-r|'--resume')
+			# We still don’t know what MODE we’re resuming,
+			#  so some variables may be unset in import_session_data
 			RESUME=t
-			IT_IS_NEXT_ITERATION=t  # Would “THIS_IS…” be better?
+			IT_IS_NEXT_ITERATION=t  # Would ‘THIS_IS…’ be better?
 			RUN_IN_CYCLE=t
 			shift
 			;;
@@ -718,7 +723,7 @@ which "${MPLAYER_COMMAND:=mpv}" &>/dev/null || {
 	[ -v COMPAT ] && msg "I’ve guessed COMPAT mode for $COMPAT."
 }
 
-# This is the default — for the latest mpv.
+# This is the default – for the latest mpv.
 dashes='--'
 declare -A mp_opts=(
 	[bd-protocol]='bd'
@@ -751,7 +756,7 @@ KEYWORD="$*"
 	[ "$KEYWORD" ] || exit `err no_keyword`
 	[ "${KEYWORD/@(*[^.]|)\**/}" ] || {
 		warn "I’ve found that you used * in the pattern for keyword, and the patterns should
-  use “.*” style, not just “*”."
+  use ‘.*’ style, not just ‘*’."
 		read -p 'Are you sure you want to continue? [N/y] > '
 		[[ "$REPLY" =~ ^[yY]$ ]] || exit `err aborted_by_user`
 	}
@@ -794,14 +799,14 @@ GI_SINGLE=${GROUP_INDICATOR:3:1}
 # And then goes heuristics
 
 # EXPECTS:
-#     KEYWORD — set, non-empty string
-#     BASEPATH — set, non-empty string or an array
+#     KEYWORD – set, non-empty string
+#     BASEPATH – set, non-empty string or an array
 #     IGNORE_DISKS
 #     EXPECTED_SUBFOLDERS
 # SETS:
-#     FIRST_MATCH — file or folder which reside directly in BASEPATH and which
+#     FIRST_MATCH – file or folder which reside directly in BASEPATH and which
 #          name does match KEYWORD
-#     MODE — 'single' means that script will play a single file. I’m not sure
+#     MODE – 'single' means that script will play a single file. I’m not sure
 #                 whether this mode should exist as a mode, but that at least
 #                 helps to divide cases that need heuristics from those
 #                 which do not.
@@ -817,9 +822,9 @@ GI_SINGLE=${GROUP_INDICATOR:3:1}
 #                 of the path as a disk.
 # EXIT CODES:
 #     0 if ok;
-#     “no_matches” in case no matches were found;
-#     “empty_folder” if found a folder but nothing to play in it;
-#     “chosen_one_is_unreadable” if couldn’t read file or folder.
+#     ‘no_matches’ in case no matches were found;
+#     ‘empty_folder’ if found a folder but nothing to play in it;
+#     ‘chosen_one_is_unreadable’ if couldn’t read file or folder.
 do_initial_search() {
 	[ -v D ] && dbg_file="$DEBUG_DIR/initial_search"
 	unset MODE FIRST_MATCH SUBFOLDERS
@@ -849,7 +854,7 @@ do_initial_search() {
 				-eq `wc -l <<<"$matches"` ] && {
 				BASEPATH[0]="${BASEPATH[i]}"
 				# unset unnecessary basepaths for them to not appear
-				#   in the “V:” list in choose_from()
+				#   in the ‘V:’ list in choose_from()
 				local old_bp_count=${#BASEPATH[@]}
 				for ((j=1; j<$old_bp_count; j++)); do unset BASEPATH[j]; done
 				break 2
@@ -866,7 +871,7 @@ do_initial_search() {
 
 		# Yeah, you might have noticed that the checks above cheated
 		#   on the case with single match, that could be noticed yet after
-		#   that sed expression with “primary” and “slave” basepath,
+		#   that sed expression with ‘primary’ and ‘slave’ basepath,
 		#   but that has almost blown my mind so I decided to simplify it
 		#   and do in one cut. Still works fine, huh?
 		# We have at least 1 candidate but there can be more…
@@ -905,7 +910,7 @@ do_initial_search() {
 				&& { [ -v IGNORE_DISKS ] && INTERVAL=0 ||  MODE='bd'; }
 # FIXME: Here must be check for the count of VIDEOFILES found at the end of
 #        the path (with SUBFOLDERS). If count==1, change mode to single and
-#        correct paths for “single” case appropriately. If there are
+#        correct paths for ‘single’ case appropriately. If there are
 #        videofiles and they look like episodes, i.e. containing numbers
 #        like 01, 02…
 			[ $MODE != dvd -a $MODE != bd ] && {
@@ -927,19 +932,19 @@ do_initial_search() {
 }
 
 # EXPECTS:
-#     KEYWORD ($1 requirement) — set, non-empty string
-#     BASEPATH — set, non-empty string or an array
-#     FIRST_MATCH — may be unset, if BASEPATH is an array
-#     SUBFOLDERS — may be unset, if BASEPATH is an array
+#     KEYWORD ($1 requirement) – set, non-empty string
+#     BASEPATH – set, non-empty string or an array
+#     FIRST_MATCH – may be unset, if BASEPATH is an array
+#     SUBFOLDERS – may be unset, if BASEPATH is an array
 # TAKES:
-#     $1 — whether or no search by the KEYWORD. This depends on the time this
+#     $1 – whether or no search by the KEYWORD. This depends on the time this
 #          function called, if the first time needed the keyword to define
 #          FIRST_MATCH, for example, then the second time assumes anything lying
 #          there is wanted by default.
-#     $2 — whether to preserve BASEPATH. This is an important thing at an early
+#     $2 – whether to preserve BASEPATH. This is an important thing at an early
 #          stage when called first time from do_initial_search() and BASEPATH
 #          is an array.
-# P.S. Be afraid—this function gave me very strange bugs not accepting second
+# P.S. Be afraid – this function gave me very strange bugs not accepting second
 #      parameter and pointing to the last line of the first subshell.
 list_videofiles() {
 	local result
@@ -955,7 +960,7 @@ list_videofiles() {
 	#   due to invalid symbolic links in the folder with videofiles.
 	# [ $result -gt 0 ] && return $result
 	if [ -v preserve_basepath ]; then
-		# colon (“:”) may be in a file name
+		# colon (‘:’) may be in a file name
 		VIDEOFILES=`sed -rn 's|^(.*/)([^/]+)\:\svideo/.*|\1: \2|p' \
 		            <<<"$VIDEOFILES"`
 		result=$?; [ $result -gt 0 ] && return $result
@@ -968,12 +973,12 @@ list_videofiles() {
 }
 
 # EXPECTS:
-#     BASEPATH — set, non-empty string
-#     FIRST_MATCH — an existent and readable directory
-#     EXPECTED_SUBFOLDERS — be a simple plaintext list of words,
+#     BASEPATH – set, non-empty string
+#     FIRST_MATCH – an existent and readable directory
+#     EXPECTED_SUBFOLDERS – be a simple plaintext list of words,
 #         except %keyword.
 # SETS:
-#     SUBFOLDERS — path between FIRST_MATCH and actual filename to play.
+#     SUBFOLDERS – path between FIRST_MATCH and actual filename to play.
 # RETURNS:
 #     0 if ok;
 #    >0 if error occured in internal function calls.
@@ -1004,16 +1009,16 @@ check_for_subfolders() {
 #     USE_1ST (in the future)
 #     NO_COLOR
 # TAKES:
-#     $1 — list of strings
+#     $1 – list of strings
 # SETS:
-#     CHOSEN_ITEM — set to the line from the $1 which number is $CHOSEN_NUMBER
-#     CHOSEN_NUMBER — number of the $CHOSEN_ITEM in the list. Will become
+#     CHOSEN_ITEM – set to the line from the $1 which number is $CHOSEN_NUMBER
+#     CHOSEN_NUMBER – number of the $CHOSEN_ITEM in the list. Will become
 #         the VIDEO_NUMBER.
 # RETURNS:
 #     0 if line(s) was(were) successfully picked,
 #    >0 some utility failed or the result of internal function call.
 # EXIT CODES:
-#    “user_declined” in case of
+#    ‘user_declined’ in case of
 #    - <Return> was hit (choice was declined);
 #    - wrong number entered;
 #    - not a number entered (prevented).
@@ -1039,20 +1044,20 @@ choose_from() {
 		[ ${#cwd} -gt $max_width ] && cwd="…${cwd:0-$max_width:$max_width}"
 		echo -e "C: $cwd"  | grep -iG "\($KEYWORD\|$\)"
 		# S: screenshot directory as provided via -S option (see above),
-		#    it shows only in case this call of “choose_from” came from
-		#    “screenshots_preprocessing”, so the user could see the actual
+		#    it shows only in case this call of ‘choose_from’ came from
+		#    ‘screenshots_preprocessing’, so the user could see the actual
 		#    folder where screenshots will be saved to. This is important
 		#    because of two things
 		#    - portable hard drive;
 		#    - very bad directory guessing, because it’s done by only matching
-		#      the given keyword, e.g. I’m going to watch “Daria”, and type just
-		#      “dar” as a keyword, because it’s enough to find it in the current
+		#      the given keyword, e.g. I’m going to watch ‘Daria’, and type just
+		#      ‘dar’ as a keyword, because it’s enough to find it in the current
 		#      BASEPATH on my netbook, but I’m going to save screenshots on
 		#      my portable hard drive where in SCREENSHOT_DIR a folder named
-		#      “darker_then_black” is already present, so script will choose it
+		#      ‘darker_then_black’ is already present, so script will choose it
 		#      without asking, because of keyword matched the part of
 		#      folder name. In most cases keyword would match correctly, so
-		#      asking about “are you glad with the folder I’ve chosen for you?”
+		#      asking about ‘are you glad with the folder I’ve chosen for you?’
 		#      would be annoying, so we just highlight the keyword, so the user
 		#      can abort script executing and run it again with a more proper
 		#      keyword.
@@ -1173,25 +1178,25 @@ choose_from() {
 				[ $input -le $LIST_ITEMS_COUNT ] && [ $input -gt 0 ] \
 					&& CHOSEN_ITEM=`echo -e "$LIST_TO_CHOOSE_FROM" | sed -n "$input p"` \
 					|| warn "Number must be a correct line number, from 1 to $LIST_ITEMS_COUNT." # copypaste, C-v etc.
-			}|| warn "“$input” must be a number."
+			}|| warn "‘$input’ must be a number."
 		}
 		[ -v CHOSEN_ITEM ] && CHOSEN_NUMBER="$input" || return `err user_declined_input`
 	done
 return 0
 }
 
-# A “group” is nothing more, but its index.
+# A ‘group’ is nothing more, but its index.
 # Data of each record are contained in group_* arrays elements having
-#   corresponding index. No variable should be named with prefix “group_”
+#   corresponding index. No variable should be named with prefix ‘group_’
 #   unless it is supposed to contain the actual group data of some sort
 #  (certain functions operating on groups use this prefix for automatization,
 #   because it would be a pain to rewrite all these keys every now and then if
 #   something changes).
 
 # TAKES:
-#     $1 — pattern
-#     $2 — matches
-#     $3 — matches_count
+#     $1 – pattern
+#     $2 – matches
+#     $3 – matches_count
 group_create() {
 	group_patterns[${#group_patterns[@]}]=$1
 	group_matches[${#group_patterns[@]}-1]=$2
@@ -1202,8 +1207,8 @@ group_create() {
 }
 
 # TAKES:
-#     $1 — source group index
-#     $2 — destination group index
+#     $1 – source group index
+#     $2 – destination group index
 group_copy() {
 	local group
 	for group in ${!group_@}; do
@@ -1214,15 +1219,15 @@ group_copy() {
 }
 
 # TAKES:
-#     $1 — index to delete from group_* arrays.
+#     $1 – index to delete from group_* arrays.
 group_delete() {
 	local group
 	for group in ${!group_@}; do unset $group[$1]; done
 }
 
 # TAKES:
-#     $1 — index of the group A
-#     $2 — index of the group B
+#     $1 – index of the group A
+#     $2 – index of the group B
 group_swap() {
 	local buffer_index=${#group_patterns[@]}
 	group_copy $1 $buffer_index
@@ -1249,18 +1254,18 @@ create_groups_for_the_list() {
 	# Filename which don’t belong to any sequence forms a group from itself.
 	unset group_patterns group_matches group_matches_count
 	while IFS= read -r filename; do
-		[ -v D ] && echo "FN: “$filename”." >>$dbg_file
+		[ -v D ] && echo "FN: ‘$filename’." >>$dbg_file
 		# Match current filename against known patterns
 		[ -v group_patterns ] && {
 			for pattern in "${group_patterns[@]}"; do
 				# if pattern does match, drop that filename
 				echo "$filename" | sed 's/'"$pattern"'/&/;T;Q1' >/dev/null || {
-					[ -v D ] && echo -e "\tMatches against pattern: “$pattern”.\nDROP.\n" >>$dbg_file
+					[ -v D ] && echo -e "\tMatches against pattern: ‘$pattern’.\nDROP.\n" >>$dbg_file
 					continue 2
 				}
 			done
 		}
-		# Splitting the string "$filename" by “numbers” and “not numbers”
+		# Splitting the string "$filename" by ‘numbers’ and ‘not numbers’
 		readarray -t < <(echo "$filename" | sed -r 's/([0-9]+)/\n\1\n/g')
 		[ -v D ] && {
 			echo -e "\tFilename is unique and is about to start a new sequence.
@@ -1287,14 +1292,14 @@ create_groups_for_the_list() {
 			[ -v D ] && {
 				# Mark the current piece with ^^^^
 				combine_left_and_right_parts
-				echo -en "\n\t$i: “$filename”\n\t" >>$dbg_file
+				echo -en "\n\t$i: ‘$filename’\n\t" >>$dbg_file
 				for ((j=0; j<$(( ${#i}+ ${#left_part} +3 )); j++)); do
 					echo -n ' ' >>$dbg_file
 				done
 				for ((j=0; j<${#MAPFILE[i]}; j++)); do
 					echo -n '^' >>$dbg_file
 				done
-				echo -en "\n\tLeft part: “$left_part”.\n\tRight part: “$right_part.”
+				echo -en "\n\tLeft part: ‘$left_part’.\n\tRight part: ‘$right_part.’
 \tIs this a number?\t" >>$dbg_file
 			}
 			if  [[ "${MAPFILE[i]}" =~ ^[0-9]+$ ]];  then
@@ -1311,7 +1316,7 @@ create_groups_for_the_list() {
 				while [ ${#inc_num} -lt $piece_orig_length ]; do
 					inc_num="0$inc_num"
 				done
-				[ -v D ] && echo -e "\tInc. number: “$inc_num”." >>$dbg_file
+				[ -v D ] && echo -e "\tInc. number: ‘$inc_num’." >>$dbg_file
 
 				# Incremental patterns: to match the current line of
 				#   $LIST_TO_CHOOSE_FROM with number substituted with
@@ -1319,11 +1324,11 @@ create_groups_for_the_list() {
 				# There was a trouble with sed being ungreedy while matching
 				#   what is supposed to be an episode number. The \b for
 				#   boundary helped for some time, but then filenames having
-				#   episode number surrounded with underscores (“_”) appeared,
+				#   episode number surrounded with underscores (‘_’) appeared,
 				#   and, because \b matches letters, digits and underscores
 				#   as a single word, this caused patterns to fail on such
-				#   names. That’s why \b was replaced by a “possible non-
-				#   number” — [^0-9]\?. It should be replaced with pre-condition
+				#   names. That’s why \b was replaced by a ‘possible non-
+				#   number’ – [^0-9]\?. It should be replaced with pre-condition
 				#   when I got my hands to perl.
 				# Multinum counterparts are used to hook all the filenames
 				#   within a sequence defined by an inc_pattern.
@@ -1348,14 +1353,14 @@ create_groups_for_the_list() {
 					inc_patterns[1]="^.*[^0-9]$inc_num$right_part$"
 					multinum_patterns[1]="^.*[^0-9]\([0-9]\+\)$right_part$"
 				}
-				# Both parts — the last!
+				# Both parts – the last!
 				inc_patterns[2]="^$left_part$inc_num$right_part$"
 				multinum_patterns[2]="^$left_part\([0-9]\+\)$right_part$"
 				# If you noticed that the two last elements of both arrays with
 				#   regular expressions are redundant. That’s because I’ve rea-
 				#   lized only at this point, that sed capabilities are not
 				#   enough.
-				# Below, in the “watch” function, at the end of the “episodes”
+				# Below, in the ‘watch’ function, at the end of the ‘episodes’
 				#   case, one of the patterns above this text will be applied to
 				#   a file name in attempt to acquire episode number. And there
 				#   is the rub: sed behaves non-greedy when it searches for
@@ -1364,8 +1369,8 @@ create_groups_for_the_list() {
 				#   dary separators \b around the regex matching the number,
 				#   but then sed appeared to include not only alphanumeric
 				#   characters, BUT DIGITS AND THE UNDERSCORE SIGN, TOO, i.e.
-				#   in file name “Durarara_01_2F4B8D2.mkv” there’s only one word
-				#   boundary (except the beginning and the end of the line) —
+				#   in file name ‘Durarara_01_2F4B8D2.mkv’ there’s only one word
+				#   boundary (except the beginning and the end of the line) –
 				#   at the punctuation mark, the dot.
 				# Since google tells only lies about perl mode for sed, activa-
 				#   ting lookahead and lookbehind syntax with -R switch,
@@ -1385,7 +1390,7 @@ create_groups_for_the_list() {
 \t   of the filename in attempt to avoid pattern duplicate.' >>$dbg_file
 				}
 				for ((j=0; j<${#inc_patterns[@]}; j++)); do
-				[ -v D ] && echo -en "\t\tInc. pattern: “${inc_patterns[j]}”.\n\t\t\tSequence found? " >>$dbg_file
+				[ -v D ] && echo -en "\t\tInc. pattern: ‘${inc_patterns[j]}’.\n\t\t\tSequence found? " >>$dbg_file
 				matches=$(echo "$LIST_TO_CHOOSE_FROM" | sed -n '/'"${inc_patterns[j]}"'/p' )
 				if  [ "$matches" ];  then
 					local inc_patterns_found_a_sequence_for_this_file=t
@@ -1411,7 +1416,7 @@ create_groups_for_the_list() {
 							}
 						done
 						[ -v same_matches_found ] || {
-							[ -v D ] && echo -e "Yes.\nADD\t\t\tMultinum pattern: “${multinum_patterns[j]}”." >>$dbg_file
+							[ -v D ] && echo -e "Yes.\nADD\t\t\tMultinum pattern: ‘${multinum_patterns[j]}’." >>$dbg_file
 							# TODO: make some flag to define the situation when no number is present. # Er… how’s that?
 							# I thouhgt about renaming these variables to fname_*, but  group_* clearly points at the place of origin.
 							group_create \
@@ -1552,7 +1557,7 @@ build_the_list() {
 		echo -e 'Building the list. # View me with `less -S`.\nManual reararngement, end of HEU1, HEU2.\n\nInitial data:' >>$dbg_file
 		header="Index   Pattern   Matches   Matches count"
 		for ((i=0; i<${#group_patterns[@]}; i++)); do
-			[ $i -eq 0 ] && echo -e "$header\n${header//[^ ]/—}"
+			[ $i -eq 0 ] && echo -e "$header\n${header//[^ ]/–}"
 			local match next_run
 			unset next_run
 			while IFS= read -r match; do
@@ -1565,13 +1570,13 @@ build_the_list() {
 	}
 
 	# SETS:
-	#     VIDITEM_* — arrays for manipulation while doing heuristics.
+	#     VIDITEM_* – arrays for manipulation while doing heuristics.
 	#         NB All these arrays start from zero, while line numbers in
 	#         selection dialog and VIDEO_NUMBER starting from 1.
 	# TAKES:
-	#     $1 — filename
-	#     $2 — group id (for pattern) # wait, where do we need the pattern?..
-	#     $3 — episode number OR supposed episode number OR line number
+	#     $1 – filename
+	#     $2 – group id (for pattern) # wait, where do we need the pattern?..
+	#     $3 – episode number OR supposed episode number OR line number
 	#          Ex. "1"           Ex. "1?"                   Ex. "L1"
 	#         (temporarily may comprise of space-separated numbers)
 	viditem_create() {
@@ -1580,7 +1585,7 @@ build_the_list() {
 		# Global, but used only within build_the_list() scope in order
 		#   to make us able to build the list with accordance to groups when
 		#   lowering heuristics level.
-		# Doesn’t go to journal—caps is used for conformance with viditem_*().
+		# Doesn’t go to journal – caps is used for conformance with viditem_*().
 		VIDITEM_GID[${#VIDITEM_GID[@]}]=$2
 		# Global. If HEU LVL == 0, filled with L# in choose_from().
 		# Removing leading zeroes to avoid misinterpretation as octal.
@@ -1588,8 +1593,8 @@ build_the_list() {
 	}
 
 	# TAKES:
-	#     $1 — source viditem index
-	#     $2 — destination viditem index
+	#     $1 – source viditem index
+	#     $2 – destination viditem index
 	viditem_copy() {
 		local viditem
 		for viditem in ${!VIDITEM_@}; do
@@ -1600,15 +1605,15 @@ build_the_list() {
 	}
 
 	# TAKES:
-	#     $1 — index to delete from VIDITEM_* arrays
+	#     $1 – index to delete from VIDITEM_* arrays
 	viditem_delete() {
 		local viditem
 		for viditem in ${!VIDITEM_@}; do unset $viditem[$1]; done
 	}
 
 	# TAKES:
-	#     $1 — index of the viditem A
-	#     $2 — index of the viditem B
+	#     $1 – index of the viditem A
+	#     $2 – index of the viditem B
 	viditem_swap() {
 		local buffer_index=${#VIDITEM_FILE[@]}
 		viditem_copy $1 $buffer_index
@@ -1618,14 +1623,14 @@ build_the_list() {
 	}
 
 	# USES:
-	#     queue_* — arrays that specify queue. Because there are batch jobs
+	#     queue_* – arrays that specify queue. Because there are batch jobs
 	#         in manual rearrangement as well as in HEU2.
 	# ALTERS:
-	#     VIDITEM_* — alter the order of items.
+	#     VIDITEM_* – alter the order of items.
 	# RETURNS:
-	#     0 — if OK;
-	#     3 — illegal queue construct, immediate return;
-	#     42 — queue is 2big4ahuman to read the debug output (only when D is set).
+	#     0 – if OK;
+	#     3 – illegal queue construct, immediate return;
+	#     42 – queue is 2big4ahuman to read the debug output (only when D is set).
 	#          The latter is exit code.
 	rearrange_list_items() {
 		# These are example values I used to build this algo.
@@ -1649,21 +1654,21 @@ build_the_list() {
 			echo -e "\nRunning queue\nInitial setup:" >>$dbg_file
 			header="Index   File   GID   Episode number"
 			for ((i=0; i<total_items_count; i++)); do
-				[ $i -eq 0 ] && echo -e "\n$header\n${header//[^ ]/—}"
+				[ $i -eq 0 ] && echo -e "\n$header\n${header//[^ ]/–}"
 				echo "$i   ${VIDITEM_FILE[i]}   ${VIDITEM_GID[i]}   ${VIDITEM_EPNUMBER[i]}"
 			done | column -o ' ' -s '   ' -t  >>$dbg_file
 			echo -e "" >>$dbg_file
 			header="Index   Start/end/dest"
 			for ((i=0; i<${#queue_start[@]}; i++)); do
-				[ $i -eq 0 ] && echo -e "$header\n${header//[^ ]/—}"
+				[ $i -eq 0 ] && echo -e "$header\n${header//[^ ]/–}"
 				echo "$i   ${queue_start[i]}/${queue_end[i]}/${queue_dest[i]}"
 			done | column -o ' ' -s '   ' -t  >>$dbg_file
 			echo -e '^Queue is running on VIDITEM indices.\n' >>$dbg_file
 		}
 
 		# We’ll have to create arrays of actual items instead of relying upon
-		#   where the group starts and where ends—such groups may be split
-		#   after iterations. So, instead of groups—indices of what will be
+		#   where the group starts and where ends – such groups may be split
+		#   after iterations. So, instead of groups – indices of what will be
 		#   moving. Eval is because we can’t into arrays of arrays here.
 		for ((i=0; i<${#queue_dest[@]}; i++)); do
 			for ((j=queue_start[i]; j<queue_end[i]+1; j++)); do
@@ -1827,9 +1832,9 @@ build_the_list() {
 	} # rearrange_list_items()
 
 	# TAKES:
-	#     $1 — start line
-	#     $2 — end line
-	#     $3 — destination line
+	#     $1 – start line
+	#     $2 – end line
+	#     $3 – destination line
 	queue_create() {
 		local start=$1 end=$2 dest=$3
 		# [ $start -eq $dest ] && return 0 # Actually, when itemd get shifted, that’s okay.
@@ -1850,7 +1855,7 @@ build_the_list() {
 			#   removed from the list, the list then shifted for one line up,
 			#   and then the time comes to put destination to the new place.
 			#   But before placing the destination [line], it must put what’s
-			#   in the buffer, i.e. the 3rd line, before, and only after—
+			#   in the buffer, i.e. the 3rd line, before, and only after –
 			#   the destination, what was the 4th line.
 			# Since it makes the operation obscure to the user, we put
 			#   the destination before what is in the buffer in that case, so
@@ -1860,7 +1865,7 @@ build_the_list() {
 	}
 
 	# TAKES:
-	#     $1 — index to delete from queue_* arrays
+	#     $1 – index to delete from queue_* arrays
 	queue_delete() {
 		local queue
 		for queue in ${!queue_@}; do unset $queue[$1]; done
@@ -1892,8 +1897,8 @@ build_the_list() {
 		for ((i=0; i<${#MAPFILE[@]}; i++)); do
 			[ -v D ] && echo -e "\tPiece $i: ‘${MAPFILE[i]}’." >>$dbg_file
 			[[ "${MAPFILE[i]}" =~ ^[0-9]+(-[0-9]+)?\>[0-9]+$ ]] || {
-				warn "“${MAPFILE[i]}” is not a valid rearrangement instruction."
-				warn "The format is: “10>1”, “9-11>2”, “1-3>5,7-8>1,…”."
+				warn "‘${MAPFILE[i]}’ is not a valid rearrangement instruction."
+				warn "The format is: ‘10>1’, ‘9-11>2’, ‘1-3>5,7-8>1,…’."
 				return 0
 			}
 			local start="${MAPFILE[i]%>*}" \
@@ -1902,19 +1907,19 @@ build_the_list() {
 			local start="${start%-*}" \
 			      end="${end#*-}"
 			[ $start -gt $total_items_count ] && {
-				warn "“${MAPFILE[i]}”: start value must be lower than $total_items_count."
+				warn "‘${MAPFILE[i]}’: start value must be lower than $total_items_count."
 				return 0
 			}
 			[ $end -lt $start ] && {
-				warn "“${MAPFILE[i]}”: end value must be lower than start value."
+				warn "‘${MAPFILE[i]}’: end value must be lower than start value."
 				return 0
 			}
 			[ $dest -gt $total_items_count ] && {
-				warn "“${MAPFILE[i]}”: destination value must be lower than $total_items_count."
+				warn "‘${MAPFILE[i]}’: destination value must be lower than $total_items_count."
 				return 0
 			}
 			[ $start -eq $dest ] && {
-				warn "“${MAPFILE[i]}”: what’s the point in this?.."
+				warn "‘${MAPFILE[i]}’: what’s the point in this?.."
 				return 0
 			}
 			[ -v D ] && echo -e "\tAdding queue start/end/dest: $start $end $dest." >>$dbg_file
@@ -1982,7 +1987,7 @@ build_the_list() {
 			local _prev_viditem_gid=-1 \
 				header="Index-->   File   GID   Episode number   Line-->   Group starts at   Group ends at"
 			for ((i=0; i<total_items_count; i++)); do
-				[ $i -eq 0 ] && echo -e "$header\n${header//[^ ]/—}"
+				[ $i -eq 0 ] && echo -e "$header\n${header//[^ ]/–}"
 				[ $_prev_viditem_gid -ne ${VIDITEM_GID[i]} ] \
 					&& echo "$i   ${VIDITEM_FILE[i]}   ${VIDITEM_GID[i]}   ${VIDITEM_EPNUMBER[i]}   $((i+1))   ${groups_borders[VIDITEM_GID[i]]%;*}   ${groups_borders[VIDITEM_GID[i]]#*;}" \
 					|| echo "$i   ${VIDITEM_FILE[i]}   ${VIDITEM_GID[i]}   ${VIDITEM_EPNUMBER[i]}   $((i+1))        "
@@ -2021,7 +2026,7 @@ build_the_list() {
 		#   with their episode numbers, becuase multinumber patern only hooked
 		#   the filenames which had numbers in a specified position.
 		# Why was it separated from the new queue assembling in HEU2? HEU2 doesn’t
-		#   simply forget about groups and rebuilds the list by numbers—this would
+		#   simply forget about groups and rebuilds the list by numbers–this would
 		#   only mess the order if it has several actual sequences, like
 		#     - Animu EP XX [hash].mkv
 		#     - Animu extra XX [hash].mkv
@@ -2031,7 +2036,7 @@ build_the_list() {
 		#   should be done before it.
 
 		# Okay, we have groups and arranged them. But currenlty it’s not much
-		#   far away from the “sort” command, that would find these numbers too
+		#   far away from the ‘sort’ command, that would find these numbers too
 		#  (and put 1 after 10), we are a step forward only by finding a hint
 		#   for a presence of sequence in those numbers. Now arrange these
 		#   numbers to represent the actual sequence.
@@ -2065,7 +2070,7 @@ build_the_list() {
 			local _prev_viditem_gid=-1 \
 				header="Index-->   I   File   GID   Episode number   Numbers occupied by group"
 			for ((i=0; i<total_items_count; i++)); do
-				[ $i -eq 0 ] && echo -e "$header\n${header//[^ ]/—}"
+				[ $i -eq 0 ] && echo -e "$header\n${header//[^ ]/–}"
 				[ $_prev_viditem_gid -ne ${VIDITEM_GID[i]} ] \
 					&& echo "$i   ${list_indicators[i]}   ${VIDITEM_FILE[i]}   ${VIDITEM_GID[i]}   ${VIDITEM_EPNUMBER[i]}   ${group_occupied_numbers[VIDITEM_GID[i]]}" \
 					|| echo "$i   ${list_indicators[i]}   ${VIDITEM_FILE[i]}   ${VIDITEM_GID[i]}   ${VIDITEM_EPNUMBER[i]}   "
@@ -2075,19 +2080,19 @@ build_the_list() {
 		}
 
 		# TAKES:
-		#    $1 — group index to check
-		#    $2 — bottom border for episode value
-		#   [$3] — top border for episode value
+		#    $1 – group index to check
+		#    $2 – bottom border for episode value
+		#   [$3] – top border for episode value
 		# USES:
 		#    group_occupied_numbers[@]
 		#    NOT_EPNUMBERS
 		# SETS:
-		#    EP — episode number that fits specified borders.
+		#    EP – episode number that fits specified borders.
 		# RETURNS:
-		#    0 — if this is not a single group or a sinlge group which episode
+		#    0 – if this is not a single group or a sinlge group which episode
 		#      number does reside within specified borders (what matters is
 		#      whether we can continue safely with current VIDITEM_EPNUMBER[]).
-		#    1 — if this is a single group and none of its possible episode
+		#    1 – if this is a single group and none of its possible episode
 		#      numbers reside within specified borders.
 		retrieve_single_group_epnumber() {
 			local gid=$1 bottom_border=$2 top_border gr_size _ep
@@ -2159,13 +2164,13 @@ Entering cycle of groups supplementing.' >>$dbg_file
 						[ -v next_run ] \
 							&& echo "    $match                " \
 							|| {
-							echo -e "$header\n${header//[^ ]/—}"
+							echo -e "$header\n${header//[^ ]/–}"
 							echo "$gr_index   $match   $gr_start   $gr_end   $gr_size   ${group_occupied_numbers[gr_index]}"
 						}
 						next_run=t
 					done <<<"${group_matches[gr_index]}" | column -o ' ' -s '   ' -t  >>$dbg_file
 				}
-				# 1.—1.1.1. Is this group the initial one?
+				# 1.–1.1.1. Is this group the initial one?
 				[ $gr_index -eq 0 ] && {
 					[ -v D ] && echo -e "\n\tThis is initial group (idx:0)." >>$dbg_file
 					# Is this a single group by accident?
@@ -2175,7 +2180,7 @@ Entering cycle of groups supplementing.' >>$dbg_file
 							[ -v D ] && echo -e "\t\tLooks like this file has only one number: ${group_occupied_numbers[0]}, assigning it to VIDITEM_EPNUMBER[0]." >>$dbg_file
 							VIDITEM_EPNUMBER[0]=${group_occupied_numbers[0]##0} # avoiding misinterpretation as octal
 						}||{
-							warn 'I can’t  guess episode number for the first group that is single—no basic data.\n    Choose what’ll become the first episode number:'
+							warn 'I can’t  guess episode number for the first group that is single – no basic data.\n    Choose what’ll become the first episode number:'
 							choose_from "`echo -en "${group_occupied_numbers[0]// /\\\n}"`" || {
 								local exit_code=$?
 								echo -e '\t\tUser has aborted procedure of choosing episode number for the initial group.' >>$dbg_file
@@ -2190,7 +2195,7 @@ Entering cycle of groups supplementing.' >>$dbg_file
 						[ -v D ] && echo -e "\t\tFirst episode is not 1. Adding gap 1;$((VIDITEM_EPNUMBER[0]-1))." >>$dbg_file
 					}
 				}
-				# 2.—3. Does the group have gaps?
+				# 2.–3. Does the group have gaps?
 				[ $gr_size -gt 1 -a $(( ${group_occupied_numbers[gr_index]##* } - ${group_occupied_numbers[gr_index]%% *} + 1 )) -ne $gr_size ] && {
 					[ -v D ] && echo -e "\tThis group spans over at least two lines and has gaps within it (last_ep - start_ep ≠ gr_size)." >>$dbg_file
 					for ((i=gr_start; i<gr_end; i++)); do
@@ -2207,7 +2212,7 @@ Entering cycle of groups supplementing.' >>$dbg_file
 					local _prev_viditem_gid=-1 \
 						header="Index   Starts from episode   Ends on episode"
 					for ((i=0; i<${#gaps[@]}; i++)); do
-						[ $i -eq 0 ] && echo -e "    $header\n    ${header//[^ ]/—}"
+						[ $i -eq 0 ] && echo -e "    $header\n    ${header//[^ ]/–}"
 						echo "    $i   ${gaps[i]%;*}   ${gaps[i]#*;}"
 					done | column -o ' ' -s '   ' -t  >>$dbg_file
 					echo >>$dbg_file
@@ -2256,11 +2261,11 @@ Entering cycle of groups supplementing.' >>$dbg_file
 						header="Index   Group index   Episodes that fill the gap   Fills entirely?"
 						unset header_put
 						for ((j=0; j<${#groups_that_fill_entire_gap[@]}; j++)); do
-							[ $j -eq 0 ] && echo -e "\n\n        $header\n        ${header//[^ ]/—}" && local header_put=t
+							[ $j -eq 0 ] && echo -e "\n\n        $header\n        ${header//[^ ]/–}" && local header_put=t
 							echo -e "        $j   ${groups_that_fill_entire_gap[j]%;*}   ${groups_that_fill_entire_gap[j]#*;}   YES"
 						done | column -o ' ' -s '   ' -t  >>$dbg_file
 						for ((j=0; j<${#groups_that_fill_gap_partly[@]}; j++)); do
-							[ $j -eq 0 -a ! -v header_put ] && echo -e "    $header\n    ${header//[^ ]/—}"
+							[ $j -eq 0 -a ! -v header_put ] && echo -e "    $header\n    ${header//[^ ]/–}"
 							echo -e "        $j   ${groups_that_fill_gap_partly[j]%;*}   ${groups_that_fill_gap_partly[j]#*;}   NO"
 						done | column -o ' ' -s '   ' -t  >>$dbg_file
 						echo >>$dbg_file
@@ -2287,13 +2292,13 @@ Entering cycle of groups supplementing.' >>$dbg_file
 						#   and checks for same sets. It’s 24 for 4! and recursive calls
 						#   always slower than those where a finite number is known.
 						# So, we’ll make it working for the simplest and, probably,
-						#   the closest case for the real life—when a directory contains
+						#   the closest case for the real life – when a directory contains
 						#   hodgepodge, but the files represent one and only sequence.
 						# With a minimal check, of course…
 
 						# Resorting this array to bring first episodes of its
 						#   items in order.
-						# In bash, it’s okey to start from 1—if there’s no such
+						# In bash, it’s okey to start from 1 – if there’s no such
 						#   item, cycle won’t start, but in other languages…
 #set -x
 						for ((j=0; j<${#groups_that_fill_gap_partly[@]}-1; j++)); do
@@ -2315,7 +2320,7 @@ Entering cycle of groups supplementing.' >>$dbg_file
 							echo -e "\t\tTrying to fill the gap from parts (resorted array):" >>$dbg_file
 							header="Index   Group index   Episodes" # Episodes here ≠ group_matches[N]
 							for ((j=0; j<${#groups_that_fill_gap_partly[@]}; j++)); do
-								[ $j -eq 0 ] && echo -e "        $header\n        ${header//[^ ]/—}"
+								[ $j -eq 0 ] && echo -e "        $header\n        ${header//[^ ]/–}"
 								echo "        $j   ${groups_that_fill_gap_partly[j]%;*}   ${groups_that_fill_gap_partly[j]#*;}"
 							done | column -o ' ' -s '   ' -t  >>$dbg_file
 						}
@@ -2421,7 +2426,7 @@ Entering cycle of groups supplementing.' >>$dbg_file
 		echo -e "\n\nResulting VIDITEM_* arrays:" >>$dbg_file
 		header="Index   File   GID   Episode number"
 		for ((i=0; i<total_items_count; i++)); do
-			[ $i -eq 0 ] && echo -e "$header\n${header//[^ ]/—}"
+			[ $i -eq 0 ] && echo -e "$header\n${header//[^ ]/–}"
 			echo "$i   ${VIDITEM_FILE[i]}   ${VIDITEM_GID[i]}   ${VIDITEM_EPNUMBER[i]}"
 		done | column -o ' ' -s '   ' -t  >>$dbg_file
 		echo -e "\n\n\n    ----- Exiting from build_the_list ------------------------------------------\n\n\n" >>$dbg_file
@@ -2450,15 +2455,15 @@ Entering cycle of groups supplementing.' >>$dbg_file
 ## Functions below this line never execute during `do_initial_search`
 
 # EXPECTS:
-#     SCREENSHOT_DIR — be unset, set by -S|--screenshot-dir or by evaling
+#     SCREENSHOT_DIR – be unset, set by -S|--screenshot-dir or by evaling
 #         journal entry.
-#     KEYWORD — set, non-empty string
+#     KEYWORD – set, non-empty string
 # ALTERS:
-#     SCREENSHOT_DIR — path where pushd to, so the player  will store taken
+#     SCREENSHOT_DIR – path where pushd to, so the player  will store taken
 #         screenshots there.
 # EXIT_CODES:
 #     0 if ok,
-#    “scrdir_isnt_writeable”, “cant_create_scrdir” in case
+#    ‘scrdir_isnt_writeable’, ‘cant_create_scrdir’ in case
 #     of insufficient rights to access $SCREENSHOT_DIR.
 screenshots_preprocessing() {
 	[ -v SCREENSHOT_DIR ] && {
@@ -2501,36 +2506,40 @@ screenshots_preprocessing() {
 			fi
 		}
 	}
-	[ -d "$SCREENSHOT_DIR" ] \
-		&& pushd "$SCREENSHOT_DIR" >/dev/null \
-		||{
-			SCREENSHOT_DIR='.'
-			msg 'Current directory is about to hold screenshots.'
-		}
+	[ -d "$SCREENSHOT_DIR" ] && {
+		pushd "$SCREENSHOT_DIR" >/dev/null
+		:
+	}||{
+		# We don’t want the dot to go in the journal,
+		#   the original directory should go there.
+		SCREENSHOT_DIR_ORIG="$SCREENSHOT_DIR"
+		SCREENSHOT_DIR='.'
+		msg 'Current directory is about to hold screenshots.'
+	}
 	screendir_timestamp=`date +%s`
 	return 0
 }
 
 # EXPECTS:
-#     MODE — set and be one of 'single', 'episodes' or 'dvd' strings.
-#     IT_IS_NEXT_ITERATION — set only when execution is on the next iteration
+#     MODE – set and be one of 'single', 'episodes' or 'dvd' strings.
+#     IT_IS_NEXT_ITERATION – set only when execution is on the next iteration
 #         of `until` cycle, or it was resumed after interruption, i.e. RESUME,
 #         and therefore IT_IS_NEXT_ITERATION, is set.
-#     RUN_IN_CYCLE — set only if script was called with -c or -r option.
-#     RESUME_AND_REPLAY (aka INTERRUPTED) — set if previous run of the player
+#     RUN_IN_CYCLE – set only if script was called with -c or -r option.
+#     RESUME_AND_REPLAY (aka INTERRUPTED) – set if previous run of the player
 #         in resumed session was interrupted in the middle of playing a file
 #         by <q>, <Esc>, SIGKILL etc.
 # SETS:
-#     findpath — where to search for additional files (subtitles, audiotracks
+#     findpath – where to search for additional files (subtitles, audiotracks
 #         etc.)
-#     VIDEO_NUMBER — line number from the list of VIDEOFILES.
-#     VIDEOFILE — videofile that will be playing, must be unset to play a disk
+#     VIDEO_NUMBER – line number from the list of VIDEOFILES.
+#     VIDEOFILE – videofile that will be playing, must be unset to play a disk
 #         as a disk.
-#     CLEAN_EP_NUMBER — EP_NUMBER[VIDEO_NUMBER-1] with L and ? removed.
+#     CLEAN_EP_NUMBER – EP_NUMBER[VIDEO_NUMBER-1] with L and ? removed.
 #         Used in search for other files.
-#     INTERRUPTED — used in “resume” case, means episode wasn’t watched till
+#     INTERRUPTED – used in ‘resume’ case, means episode wasn’t watched till
 #         the end and must be replayed on resume.
-#     STOP — if the player was interrupted by key, that stops the cycle too.
+#     STOP – if the player was interrupted by key, that stops the cycle too.
 # RETURNS:
 #     0 if ok, >0 if internal function call returned an error.
 watch() {
@@ -2543,7 +2552,7 @@ watch() {
 			# Add check for -L option limiting the number of
 			#   sequentially playing files to LIMIT_SEQUNCE.
 			# Add check to stop cycle when last episode finished?
-			#   -e for “stop at the end”?
+			#   -e for ‘stop at the end’?
 			if  [ -v IT_IS_NEXT_ITERATION ];  then
 				# If playback was interrupted, play last watched episode
 				#   once again, otherwise increment episode number and play
@@ -2605,7 +2614,7 @@ watch() {
 				[ $? -eq 0 ] && \
 					MPLAYER_OPTS+=" ${dashes}profile protocol.$protocol"
 			else
-				warn "$MPLAYER_COMMAND config doesn’t have profile “protocol.$protocol” set."
+				warn "$MPLAYER_COMMAND config doesn’t have profile ‘protocol.$protocol’ set."
 			fi
 			MPLAYER_OPTS+=" $protocol:// ${dashes}$device "
 			;;
@@ -2742,7 +2751,7 @@ Consider switching to the latest mpv if you want to load multiple tracks
 				#   it’d be kinda superfluous).
 				while [ -e /proc/$mpvsed_pipe_pid ]; do sleep 1; done
 				[ -v D ] && {
-					echo "Trying to kill “$inotifywait_cmd” with session id $PPID." >>$dbg_file
+					echo "Trying to kill ‘$inotifywait_cmd’ with session id $PPID." >>$dbg_file
 					pstree -ap $PPID >>$dbg_file
 				}
 				pkill -13 --session $PPID -xf "$inotifywait_cmd" # SIGPIPE to suppress the message.
@@ -2784,15 +2793,15 @@ Consider switching to the latest mpv if you want to load multiple tracks
 
 
 # EXPECTS:
-#     findpath — where to search for additional files (subtitles, audiotracks etc.)
+#     findpath – where to search for additional files (subtitles, audiotracks etc.)
 #     VIDEOFILE – exact name match
-#     KEYWORD — set, non-empty string
-#     MATCH_NUMBER — set if called with -n, -a.
+#     KEYWORD – set, non-empty string
+#     MATCH_NUMBER – set if called with -n, -a.
 # TAKES:
-#     $1 — non-empty string with a list of extensions to match agaist, must be
+#     $1 – non-empty string with a list of extensions to match agaist, must be
 #         separated by space and contain no trailing space, like "abc def ghi"
 # SETS:
-#     OTHER_FILES_LIST — list of files that reside in findpath, match by extension to what
+#     OTHER_FILES_LIST – list of files that reside in findpath, match by extension to what
 #         was through $1 passed and all collected match_* rules
 # RETURNS:
 #     0 if ok, >0 if internal function call returned an error.
@@ -2806,8 +2815,8 @@ get_other_files() {
 	OTHER_FILES_LIST="$match_by_name" # exact name
 	# TODO: This is the only place where KEYWORD is used as a fixed string.
 	#       Need to replace KEYWORD with two variables
-	#       KEYWORD_FOR_FIND with space substituted with “?” and
-	#       KEYWORD_FOR_GREP with space replaced with “.”.
+	#       KEYWORD_FOR_FIND with space substituted with ‘?’ and
+	#       KEYWORD_FOR_GREP with space replaced with ‘.’.
 	#       Also either escape special symbols in KEYWORD, or somehow
 	#       check UNICODE symbol class to be letter/hieroglyph.
 	local match_by_keyword=`echo "$found_other_files" | grep -i -${FIXED_STRING:-G} "$KEYWORD" | sort`
@@ -2850,9 +2859,9 @@ get_other_files() {
 }
 
 # EXPECTS:
-#     SCREENSHOT_DIR — if set, then we should be in screenshot directory
+#     SCREENSHOT_DIR – if set, then we should be in screenshot directory
 #         and therefore, will be popd’d later inside of the trap.
-#     *.png — screenshots taken.
+#     *.png – screenshots taken.
 # RETURNS:
 #     0 if the function processed screenshots, 1 if not. This is needed
 #     to distinguish cases when it did the job and when it didn’t to avoid
@@ -2913,7 +2922,7 @@ screenshots_postprocessing() {
 # EXPECTS:
 #     ~/.watch.sh/journal to exist and contain at least one \n (for sed).
 # EXIT CODES:
-#     0 if OK, “no_such_keyword_in_journal”, “not_enough_data_to_restore”.
+#     0 if OK, ‘no_such_keyword_in_journal’, ‘not_enough_data_to_restore’.
 import_session_data() {
 	[ -v NO_JOURNAL ] || {
 		# Checking journal version
@@ -2924,23 +2933,22 @@ import_session_data() {
 		[ "`stat --format='%s' $JOURNAL`" -gt 1 ] && {
 			if [ "$KEYWORD" ]; then
 				# KEYWORD present, search among entries in the journal
-				# We can’t pass exiot code from sed to eval, since eval’s
+				# We can’t pass exit code from sed to eval, since eval’s
 				#   exit code is the result of what it _executes_, and it
 				#   executes either an empty string, if sed found nothing
 				#  (=instant 0), or some variable assignment VAR='value',
 				#   that will most probably result in 0 return value.
 				#   So add some assignment that will tell us we found nothing :D
 				eval "`sed -n "/^KEYWORD='$(escape_for_sed_pattern "$KEYWORD")'/,/^$/ {
-				               s/^declare/declare -g/; p; /^$/ Q0 }; $ Q1 # Force global namespace—we’re inside function." \
+				               s/^declare/declare -g/; p; /^$/ Q0 }; $ Q1 # Force global namespace – we’re inside a function." \
 				       $JOURNAL 2>/dev/null || echo local no_such_keyword=t`"
-			else	# KEYWORD is not given, take 1st one from the journal
+			else
+				# KEYWORD is not given, take 1st one from the journal
 				# If this is the old style journal without header, start with 1st line.
 				sed -rn '1s/^# watch.sh journal v[0-9]+$/&/;T;Q1' $JOURNAL && start_line=1
-				eval "$(sed -n "$start_line,/^$/ {
-				               s/^declare/declare -g/; p } # Force global namespace—we’re inside function." \
+				eval "$(sed -n "$start_line,/^$/ { s/^declare/declare -g/; p } # Force global namespace – we’re inside function." \
 				$JOURNAL 2>/dev/null || echo local no_such_keyword=t)"
 			fi
-
 			[ -v no_such_keyword ] && return `err no_such_keyword_in_journal`
 
 			check_required_vars() {
@@ -2955,15 +2963,17 @@ import_session_data() {
 
 			# Nothing bad will happen if SCREENSHOT_DIR won’t be set.
 			check_required_vars 'BASEPATH' 'FIRST_MATCH' 'FIXED_STRING' 'KEYWORD' 'KEYWORD_FIND_PATTERNS' 'MODE' 'SUBFOLDERS'
-			[ "$MODE" = single ] \
-				&& check_required_vars 'VIDEOFILE'
-			[ "$MODE" = episodes ] \
-				&& check_required_vars 'VIDEOFILES' 'VIDEO_NUMBER' 'EP_NUMBERS' 'INTERRUPTED' 'REMEMBER_SUB_AND_AUDIO_DELAY'
+			[ "$MODE" = single ] && check_required_vars 'VIDEOFILE'
+			if [ "$MODE" = episodes ]; then
+				check_required_vars 'VIDEOFILES' 'VIDEO_NUMBER' 'EP_NUMBERS' 'INTERRUPTED' 'REMEMBER_SUB_AND_AUDIO_DELAY'
+			else
+				unset RUN_IN_CYCLE  # --resume sets it by default.
+			fi
 		}
 		[ -v not_enough_data ] && return `err not_enough_data_to_restore`
 		# Yes, it could be just one variable, but with two names, its purpose
 		#   is clearer, hence easier to understand at both stages. Moreover,
-		#   INTERRUPTED can’t be used to launch “until” cycle with “watch”
+		#   INTERRUPTED can’t be used to launch ‘until’ cycle with ‘watch’
 		#   function.
 		[ "$INTERRUPTED" = t ] && RESUME_AND_REPLAY=t
 		unset INTERRUPTED
@@ -2976,7 +2986,7 @@ import_session_data() {
 }
 
 # TAKES:
-#     $1 — string to prepare to be put in sed replacement string.
+#     $1 – string to prepare to be put in sed replacement string.
 escape_for_sed_replacement() {
 	# local str="$1" # as it was before 20140915
 	# to cover issue with ' in file names, when it goes through the journal
@@ -2991,10 +3001,10 @@ escape_for_sed_replacement() {
 }
 
 # SETS:
-#     SESSION_DATA_EXPORTED — to prevent this function running twice.
+#     SESSION_DATA_EXPORTED – to prevent this function running twice.
 # EXIT_CODES:
-#     0 if OK, “cant_retrieve_journal_size”,
-#    “cant_compute_journal_max_size”, “cant_truncate_journal”.
+#     0 if OK, ‘cant_retrieve_journal_size’,
+#    ‘cant_compute_journal_max_size’, ‘cant_truncate_journal’.
 export_session_data() {
 	[ -v SESSION_DATA_EXPORTED -o ! -v WE_HAVE_BEEN_IN_WATCH_FUNC ] && return 0
 	[ -v NO_JOURNAL ] || {
@@ -3005,7 +3015,7 @@ export_session_data() {
 		data+="\nFIXED_STRING=${FIXED_STRING:-f}"
 		data+="\nMODE='$MODE'"
 		data+="\nBASEPATH='$(escape_for_sed_replacement "$BASEPATH")'"
-		data+="\nFIRST_MATCH='$(escape_for_sed_replacement "$FIRST_MATCH")'" # Remember? No slashes here, “&” and “'” only
+		data+="\nFIRST_MATCH='$(escape_for_sed_replacement "$FIRST_MATCH")'" # Remember? No slashes here, ‘&’ and ‘'’ only
 		data+="\nSUBFOLDERS='$(escape_for_sed_replacement "$SUBFOLDERS")'"
 		[ $MODE = single ] \
 			&& data+="\nVIDEOFILE='$(escape_for_sed_replacement "$VIDEOFILE")'"
@@ -3016,8 +3026,8 @@ export_session_data() {
 			#   personal variables, but a test snippet doing this with items
 			#   containing ' and " in their names has shown that it’s better
 			#   to restrain from that. Though the output of retrieval, i.e.
-			#   evaling declare directives back, could be considered satisfying—
-			#   nothing was lost—there were disadvantages, that held me from
+			#   evaling declare directives back, could be considered satisfying –
+			#   nothing was lost – there were disadvantages, that held me from
 			#   implementing it here:
 			#   1. Declare introduces another level of obscurity and quoting
 			#      hell, that seems impossible to deal with having human sight.
@@ -3045,7 +3055,9 @@ export_session_data() {
 			data+="\n$(declare -p EP_NUMBERS)"
 			data+="\nINTERRUPTED=${INTERRUPTED:-f}"
 		}
-		data+="\nSCREENSHOT_DIR='$(escape_for_sed_replacement "$SCREENSHOT_DIR")'"
+		# SCREENSHOT_DIR_ORIG is the original string passed via --screenshot-dir,
+		# it should be used if we change SCREENSHOT_DIR to ‘.’ in screenshots_preprocessing().
+		data+="\nSCREENSHOT_DIR='$(escape_for_sed_replacement "${SCREENSHOT_DIR_ORIG:-SCREENSHOT_DIR}")'"
 		[ -v TASKSET_OPTS ] && data+="\nTASKSET_OPTS='$TASKSET_OPTS'"
 		[ -v IONICE_OPTS ] && data+="\nIONICE_OPTS='$IONICE_OPTS'"
 		[ -v EXIT_AFTER_THIS_EPISODE ] && data+="\nEXIT_AFTER_THIS_EPISODE='$EXIT_AFTER_THIS_EPISODE'"
@@ -3068,7 +3080,7 @@ export_session_data() {
 		[ $j_size -gt $j_max_size ] && {
 			truncate --size=$JOURNAL_MAX_SIZE $JOURNAL || return `err cant_truncate_journal`
 			# TODO: Clean the stump that might have left at the end of the file
-			# sed -i '/^$/,$ d' $JOURNAL # (this doesn’t work — sed is too greedy)
+			# sed -i '/^$/,$ d' $JOURNAL # (this doesn’t work – sed is too greedy)
 			# Though I’m not sure if the cleaning is really needed, simple tests
 			# had shown that it may be fine as is, but more complicated ones must
 			# be done.
@@ -3079,8 +3091,9 @@ export_session_data() {
 }
 
 is_this_the_last_item() {
-	[ $VIDEO_NUMBER -eq $VIDEOFILES_COUNT \
-   -o $VIDEO_NUMBER -eq ${EXIT_AFTER_THIS_EPISODE:- -1} ]
+	# If [ $MODE = bd ] then VIDEO* vars will be empty
+	[ ${VIDEO_NUMBER:- 1} -eq ${VIDEOFILES_COUNT:- -1} \
+   -o ${VIDEO_NUMBER:- 1} -eq ${EXIT_AFTER_THIS_EPISODE:- -1} ]
 }
 
 print_last_shown_episode_number() {
@@ -3100,7 +3113,7 @@ else
 	do_initial_search || exit $?
 fi
 screenshots_preprocessing || exit $?
-# Exit trap should be here—after all the necessary data are collected or
+# Exit trap should be here – after all the necessary data are collected or
 #   imported. There is no point in altering the journal on exit, if user
 #   declined to start watching something halfway.
 trap "export_session_data || exit $?" EXIT HUP INT QUIT KILL
@@ -3146,7 +3159,7 @@ screenshots_postprocessing && [ $MODE = episodes ] \
 # Rewrite it with C++.
 #
 # I’ve given it much thought, but still can’t decide, whether I should reduce heuristics levels down to two,
-#   i.e. ‘enabled’ and ‘disabled’. On the one hand, this is how it’s meant to be—user either uses full-featured
+#   i.e. ‘enabled’ and ‘disabled’. On the one hand, this is how it’s meant to be – user either uses full-featured
 #   heuristics or satisfies with basic sort that saves his CPU time. On the other hand, it’s hard to keep up
 #   all stages clean from bugs, and redevelop early stages without altering the ones above them. The posiibility
 #   to gradually disable applied heuristics methods makes it possible to work on deep stages and see the results.
