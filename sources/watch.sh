@@ -3057,7 +3057,7 @@ export_session_data() {
 		}
 		# SCREENSHOT_DIR_ORIG is the original string passed via --screenshot-dir,
 		# it should be used if we change SCREENSHOT_DIR to ‘.’ in screenshots_preprocessing().
-		data+="\nSCREENSHOT_DIR='$(escape_for_sed_replacement "${SCREENSHOT_DIR_ORIG:-SCREENSHOT_DIR}")'"
+		data+="\nSCREENSHOT_DIR='$(escape_for_sed_replacement "${SCREENSHOT_DIR_ORIG:-$SCREENSHOT_DIR}")'"
 		[ -v TASKSET_OPTS ] && data+="\nTASKSET_OPTS='$TASKSET_OPTS'"
 		[ -v IONICE_OPTS ] && data+="\nIONICE_OPTS='$IONICE_OPTS'"
 		[ -v EXIT_AFTER_THIS_EPISODE ] && data+="\nEXIT_AFTER_THIS_EPISODE='$EXIT_AFTER_THIS_EPISODE'"
