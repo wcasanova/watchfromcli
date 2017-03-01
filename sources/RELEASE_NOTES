@@ -1,3 +1,7 @@
+===] March 1, 2017 [======================================================
+
+1. I am dumb, I forgot to push an important fix for #12.
+
 ===] January 5, 2017 [======================================================
 
 1. Removed superfluous RUN_IN_CYCLE for $MODEs that are not ‘episodes’

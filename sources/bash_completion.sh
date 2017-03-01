@@ -29,4 +29,4 @@ _watchsh() {
 	esac
 }
 
-complete -F _watchsh watch.sh
+complete -o nosort -F _watchsh watch.sh

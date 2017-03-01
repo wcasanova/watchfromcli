@@ -2,7 +2,7 @@
 
 # watch.sh
 # A shell wrapper for mpv/MPlayer to run videos easy via CLI.
-# watch.sh © 2013–2015 deterenkelt.
+# © deterenkelt, 2013–2017.
 
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published
@@ -125,7 +125,7 @@ EOF
 show_version() {
 cat <<EOF
 watch.sh $VERSION
-Copyright © 2013–2015 deterenkelt.
+© deterenkelt, 2013–2017.
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
 This is free software: you are free to change and redistribute it.
 There is NO WARRANTY, to the extent permitted by law.
@@ -341,7 +341,7 @@ JOURNAL_MINVER='20150227'
 		|| exit `err homedir`
 }
 
-VERSION="20170105"
+VERSION="20170301"
 CHECK_FOR_UPDATE=21 # each N days
 updater_timestamp=~/.watch.sh/updater_timestamp
 [ -f $updater_timestamp ] || touch $updater_timestamp
