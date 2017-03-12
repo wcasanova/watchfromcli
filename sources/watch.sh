@@ -147,9 +147,9 @@ EOF
 #   does not work in my build, so if some day there will be changes to bash
 #   version requirement, they won’t appear at least before v4.4 releases.
 [ ${BASH_VERSINFO[0]:-0} -eq 4 ] &&
-[ ${BASH_VERSINFO[1]:-0} -le 1 ] ||
+[ ${BASH_VERSINFO[1]:-0} -le 3 ] ||
 [ ${BASH_VERSINFO[0]:-0} -le 3 ] && {
-	echo -e "$r*$s Bash v4.2 or higher required." >&2
+	echo -e "$r*$s Bash v4.4 or higher required." >&2
 	return 3 2>/dev/null || exit 3
 }
 
@@ -341,7 +341,7 @@ JOURNAL_MINVER='20150227'
 		|| exit `err homedir`
 }
 
-VERSION="20170301"
+VERSION="20170313"
 CHECK_FOR_UPDATE=21 # each N days
 updater_timestamp=~/.watch.sh/updater_timestamp
 [ -f $updater_timestamp ] || touch $updater_timestamp

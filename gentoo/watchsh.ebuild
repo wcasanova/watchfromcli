@@ -20,7 +20,7 @@ RDEPEND="|| ( media-video/mpv media-video/mplayer2 media-video/mplayer )
 		 >=sys-apps/sed-4.2.1
 		 >=sys-apps/file-5.17
 		 >=sys-apps/util-linux-2.20
-		 >=app-shells/bash-4.2
+		 >=app-shells/bash-4.4
 		 net-misc/wget
 		 remember-delays? ( media-video/mpv
 		                    sys-fs/inotify-tools

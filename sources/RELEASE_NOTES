@@ -1,3 +1,7 @@
+===] March 13, 2017 [======================================================
+
+1. Updated bash dependency to bash-4.4 (for complete -o nosort).
+
 ===] March 1, 2017 [======================================================
 
 1. I am dumb, I forgot to push an important fix for #12.
