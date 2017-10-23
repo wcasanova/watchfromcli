@@ -258,6 +258,8 @@ This might be caused by a broken file, truncated entry at the end of the journal
 			code=42; msg="Debug output of the queue will be too big for a human to read.\n  Please reduce the number of files to 26 at least.";;
 		pushd_fail)
 			code=43; msg='Current path will cause problems, are we in a nonexsisting directory?';;
+		cant_get_watchdir_lastmod)
+			code=44; msg='Cannot retrieve videofile’s directory last modification time.';;
 		*)
 			code=107; msg='Unknown error.';;
 	esac
@@ -335,13 +337,13 @@ HEURISTICS_LEVEL=0
 
 JOURNAL=~/.watch.sh/journal
 JOURNAL_MAX_SIZE="64K" # w/o suffix for bytes, K for KiB, M for MiB et al.
-JOURNAL_MINVER='20150227'
+JOURNAL_MINVER='20171023'
 [ -d ~/.watch.sh ] || {
 	mkdir -m755 ~/.watch.sh/ >/dev/null \
 		|| exit `err homedir`
 }
 
-VERSION="20170313"
+VERSION="20171023"
 CHECK_FOR_UPDATE=21 # each N days
 updater_timestamp=~/.watch.sh/updater_timestamp
 [ -f $updater_timestamp ] || touch $updater_timestamp
@@ -355,6 +357,8 @@ GROUP_INDICATOR='┌│└⋅' # upper part/middle part/lower part/single
 #   they’ll be used in an expression like this:
 #   "${var%${NOT_EPNUMBERS[i]}*}"
 NOT_EPNUMBERS=("240p" "360p" "480p" "720p" "1280??(?)?(?)720" "1080p" "1920??(?)?(?)1080" "@(h|H|h.|H.|x)264" "10?bit")
+
+NO_AUTOSUB='--sub-auto=no'
 
 # DEBUG MODE
 # No function aggregator for debug messages because test [ -v D ]
@@ -374,6 +378,7 @@ opts=`getopt \
              --options \
                        acCd:eEFhH:IJlL:m:M:nNrRs:S:uTv \
              --longoptions \
+allow-autosub,\
 basedir:,basepath:,\
 bashrc::,\
 check-for-update::,\
@@ -432,6 +437,10 @@ while true; do
 			MATCH_NUMBER=t # implies -n
 			shift
 			;;
+		'--allow-autosub')
+			unset NO_AUTOSUB
+			shift
+			;;
 		'--bashrc') # I know I could simply add -i to shebang in order to make
 			# the shell interactive and force it to source ~/.bash_profile,
 			# but the chain of sourcing this way may be long and redundant.
@@ -454,7 +463,7 @@ while true; do
 			}
 			;;
 		'--compat')
-			[[ "$2" == @(mplayer|mplayer2|mpv-03x) ]] && COMPAT="$2" && shift 2 \
+			[[ "$2" == @(mplayer|mplayer2|mpv-03x|mpv-0260) ]] && COMPAT="$2" && shift 2 \
 				|| exit `err opt_compat`
 			;;
 		-d|'--basedir'|'--basepath')
@@ -727,13 +736,14 @@ which "${MPLAYER_COMMAND:=mpv}" &>/dev/null || {
 dashes='--'
 declare -A mp_opts=(
 	[bd-protocol]='bd'
-	[sub-file]='sub-file'
-	[audio-file]='audio-file'
+	[sub-file]='sub-files'
+	[audio-file]='audio-files'
 	[sub-delay]='sub-delay'
 	[audio-delay]='audio-delay'
 )
 
 case "$COMPAT" in
+	# The players are in the order of development, mpv-03x preceded mpv-026.
 	mplayer) # the original MPlayer
 		dashes='-'
 		mp_opts[bd-protocol]='br'
@@ -749,6 +759,9 @@ case "$COMPAT" in
 		mp_opts[sub-file]='sub'
 		mp_opts[audio-file]='audiofile'
 		;;
+	mpv-0260)
+		mp_opts[sub-file]='sub-file'
+		mp_opts[audio-file]='audio-file'
 esac
 
 KEYWORD="$*"
@@ -759,21 +772,6 @@ KEYWORD="$*"
   use ‘.*’ style, not just ‘*’."
 		read -p 'Are you sure you want to continue? [N/y] > '
 		[[ "$REPLY" =~ ^[yY]$ ]] || exit `err aborted_by_user`
-	}
-	# Now script has the journal and resume may rely on its data.
-	EXPECTED_SUBFOLDERS="${EXPECTED_SUBFOLDERS//%keyword/$KEYWORD}"
-	# Pattern split for find
-	[ -v FIXED_STRING ] && {
-		# Perform escaping of | . * in the pattern for grep -G?
-		KEYWORD_FIND_PATTERNS="-iname \"*$KEYWORD*\""
-	}||{
-		KEYWORD_FIND_PATTERNS=`
-			sed -r 's/([^\])"/\1\\"/g                       # Escape unescaped "
-			        s/([^\])\.\*/\1*/g                     # .* → * ; \.* → \.*
-			        s/^/\\\\( -iname "*/; s/$/*" \\\\)/   # ^… …$ → \( -iname "*… …*" \)
-			        s/([^\])\|/\1*" -o -iname "*/g       # | → *" -o -iname "* ; \| → \|
-			       ' <<<"$KEYWORD"`
-		KEYWORD_FIND_PATTERNS=`eval echo "$KEYWORD_FIND_PATTERNS"`
 	}
 }
 
@@ -828,6 +826,20 @@ GI_SINGLE=${GROUP_INDICATOR:3:1}
 do_initial_search() {
 	[ -v D ] && dbg_file="$DEBUG_DIR/initial_search"
 	unset MODE FIRST_MATCH SUBFOLDERS
+	EXPECTED_SUBFOLDERS="${EXPECTED_SUBFOLDERS//%keyword/$KEYWORD}"
+	# Pattern split for find
+	[ -v FIXED_STRING ] && {
+		# Perform escaping of | . * in the pattern for grep -G?
+		KEYWORD_FIND_PATTERNS="-iname \"*$KEYWORD*\""
+	}||{
+		KEYWORD_FIND_PATTERNS=`
+		sed -r 's/([^\])"/\1\\"/g                       # Escape unescaped "
+		        s/([^\])\.\*/\1*/g                     # .* → * ; \.* → \.*
+		        s/^/\\\\( -iname "*/; s/$/*" \\\\)/   # ^… …$ → \( -iname "*… …*" \)
+		        s/([^\])\|/\1*" -o -iname "*/g       # | → *" -o -iname "* ; \| → \|
+		       ' <<<"$KEYWORD"`
+		KEYWORD_FIND_PATTERNS=`eval echo "$KEYWORD_FIND_PATTERNS"`
+	}
 	list_videofiles  search_by_keyword  ${BASEPATH[1]:+preserve_basepath} || return $?
 	[ ${#BASEPATH[@]} -eq 1 ] \
 		&& local dirs=`find -L "$BASEPATH" -maxdepth 1 -type d $KEYWORD_FIND_PATTERNS -printf "%f\n"` \
@@ -993,6 +1005,7 @@ check_for_subfolders() {
 	}
 	# Not local! Recursive call may fail!
 	same_path="$BASEPATH$FIRST_MATCH${SUBFOLDERS:-}"
+
 	for word in ${EXPECTED_SUBFOLDERS:-}; do
 		internal_dirs=`find -L "$BASEPATH$FIRST_MATCH${SUBFOLDERS:-}" -mindepth 1 -maxdepth 1 -type d -iname "*${word}*" -printf "%f\n"`
 		[ "$internal_dirs" ] && {
@@ -1069,6 +1082,7 @@ choose_from() {
 		}
 		[ -v NO_HINTS ] || echo ' ↙ Pick a number from the list.'
 		[ ${FUNCNAME[1]} = watch ] && {
+			local use_suggested_number=t
 			[ $HEURISTICS_LEVEL -ne 0 ] && {
 				[ -v D ] && dbg_file="$DEBUG_DIR/choose_from_[watch]"
 				[ -v group_patterns ] || create_groups_for_the_list || return $? # L1 HEU
@@ -1103,6 +1117,10 @@ choose_from() {
 
 		# local is poinless for the second one, because big cycle and <TAB>.
 		unset input input_is_ready
+		[ -v use_suggested_number ] && {
+			input=$SUGGESTED_NUMBER
+			unset SUGGESTED_NUMBER
+		}
 		# Use C-v <key> to print its escape sequence. P.S. Octals work, too!
 		local up=$'\e[A' down=$'\e[B' backspace=$'\177' F1=$'\e[11~' # F1 requires another read to catch 4th char, wat do? ;_;
 		until [ -v input_is_ready ]; do
@@ -2300,7 +2318,6 @@ Entering cycle of groups supplementing.' >>$dbg_file
 						#   items in order.
 						# In bash, it’s okey to start from 1 – if there’s no such
 						#   item, cycle won’t start, but in other languages…
-#set -x
 						for ((j=0; j<${#groups_that_fill_gap_partly[@]}-1; j++)); do
 							for ((k=j+1; k<${#groups_that_fill_gap_partly[@]}; k++)); do
 								local _this_gr_1st_ep=${groups_that_fill_gap_partly[k]#*;} \
@@ -2315,7 +2332,6 @@ Entering cycle of groups supplementing.' >>$dbg_file
 								}
 							done
 						done
-#set +x
 						[ -v D ] && {
 							echo -e "\t\tTrying to fill the gap from parts (resorted array):" >>$dbg_file
 							header="Index   Group index   Episodes" # Episodes here ≠ group_matches[N]
@@ -2578,7 +2594,7 @@ watch() {
 					[ -v VIDITEM_EPNUMBER ] \
 						&& EP_NUMBERS=("${VIDITEM_EPNUMBER[@]}") \
 						|| readarray -t EP_NUMBERS < <(seq -f "L%g" 1 $VIDEOFILES_COUNT)
-				}||{ # Eeeeh? One videofile in episodes mode?
+				}||{  # Eeeeh? One videofile in episodes mode?
 					[ -v RUN_IN_CYCLE ] && {
 						warn 'Cannot start watching cycle: only one video file.'
 						unset RUN_IN_CYCLE
@@ -2718,9 +2734,11 @@ Consider switching to the latest mpv if you want to load multiple tracks
 	#   It is also used to distinguish the mpv instance that runs
 	#   the video from those that encode webms (see below).
 	{ coproc \
-		{ eval ${ionice_cmd:-} ${taskset_cmd:-} $MPLAYER_COMMAND --msg-level=all=info \
-			${subtitles:-} ${tracks:-} "$MPLAYER_OPTS" "\"$path_to_videofile\"" \
-			|& sed '/^Exiting\.\.\./ {s/End of file/&/p; t ex1; Q0; :ex1 Q1}' # sed is weird…
+		{ eval ${ionice_cmd:-} ${taskset_cmd:-} $MPLAYER_COMMAND \
+		    --msg-level=all=info \
+		    ${NO_AUTOSUB:-} ${subtitles:-} ${tracks:-} "$MPLAYER_OPTS" \
+		    "\"$path_to_videofile\"" \
+			|& sed '/^Exiting\.\.\./ {s/End of file/&/p; t ex1; Q0; :ex1 Q1}'
 		} >&3
 	} 3>&1 # let mpv’s output flow to the stdout.
 	local mpvsed_pipe_pid=$!
@@ -2924,11 +2942,13 @@ screenshots_postprocessing() {
 # EXIT CODES:
 #     0 if OK, ‘no_such_keyword_in_journal’, ‘not_enough_data_to_restore’.
 import_session_data() {
+	local current_lastmod
 	[ -v NO_JOURNAL ] || {
 		# Checking journal version
 		local j_ver=`sed -nr '1 s/.*v([0-9]+)$/\1/p' $JOURNAL` start_line=3
 		[[ "$j_ver" =~ ^[0-9]+$ ]] && [ $j_ver -ge $JOURNAL_MINVER ] || {
-			warn "The journal version ($j_ver) is incompatibe with current watch.sh version ($VERSION)."
+			warn "The journal version $j_ver is obsolete.
+You can remove $JOURNAL and let watch.sh to create a new one."
 		}
 		[ "`stat --format='%s' $JOURNAL`" -gt 1 ] && {
 			if [ "$KEYWORD" ]; then
@@ -2940,7 +2960,7 @@ import_session_data() {
 				#   that will most probably result in 0 return value.
 				#   So add some assignment that will tell us we found nothing :D
 				eval "`sed -n "/^KEYWORD='$(escape_for_sed_pattern "$KEYWORD")'/,/^$/ {
-				               s/^declare/declare -g/; p; /^$/ Q0 }; $ Q1 # Force global namespace – we’re inside a function." \
+				               s/^declare/declare -g/; p; /^$/ Q0 }; $ Q1 # Force global namespace – we’re inside function." \
 				       $JOURNAL 2>/dev/null || echo local no_such_keyword=t`"
 			else
 				# KEYWORD is not given, take 1st one from the journal
@@ -2965,7 +2985,7 @@ import_session_data() {
 			check_required_vars 'BASEPATH' 'FIRST_MATCH' 'FIXED_STRING' 'KEYWORD' 'KEYWORD_FIND_PATTERNS' 'MODE' 'SUBFOLDERS'
 			[ "$MODE" = single ] && check_required_vars 'VIDEOFILE'
 			if [ "$MODE" = episodes ]; then
-				check_required_vars 'VIDEOFILES' 'VIDEO_NUMBER' 'EP_NUMBERS' 'INTERRUPTED' 'REMEMBER_SUB_AND_AUDIO_DELAY'
+				check_required_vars 'VIDEOFILES' 'VIDEO_NUMBER' 'EP_NUMBERS' 'INTERRUPTED' 'REMEMBER_SUB_AND_AUDIO_DELAY' 'LASTMOD'
 			else
 				unset RUN_IN_CYCLE  # --resume sets it by default.
 			fi
@@ -2981,6 +3001,30 @@ import_session_data() {
 		for var in 'FIXED_STRING' 'REMEMBER_SUB_AND_AUDIO_DELAY'; do
 			[ "${!var}" = f ] && unset $var
 		done
+		[ "$MODE" = episodes ] && {
+			# If the files in the folder were still downloading at the time
+			# watching cycle has started, then on resume our file list is out
+			# of date. We must force RUN_IN_CYCLE instead of regular
+			# RESUME procedure.
+			current_lastmod=$(stat -c %Y "$BASEPATH$FIRST_MATCH${SUBFOLDERS:-}")
+			[[ "$current_lastmod" =~ ^[0-9]+$ ]] || return `err cant_get_watchdir_lastmod`
+			[ $current_lastmod -gt "$LASTMOD" ] && {
+				# We’re going to amend the --resume convenience,
+				# so let’s at least provide the user with the number of
+				# his last watched episode, in the hope, he started
+				# watching something, before it downloaded completely,
+				# from the beginning. Well, if he decided to download
+				# some fifth episode first, while №1–4 weren’t finished,
+				# he must know what he’s doing.
+				SUGGESTED_NUMBER=$VIDEO_NUMBER
+				unset RESUME RESUME_FROM_PREVIOUS MODE IT_IS_NEXT_ITERATION \
+				      VIDEO_NUMBER FIRST_MATCH SUBFOLDERS VIDEOFILES \
+				      EP_NUMBERS INTERRUPTED LASTMOD VIDEOFILE
+				# This call must be the last, i.e. all the possible checks
+				# and corrections must be made before it.
+				do_initial_search
+			}
+		}
 	}
 	return 0
 }
@@ -3054,6 +3098,7 @@ export_session_data() {
 			data+="\nVIDEO_NUMBER=$VIDEO_NUMBER"
 			data+="\n$(declare -p EP_NUMBERS)"
 			data+="\nINTERRUPTED=${INTERRUPTED:-f}"
+			data+="\nLASTMOD=$(stat -c %Y "$BASEPATH$FIRST_MATCH${SUBFOLDERS:-}")"
 		}
 		# SCREENSHOT_DIR_ORIG is the original string passed via --screenshot-dir,
 		# it should be used if we change SCREENSHOT_DIR to ‘.’ in screenshots_preprocessing().
@@ -3182,6 +3227,12 @@ screenshots_postprocessing && [ $MODE = episodes ] \
 
 # TODO
 # ————————
+#
+#   1. Remember directory’s lastmod and if it changed since we started a video from there last time (wa-a -r),
+#      then instead of continuing start new watching cycle.
+#
+#
+#
 # Add pstree to deps in deb and rpm.
 # The purpose of this update is^W shoud have been to make HEU1 better (actual sorting by number included) and to make HEU2
 #   ready for use, so this program would put on title ‘version 1.0’ with dignity.
