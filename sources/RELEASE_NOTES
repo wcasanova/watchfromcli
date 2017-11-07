@@ -1,4 +1,12 @@
-===] October 23, 2017 [======================================================
+===] 7 November 2017 [===============================================
+
+1. Fixed #14. Strongly advised to update!
+2. ‘mpv-0260’ for --compat now is called mpv-025x.
+   using 0260 was ambiguos and wrong, now it’s fixed.
+   If you use it, replace the value in your bashrc scripts.
+   Sorry for the inconvenience.
+
+===] 23 October 2017 [===============================================
 
 1. --sub-file and --audio-file options were updated to have `s`
    endings, like the modern mpv has. Older options can be used 
@@ -13,7 +21,7 @@
    suggest the number from the list you picked the last time.
    The new journal variable LASTMOD obsoletes old records with
    MODE='episodes', so the users are enouraged to remove the
-   journal file and let waatch.sh create a new one.
+   journal file and let watch.sh create a new one.
 3. --sub-auto=no, that earlier had to be put in the config file, 
    is now automatically added to the mpv command line. You can 
    remove it from the config. If, for some reason, you prefer to 

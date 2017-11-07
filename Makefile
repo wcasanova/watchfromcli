@@ -6,7 +6,7 @@ PN := watchsh
 DATE := $(shell date +%s)
 PV := $(shell LC_TIME=C date --date='@${DATE}' +%Y%m%d)
 P := ${PN}-${PV}
-HUMAN_DATE := $(shell LC_TIME=C date --date='@${DATE}' +'%B %-d, %Y')
+HUMAN_DATE := $(shell LC_TIME=C date --date='@${DATE}' +'%-d %B %Y')
 TARBALL := ${P}.tar.gz
 TARBALL_ORIG := ${PN}_${PV}.orig.tar.gz
 MAINTAINER := deterenkelt

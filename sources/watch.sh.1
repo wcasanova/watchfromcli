@@ -1,4 +1,4 @@
-.TH watch.sh 1 "October 23, 2017" Linux "User Manuals"
+.TH watch.sh 1 "7 November 2017" Linux "User Manuals"
 .\"
 .\" NAME ----------------------------------------------------------------------
 .\"
@@ -99,8 +99,8 @@ Source ~/.bashrc or the file specified as an argument. This is to make aliases a
 .B -C, --no-color
 Forbid colored output, if possible.
 .TP
-.B --compat <mplayer|mplayer2|mpv-03x>
-Set compatibility mode for keys passing to \fB--mplayer-command\fP. This affects DVD/BD playing, adding external subtitles and tracks, which is involving building options for the player command.
+.B --compat <mplayer|mplayer2|mpv-03x|mpv-025x>
+Set compatibility mode for keys passing to \fB--mplayer-command\fP. This affects DVD/BD playing, adding external subtitles and tracks, which is involving building options for the player command. The order is time-based. mpv-03x means 0.3.x and mpv-025x means 0.25.x. Zehkul’s convert_script.lua doesn’t work with >=mpv-0.25.
 .br
 The script is written to conform with the syntax of the latest \fBmpv\fP build (i.e. from git), so there's no need in compatibility modes if you use the upstream.
 Use "mplayer" for the original MPlayer, "mplayer2" for mplayer2 and mpv-03x for mpv-0.3.x or older.

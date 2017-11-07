@@ -190,7 +190,7 @@ err() {
 		opt_chk4upd)
 			code=11; msg='Option --check-for-update takes a number of days between which it should check releases on github as argument.';;
 		opt_compat)
-			code=12; msg='Option --compat requires argument to be one of ‘mplayer’, ‘mplayer2’ or ‘mpv-03x’.';;
+			code=12; msg='Option --compat requires argument to be one of ‘mplayer’, ‘mplayer2’, ‘mpv-03x’ or ‘mpv-025x’.';;
 		opt_basedir)
 			code=13; msg="-d|--basedir: ‘$arg’ is not a readable directory.";;
 		opt_heulevel)
@@ -260,6 +260,8 @@ This might be caused by a broken file, truncated entry at the end of the journal
 			code=43; msg='Current path will cause problems, are we in a nonexsisting directory?';;
 		cant_get_watchdir_lastmod)
 			code=44; msg='Cannot retrieve videofile’s directory last modification time.';;
+		scrdir_wrong_or_moved)
+			code=45; msg="‘$SCREENSHOT_DIR’ passed to --screenshot-dir cannot be found. Did you move it?";;
 		*)
 			code=107; msg='Unknown error.';;
 	esac
@@ -343,7 +345,7 @@ JOURNAL_MINVER='20171023'
 		|| exit `err homedir`
 }
 
-VERSION="20171023"
+VERSION="20171107"
 CHECK_FOR_UPDATE=21 # each N days
 updater_timestamp=~/.watch.sh/updater_timestamp
 [ -f $updater_timestamp ] || touch $updater_timestamp
@@ -463,7 +465,7 @@ while true; do
 			}
 			;;
 		'--compat')
-			[[ "$2" == @(mplayer|mplayer2|mpv-03x|mpv-0260) ]] && COMPAT="$2" && shift 2 \
+			[[ "$2" == @(mplayer|mplayer2|mpv-03x|mpv-025x) ]] && COMPAT="$2" && shift 2 \
 				|| exit `err opt_compat`
 			;;
 		-d|'--basedir'|'--basepath')
@@ -611,7 +613,8 @@ while true; do
 		'--not-episodes')
 			test='only letters here'
 			[ "$2" ] && [ "${test%%$2}" ] \
-				&& NOT_EPNUMBERS[${#NOT_EPNUMBERS[@]}]="$2" && shift 2 \
+				&& NOT_EPNUMBERS+=("$2") \
+				&& shift 2 \
 				|| exit `err opt_requires_an_arg`
 			;;
 		'--remember-sub-and-audio-delay')
@@ -630,10 +633,22 @@ while true; do
 			shift
 			;;
 		-s|'--subfolders')
-			[ "$2" ] && EXPECTED_SUBFOLDERS="$2" && shift 2 || exit `err opt_requires_an_arg`
+			[ "$2" ] && {
+				EXPECTED_SUBFOLDERS="$2"
+				shift 2
+			} || exit `err opt_requires_an_arg`
 			;;
 		-S|'--screenshot-dir')
-			[ "$2" ] && SCREENSHOT_DIR="$2" && shift 2 || exit `err opt_requires_an_arg`
+			[ "$2" ] && {
+				SCREENSHOT_DIR="$2"
+				# We may need it to start the search, if the user has moved
+				# the directory, but journal keeps the old directory
+				# in a record.
+				SCREENSHOT_DIR_FROM_CMDLINE="$2"
+				# User has probably moved the directory.
+				[ -d "$SCREENSHOT_DIR" ] || exit `err scrdir_wrong_or_moved`
+				shift 2
+			} || exit `err opt_requires_an_arg`
 			;;
 		'--screenshot-dir-skel')
 			[ "$2" ] && SCREENSHOT_DIR_SKEL="$2" && shift 2 || exit `err opt_requires_an_arg`
@@ -759,7 +774,7 @@ case "$COMPAT" in
 		mp_opts[sub-file]='sub'
 		mp_opts[audio-file]='audiofile'
 		;;
-	mpv-0260)
+	mpv-025x)
 		mp_opts[sub-file]='sub-file'
 		mp_opts[audio-file]='audio-file'
 esac
@@ -1082,7 +1097,7 @@ choose_from() {
 		}
 		[ -v NO_HINTS ] || echo ' ↙ Pick a number from the list.'
 		[ ${FUNCNAME[1]} = watch ] && {
-			local use_suggested_number=t
+			[ -v SUGGESTED_NUMBER ] && local use_suggested_number=t
 			[ $HEURISTICS_LEVEL -ne 0 ] && {
 				[ -v D ] && dbg_file="$DEBUG_DIR/choose_from_[watch]"
 				[ -v group_patterns ] || create_groups_for_the_list || return $? # L1 HEU
@@ -2482,9 +2497,30 @@ Entering cycle of groups supplementing.' >>$dbg_file
 #    ‘scrdir_isnt_writeable’, ‘cant_create_scrdir’ in case
 #     of insufficient rights to access $SCREENSHOT_DIR.
 screenshots_preprocessing() {
+	local screens_path folder valid
+	# Set to true if the user employs --screenshot-dir (he may not need it).
 	[ -v SCREENSHOT_DIR ] && {
-		grep -qi${FIXED_STRING:-G} "$KEYWORD" <<<"${SCREENSHOT_DIR##*\/}" ||{
-			local screens_path=`find -L "$SCREENSHOT_DIR" -maxdepth 1 -type d $KEYWORD_FIND_PATTERNS -printf "%f\n"`
+		# With grep we check, that the endpoint directory answers
+		#   our need to find something with $KEYWORD in its name.
+		# With [ -d … ] we check, that the directory from the journal
+		#   still does exist – user might move his screenshots,
+		#   but the journal will not know about that.
+		grep -qi${FIXED_STRING:-G} "$KEYWORD" <<<"${SCREENSHOT_DIR##*\/}" \
+			&& [ -d "$SCREENSHOT_DIR" ] \
+			&& valid=t
+		[ -v valid ] || {
+			# If user has moved screenshot_dir, then we default to the new
+			# screenshot dir and try to find something there.
+			# It is certain, that if the code goes here, that the user
+			# has already fixed the path in the command line and we have
+			# the new path in $SCREENSHOT_DIR_FROM_CMDLINE.
+			# If there’s only one directory, we could silently
+			# change the path in the journal transparently to the user!
+			[ -d "$SCREENSHOT_DIR" ] || SCREENSHOT_DIR="$SCREENSHOT_DIR_FROM_CMDLINE"
+			screens_path=$(find -L "$SCREENSHOT_DIR" -maxdepth 1 -type d \
+			                    $KEYWORD_FIND_PATTERNS \
+			                    -printf "%f\n" \
+			                    2>/dev/null)
 			if [ "$screens_path" ]; then
 				[ `echo "$screens_path" | wc -l` -gt 1 ] && {
 					echo "Which directory to store screenshots in?"
@@ -2522,16 +2558,15 @@ screenshots_preprocessing() {
 			fi
 		}
 	}
-	[ -d "$SCREENSHOT_DIR" ] && {
+	if [ -d "$SCREENSHOT_DIR" ]; then
 		pushd "$SCREENSHOT_DIR" >/dev/null
-		:
-	}||{
+	else
 		# We don’t want the dot to go in the journal,
 		#   the original directory should go there.
 		SCREENSHOT_DIR_ORIG="$SCREENSHOT_DIR"
 		SCREENSHOT_DIR='.'
 		msg 'Current directory is about to hold screenshots.'
-	}
+	fi
 	screendir_timestamp=`date +%s`
 	return 0
 }
@@ -2649,13 +2684,17 @@ watch() {
 				#   we must escape commas in path and file names.
 				findpath="${findpath//,/\\\,}"
 				subtitles="${subtitles//,/\,}"
-				subtitles=`echo "$subtitles" | sed -r " # Here we combine all subtitles in one line.
-				1s/^/$(escape_for_sed_replacement "$findpath")/  # Padding 1st sub file with path.
-				:loop  # For every next line
-				    N; s/\n/,$(escape_for_sed_replacement "$findpath")/;  # …append its line to pattern space
-				    # …and replace newline between those lines with a comma
-				    # …and path that goes for the second file (after \n).
-				    t loop  # Successful replace → goto loop."`
+				subtitles=$(echo "$subtitles" \
+					| sed -r " # Here we combine all subtitles in one line.
+					           # Padding 1st sub file with path.
+					               1s/^/$(escape_for_sed_replacement "$findpath")/
+					               :loop  # For every next line
+					           # Append its line to pattern space
+					           # …and replace newline between those lines with a comma
+					           # …and path that goes for the second file (after \n).
+					               N; s/\n/,$(escape_for_sed_replacement "$findpath")/
+					           # Successful replace → goto loop.
+					               t loop  ")
 				subtitles="${dashes}${mp_opts[sub-file]} \"$subtitles\""
 			}||{ # each subtitle file passed with the key --sub file1 --sub file2 etc.
 				subtitles=`echo "$subtitles" | sed -r "s/.*/--sub-file='$(escape_for_sed_replacement "$findpath")&'/g"` # '…'"$findpath"'…'
@@ -3228,8 +3267,10 @@ screenshots_postprocessing && [ $MODE = episodes ] \
 # TODO
 # ————————
 #
-#   1. Remember directory’s lastmod and if it changed since we started a video from there last time (wa-a -r),
-#      then instead of continuing start new watching cycle.
+#   1. Check that in every fucking find clause brackets are escaped.
+#      Fucking find ignores ? * and lone [ and ] in -name "pattern",
+#      but if said pattern will contain both [ and ], find will think
+#      it’s time to enable GLOB pattern matching. Re⋅tar⋅da⋅tion.
 #
 #
 #
