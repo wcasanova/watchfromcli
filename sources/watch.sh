@@ -189,7 +189,7 @@ NO_AUTOSUB='--sub-auto=no'
 #   independetly of whether the -a|--alternative option is passed.
 opts=$(getopt \
              --options \
-                       acCd:eEFhH:IJlL:m:M:nNrRs:S:uTv \
+                       acCd:eEFhH:IJlL:m:M:nNrRs:S:Tv \
              --longoptions \
 allow-autosub,\
 basedir:,basepath:,\
@@ -470,11 +470,6 @@ while [ $# -ne 0 ]; do
 			T=t
 			shift
 			;;
-		# -u)
-		# 	CHECK_FOR_UPDATE=now
-		# 	EXIT_AFTER_CHECK=t
-		# 	shift
-		# 	;;
 		-v|'--version')
 			show_version
 			exit 0
@@ -484,7 +479,6 @@ while [ $# -ne 0 ]; do
 			break
 			;;
 		*)
-			# err 'Doushiyou~?'
 			KEYWORD="$1"
 			shift
 			;;
@@ -2977,8 +2971,8 @@ export_session_data() {
 
 is_this_the_last_item() {
 	# If [ $MODE = bd ] then VIDEO* vars will be empty
-	[ ${VIDEO_NUMBER:- 1} -eq ${VIDEOFILES_COUNT:- -1} \
-   -o ${VIDEO_NUMBER:- 1} -eq ${EXIT_AFTER_THIS_EPISODE:- -1} ]
+	[    ${VIDEO_NUMBER:- 1} -eq ${VIDEOFILES_COUNT:- -1} \
+      -o ${VIDEO_NUMBER:- 1} -eq ${EXIT_AFTER_THIS_EPISODE:- -1} ]
 }
 
 print_last_shown_episode_number() {
@@ -2990,7 +2984,9 @@ print_last_shown_episode_number() {
 		<( echo -e "${LAST_EP_NUMBER_PRINTING_FORMAT//%n/$ep_number}${last_item_finishing_mark:-}" )
 }
 
-## Main algorithm starts here
+
+
+                   #  Main algorithm starts here  #
 
 if [ -v RESUME ]; then
 	import_session_data || exit $?
@@ -3001,7 +2997,7 @@ screenshots_preprocessing || exit $?
 # Exit trap should be here – after all the necessary data are collected or
 #   imported. There is no point in altering the journal on exit, if user
 #   declined to start watching something halfway.
-trap "export_session_data || exit $?" EXIT HUP INT
+on_exit() { export_session_data || exit $?; }
 # A good place to check the $MODE.
 until [ -v STOP ]; do
 	watch || exit $?
@@ -3035,7 +3031,7 @@ done
 
 
 echo
-# exit 0
+exit 0
 
 # IDEAS
 # ————————
