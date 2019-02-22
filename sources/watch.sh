@@ -1,8 +1,8 @@
 #! /usr/bin/env bash
 
-# watch.sh
-# A shell wrapper for mpv/MPlayer to run videos easy via CLI.
-# © deterenkelt, 2013–2017.
+#  watch.sh
+#  A shell wrapper for mpv/MPlayer to run videos easy via CLI.
+#  © deterenkelt 2013–2019
 
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published
@@ -18,15 +18,11 @@
 # Requires
 # GNU sed >= 4.2.1 (started developing with it).
 # GNU grep >= 2.9 (started developing with it).
-# GNU bash >= 4.2 (strongly).
-# file >= 5.17 (output format of that utility has been changing,
-#        watch.sh conforms with 5.17 since v20140807).
+# GNU bash >= 4.4 (strongly).
+# mimetype >= 0.28
 # util-linux >= 2.20 (for getopt that is required, and taskset
 #        which may be of use, but is optional).
-# wget, xdg-open and your browser – to check for updates, and if there are,
-#        suggest to open the current RELEASE_NOTES in the repository on github.
-# mpv, mplayer2 or mplayer. Syntax was optimized
-#        for the first and the latter.
+# mplayer, mplayer2 or mpv.
 #
 # Works better with
 # GNU parallel – to compress screenshots faster using all cores available
@@ -48,28 +44,32 @@
 # extglob for the sake of it, expand_aliases to make aliases available for
 #   MPLAYER_COMMAND
 shopt -s extglob expand_aliases
-# Disable pathname expansion. Asterisk in expressions with find may lead
-#   to unforseen consequences.
-set -f
+set -feEuT
+
+BAHELITE_CHERRYPICK_MODULES=(
+	error_handling
+	logging
+	misc
+)
+. "$HOME/repos/bahelite/bahelite.sh"
+prepare_cachedir
+start_log
 
 show_help() {
-cat <<"EOF"
-Simpliest form:
-    watch.sh [optional arguments] -d basepath  keyword
+	cat <<-"EOF"
+	Simplest form:
+	    watch.sh [optional arguments] -d <basepath>  <keyword>
 
-To start watching cycle:
-    watch.sh [optional arguments] -c -d basepath  keyword
+	To start watching cycle:
+	    watch.sh [optional arguments] -c -d <basepath>  <keyword>
 
-To resume watching cycle:
-    watch.sh [optional arguments] -[r|R]  [keyword]
+	To resume watching cycle:
+	    watch.sh [optional arguments] <-r|-R>  [keyword]
 
-Check for updates
-    watch.sh -u
-
-For the complete list of options see man watch.sh or call this script like
-  watch.sh -H 'pattern'
-  in order to open the man page on the first occurrence of the pattern.
-EOF
+	For the complete list of options see man watch.sh or call this script like
+	watch.sh -H 'pattern'  in order to open the man page on the first occur-
+	rence of the pattern.
+	EOF
 }
 
 # TAKES:
@@ -78,58 +78,15 @@ show_manpage() {
 	[ "$1" ] && man -P"less -p '$1'" watch.sh || man watch.sh
 }
 
-apply_mimetype_fix() {
-	local magicfile_version=`sed -rn '3s/.*\s([0-9]+)$/\1/p' \
-	                        ~/.magic  2>/dev/null`
-	[[ "$magicfile_version" =~ ^[0-9]+$ ]] \
-		&& [ $VERSION -le $magicfile_version ] \
-		|| {
-		cp ~/.magic ~/.magic.`date +%Y%m%d`.backup
-		cat <<EOF >~/.magic
-# Magic local data for file(1) command.
-# Insert here your local magic data. Format is described in magic(5).
-# This file was created by watch.sh $VERSION
-#------------------------------------------------------------------------------
-4 byte 0x47
->5 beshort 0x4000
->>7 byte ^0xF
->>>196 byte 0x47
->>>>388 byte 0x47
->>>>>580 byte 0x47 M2TS MPEG transport stream, v2
-!:mime video/MP2T
-#------------------------------------------------------------------------------
-# matroska:  file(1) magic for Matroska files
-# See http://www.matroska.org/
-#
-# EBML id:
-0       belong      0x1a45dfa3
-# DocType id:
->5      beshort     0x4282
-# DocType contents:
->>0x8       string      matroska    Matroska data
-!:mime video/x-matroska
-#------------------------------------------------------------------------------
-# EBML id:
-0       belong      0x1a45dfa3
-# EMBL Version:
->5      beshort     0x4286      Version 1
-# DocType id:
->0x15       beshort     0x4282
-# DocType contents:
->>0x18      string      matroska    Matroska data
-!:mime video/x-matroska
-EOF
-	}
-}
 
 show_version() {
-cat <<EOF
-watch.sh $VERSION
-© deterenkelt, 2013–2017.
-License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
-This is free software: you are free to change and redistribute it.
-There is NO WARRANTY, to the extent permitted by law.
-EOF
+	cat <<-EOF
+	watch.sh $VERSION
+	© deterenkelt 2013–2019.
+	License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+	This is free software: you are free to change and redistribute it.
+	There is NO WARRANTY, to the extent permitted by law.
+	EOF
 }
 
 # Respect the environment.
@@ -142,145 +99,6 @@ EOF
 [ -v rb ] || rb='\e[21m'    # reset bold/bright
 [ -v u ] || u='\e[4m'    # underlined
 
-# I’ve read changelog to v4.3 and can say that the single useful option, i.e.
-#     local -r
-#   does not work in my build, so if some day there will be changes to bash
-#   version requirement, they won’t appear at least before v4.4 releases.
-[ ${BASH_VERSINFO[0]:-0} -eq 4 ] &&
-[ ${BASH_VERSINFO[1]:-0} -le 3 ] ||
-[ ${BASH_VERSINFO[0]:-0} -le 3 ] && {
-	echo -e "$r*$s Bash v4.4 or higher required." >&2
-	return 3 2>/dev/null || exit 3
-}
-
-[ "$BASH_SOURCE" != "$0" ] && {
-	echo -e "$r*$s This script shouldn’t be sourced. See usage (-h)." >&2
-	return 4
-}
-
-# TAKES:
-#     $1 – a string that has a message and exit code assigned to it.
-# RETURNS: exit code corresponding to the messsage.
-err() {
-	# Don’t rely on these codes – they tend to shift each time a new one is added.
-	# They are assembled here just for the ease of reparsing and future
-	#   localization (if it will be done eventually).
-	local code msg
-	case $1 in
-		no_getopt)
-			code=5; msg='No getopt utility (that usually comes with util-linux package) was found.';;
-		old_utillinux)
-			code=6; msg='This script requires getopt from util-linux 2.20 or higher.';;
-		homedir)
-			code=7; msg='Couldn’t create directory ~/.watch.sh.';;
-		debugdir)
-			code=8; msg='Couldn’t create directory ‘$DEBUG_DIR’.';;
-		getopt*)
-			code=9; msg='getopt returned an error while parsing the command line. It was probably\n  caused by ';;&
-		getopt_funcerr)
-			msg+='the getopt() function error. If it’s not a common error, then see\n  man 3 getopt.';;
-		getopt_wrongparam)
-			msg+='the parameters getopt wasn’t been able to parse correctly.';;
-		getopt_internal)
-			msg+='an internal error. Is there enough memory available?';;
-		getopt_dumbme)
-			msg+='the reason you should probably know by yourself.';;
-		opt_bashrc)
-			code=10; msg='Option --bashrc takes argument that has to be bash source file.';;
-		opt_chk4upd)
-			code=11; msg='Option --check-for-update takes a number of days between which it should check releases on github as argument.';;
-		opt_compat)
-			code=12; msg='Option --compat requires argument to be one of ‘mplayer’, ‘mplayer2’, ‘mpv-03x’ or ‘mpv-025x’.';;
-		opt_basedir)
-			code=13; msg="-d|--basedir: ‘$arg’ is not a readable directory.";;
-		opt_heulevel)
-			code=14; msg="Option --heuristics-level requires argument to be a number lower or equal to $MAX_HEURISTICS_LEVEL.";;
-		opt_inputinvalid)
-			code=15; msg='RESERVED';;
-		opt_journalsize)
-			code=17; msg='Option --journal-max-size requires argument to be a number of bytes that
-  may be followed by one of these suffixes: K M G to represent *2^10 once,\n  twice or three times.';;
-		opt_jpegcompression)
-			code=18; msg='Option --jpeg-compression takes argument that has to be a number between 0 and 100.';;
-		opt_lepshowafter)
-			code=19; msg='Option --last-ep-show-after requires argument to be one of\n  - player;\n  - screenshots;\n  - both.';;
-		opt_limitwatching)
-			code=20; msg='Option -L|--limit-watching-to requires argument to be a number of episodes.';;
-		opt_taskset)
-			code=21; msg='Option -t|--taskset-cpulist requires argument to be a valid CPU list.\n See `man taskset` for the details.';;
-		doushiyou)
-			code=22; msg='Doushiyou~?';;
-		bad_latestver)
-			code=23; msg='Couldn’t determine the latest version available.
-  If it’s not an internet connection problem, report a bug.';;
-		mpcmd_not_found)
-			code=24; msg="No such binary or alias found: ‘$MPLAYER_COMMAND’.";;
-		no_keyword)
-			code=25; msg='No keyword given.';;
-		no_matches)
-			code=26; msg='No matches!';;
-		empty_folder)
-			# FIRST_MATCH shall be set at the time of possibility of this error,
-			#   so BASEPATH shouldn’t be an array already.
-			code=27; msg="I couldn’t find any video files in
-  $BASEPATH${FIRST_MATCH:-}${SUBFOLDERS:+$SUBFOLDERS\nConsider checking your --subfolders pattern.}";;
-		chosen_one_is_unreadable)
-			code=28; msg="‘$FIRST_MATCH’ is not readable!";;
-		user_declined_input)
-			code=29;;
-		heu2_nan)
-			code=30; msg="Error on heuristics 2nd level: ‘${matches_as_numbers[j]}’ and ‘${matches_as_numbers[k]}’ must be numbers.";;
-		scrdir_isnt_writeable)
-			code=31; msg="No sufficient rights to write to ‘$SCREENSHOT_DIR’.";;
-		cant_create_scrdir)
-			code=32; msg="Couldn’t create directory ‘$SCREENSHOT_DIR’.";;
-		no_such_keyword_in_journal)
-			code=33; msg='No such keyword.';;
-		not_enough_data_to_restore)
-			code=34; msg="Not enough data to restore.
-Couldn’t retrieve $not_found_vars from the journal.
-This might be caused by a broken file, truncated entry at the end of the journal (though such entries shouldn’t exist) or a new update that changed the mechanism of file searching and thus, the list of required variables.";;
-		cant_retrieve_journal_size)
-			code=35; msg='Couldn’t retrieve journal size.';;
-		cant_compute_journal_maxsize)
-			code=36; msg='Couldn’t compute journal maximum size.';;
-		cant_truncate_journal)
-			code=37; msg='Couldn’t truncate journal.';;
-		aborted_by_user)
-			code=38; msg='Aborted by user.';;
-		opt_requires_an_arg)
-			code=39; msg="Option ‘$option’ requires an argument.";;
-		opt_interval)
-			code=40; msg="Option ‘interval’ requires a number of seconds to wait as an argument.";;
-		opt_gind)
-			code=41; msg="Option ‘group-indicator’ takes four characters.";;
-		heu2_queue_is_2big4ahuman)
-			code=42; msg="Debug output of the queue will be too big for a human to read.\n  Please reduce the number of files to 26 at least.";;
-		pushd_fail)
-			code=43; msg='Current path will cause problems, are we in a nonexsisting directory?';;
-		cant_get_watchdir_lastmod)
-			code=44; msg='Cannot retrieve videofile’s directory last modification time.';;
-		scrdir_wrong_or_moved)
-			code=45; msg="‘$SCREENSHOT_DIR’ passed to --screenshot-dir cannot be found. Did you move it?";;
-		*)
-			code=107; msg='Unknown error.';;
-	esac
-    [ -v msg ] && echo -e "${D:+\n$di}$r*$s $msg${D:+\n$di}" | tee -a ${dbg_file:-/dev/null} >&2
-    echo $code
-}
-
-msg() { echo -e "${D:+\n$di}$g$b*$s $1${D:+\n}" | tee -a ${dbg_file:-/dev/null}; }
-
-warn() { echo -e "${D:+\n$di}$y*$s $1${D:+\n}" | tee -a ${dbg_file:-/dev/null} >&2; }
-
-dmsg() {
-	local var
-	for var in "$@"; do
-		[ "$var" = '' -o "$var" = $'\n' ] \
-			&& echo >>$dbg_file \
-			|| echo -e "$di$var" >>$dbg_file
-	done
-}
 
 dil=0 # debug indentation level
 di='' # debug indentation
@@ -316,14 +134,9 @@ dput_declare() {
 	done
 }
 
-cd "$PWD" 2>/dev/null || exit `err pushd_fail`
-which getopt &>/dev/null || exit `err no_getopt`
+cd "$PWD" 2>/dev/null || err 'Current path will cause problems, are we in a nonexsisting directory?'
 
-# Checking util-linux version
-read -d $"\n" major minor < <(getopt -V | sed -rn 's/^[^0-9]+([0-9]+)\.?([0-9]+)?.*/\1\n\2/p')
-[[ "$major" =~ ^[0-9]+$ ]] && [[ "$minor" =~ ^[0-9]+$ ]] \
-	&& [ $major -ge 2 ] && ( [ $major -gt 2 ] || \
-	                         [ $major -eq 2 -a $minor -ge 20 ] ) || exit `err old_utillinux`
+
 
 # Variables typed in caps are either
 # - bash built-ins;
@@ -337,18 +150,16 @@ read -d $"\n" major minor < <(getopt -V | sed -rn 's/^[^0-9]+([0-9]+)\.?([0-9]+)
 MAX_HEURISTICS_LEVEL=1
 HEURISTICS_LEVEL=0
 
+VERSION="20190223"
 JOURNAL=~/.watch.sh/journal
 JOURNAL_MAX_SIZE="64K" # w/o suffix for bytes, K for KiB, M for MiB et al.
-JOURNAL_MINVER='20171023'
+JOURNAL_MINVER='20180409'
 [ -d ~/.watch.sh ] || {
 	mkdir -m755 ~/.watch.sh/ >/dev/null \
-		|| exit `err homedir`
+		|| err "Couldn’t create directory ~/.watch.sh."
 }
 
-VERSION="20171107"
-CHECK_FOR_UPDATE=21 # each N days
-updater_timestamp=~/.watch.sh/updater_timestamp
-[ -f $updater_timestamp ] || touch $updater_timestamp
+
 
 GROUP_INDICATOR='┌│└⋅' # upper part/middle part/lower part/single
 
@@ -369,14 +180,14 @@ NO_AUTOSUB='--sub-auto=no'
 [ -v D ] && {
 	DEBUG_DIR="$HOME/.watch.sh/debug"
 	[ -d "$DEBUG_DIR" ] && rm -rf "$DEBUG_DIR"
-	mkdir -m755 "$DEBUG_DIR" >/dev/null || exit `err debugdir`
+	mkdir -m755 "$DEBUG_DIR" >/dev/null || err "Couldn’t create directory ‘$DEBUG_DIR’."
 	for i in "$0" "$@"; do echo "\"$i\"" >>"$DEBUG_DIR/cmdline"; done
 	vars="`set -o posix; set`"
 }
 
 # getopt from util-linux 2.24 is known to allow long options with a single dash
 #   independetly of whether the -a|--alternative option is passed.
-opts=`getopt \
+opts=$(getopt \
              --options \
                        acCd:eEFhH:IJlL:m:M:nNrRs:S:uTv \
              --longoptions \
@@ -417,21 +228,15 @@ run-in-cycle,\
 screenshot-dir:,\
 screenshot-dir-skel:,\
 subfolders:,\
-taskset-opts:,\
+taskset-cpulist:,\
 version,\
-             -n 'watch.sh' -- "$@"`
+             -n 'watch.sh' -- "$@")
 getopt_exit_code=$?
-[ $getopt_exit_code -gt 0 ] && {
-	case $getopt_exit_code in
-		1) exit `err getopt_funcerr`;;
-		2) exit `err getopt_wrongparam`;;
-		3) exit `err getopt_internal`;;
-		4) exit `err getopt_dumbme`;;
-	esac
-}
+[ $getopt_exit_code -gt 0 ] && err 'Error parsing options.'
 eval set -- "$opts"
 
-while true; do
+# while true; do
+while [ $# -ne 0 ]; do
 	option="$1" # becasue this way it may be used in err()
 	case "$option" in
 		-a|'--match-all')
@@ -447,7 +252,8 @@ while true; do
 			# the shell interactive and force it to source ~/.bash_profile,
 			# but the chain of sourcing this way may be long and redundant.
 			[ -z "$2" ] && . "$HOME/.bashrc" && shift || {
-				[ -r "$2" ] && . "$2" && shift 2 || exit `err opt_bashrc`
+				[ -r "$2" ] && . "$2" && shift 2 \
+					|| err 'Option --bashrc takes argument that has to be bash source file.'
 			}
 			;;
 		-c|'--run-in-cycle')
@@ -461,20 +267,23 @@ while true; do
 		'--check-for-update')
 			[ -z "$2" ] && CHECK_FOR_UPDATE=now && shift || {
 				[[ "$2" && "$2" = ^[0-9]{1,7}$ ]] && CHECK_FOR_UPDATE=$2 && shift 2 \
-					|| exit `err opt_chk4upd`
+					|| err 'Option --check-for-update takes a number of days between which it should check releases on github as argument.'
 			}
 			;;
 		'--compat')
 			[[ "$2" == @(mplayer|mplayer2|mpv-03x|mpv-025x) ]] && COMPAT="$2" && shift 2 \
-				|| exit `err opt_compat`
+				|| err 'Option --compat requires argument to be one of ‘mplayer’, ‘mplayer2’, ‘mpv-03x’ or ‘mpv-025x’.'
 			;;
 		-d|'--basedir'|'--basepath')
 			arg="$2"
 			[ -d "$arg" ] \
 				&& {
 				[ "${arg:0-1}" = '/' ] || arg="$arg/"
-				BASEPATH[${#BASEPATH[@]}]="$arg"
-			}|| exit `err opt_basedir`
+				[ -v BASEPATH ] \
+					&& __number_of_paths=${#BASEPATH[@]} \
+					|| __number_of_paths=0
+				BASEPATH[$__number_of_paths]="$arg"
+			} || err "-d|--basedir: ‘$arg’ is not a readable directory."
 			shift 2
 			;;
 		-e) # heuristics shorthand, cumulative
@@ -483,14 +292,14 @@ while true; do
 			shift
 			;;
 		'--group-indicator')
-			[[ "$2" =~ .{4} ]] && GROUP_INDICATOR="$2" || exit `opt_gind`
+			[[ "$2" =~ .{4} ]] && GROUP_INDICATOR="$2" || err "Option ‘group-indicator’ takes four characters."
 			shift 2
 			;;
 		'--heuristics-level')
 			[[ "$2" =~ ^[0-9]$ ]] \
 				&& [ $2 -le $MAX_HEURISTICS_LEVEL ] \
 				&& HEURISTICS_LEVEL=$2 \
-				|| exit `err opt_heulevel`
+				|| err "Option --heuristics-level requires argument to be a number lower or equal to $MAX_HEURISTICS_LEVEL."
 			shift 2
 			;;
 		-E) # W! Experimental code.
@@ -519,7 +328,6 @@ while true; do
 		# -i|'--input-line')
 		#     # Take input values from the string supplied after this key
 		#     #   instead of asking for manual typing.
-		# 	err opt_inputinvalid
 		# 	shift 2
 		# 	;;
 		-I|'--ignore-disks')
@@ -527,7 +335,7 @@ while true; do
 			shift
 			;;
 		'--interval')
-			[[ "$2" =~ ^[0-9]{1,7}$ ]] && INTERVAL="$2" || exit `err opt_interval`
+			[[ "$2" =~ ^[0-9]{1,7}$ ]] && INTERVAL="$2" || err "Option ‘interval’ requires a number of seconds to wait as an argument."
 			shift 2
 			;;
 		'--ionice-opts')
@@ -541,18 +349,19 @@ while true; do
 			;;
 		'--journal-max-size')
 			[[ "$2" =~ ^[0-9]{1,7}[KMG]?$ ]] && JOURNAL_MAX_SIZE="$2" && shift 2 \
-				|| exit `err opt_journalsize`
+				|| err 'Option --journal-max-size requires argument to be a number of bytes that
+  may be followed by one of these suffixes: K M G to represent *2^10 once,\n  twice or three times.'
 			;;
 		'--jpeg-compression')
 			[ -z "$2" ] && JPEG_COMPRESSION=92 && shift || {
 				[[ "$2" =~ ^[0-9]{1,3}$ ]] && [ $2 -ge 0 ] && [ $2 -le 100 ] \
 					&& JPEG_COMPRESSION=$2 && shift 2 \
-					|| exit `err opt_jpegcompression`
+					|| err 'Option --jpeg-compression takes argument that has to be a number between 0 and 100.'
 			}
 			;;
 		-L|'--limit-watching-to')
 			[[ "$2" =~ ^[0-9]{1,4}$ ]] && LIMIT_WATCHING_TO=$2 && shift 2 \
-				|| exit `opt_limitwatching`
+				|| err 'Option -L|--limit-watching-to requires argument to be a number of episodes.'
 			;;
 		-l|'--loop')
 			LOOP=t
@@ -572,31 +381,31 @@ while true; do
 			;;
 		'--last-ep-command')
 			[ "$2" ] && LAST_EP_NUMBER_PRINTING_COMMAND="$2" && shift 2 \
-				|| exit `err opt_requires_an_arg`
+				|| err "Option ‘$option’ requires an argument."
 			;;
 		'--last-ep-format')
 			[ "$2" ] && LAST_EP_NUMBER_PRINTING_FORMAT="$2" && shift 2 \
-				|| exit `err opt_requires_an_arg`
+				|| err "Option ‘$option’ requires an argument."
 			;;
 		'--last-ep-show-after')
 			[[ "$2" == @(player|screenshots|both) ]] \
-				&& LAST_EP_NUMBER_SHOW_AFTER="$2" && shift 2 || exit `err opt_lepshowafter`
+				&& LAST_EP_NUMBER_SHOW_AFTER="$2" && shift 2 || err 'Option --last-ep-show-after requires argument to be one of\n  - player;\n  - screenshots;\n  - both.'
 			;;
 		'--last-item-mark')
 			[ "$2" ] && LAST_ITEM_MARK="$2" & shift 2 \
-				|| exit `err opt_requires_an_arg`
+				|| err "Option ‘$option’ requires an argument."
 			;;
 		-M|'--mplayer-command')
-			[ "$2" ] && MPLAYER_COMMAND="$2" && shift 2 || exit `err opt_requires_an_arg`
+			[ "$2" ] && MPLAYER_COMMAND="$2" && shift 2 || err "Option ‘$option’ requires an argument."
 			;;
 		-m|'--mplayer-opts')
-			[ "$2" ] && MPLAYER_OPTS+=" $2" && shift 2 || exit `err opt_requires_an_arg`
+			[ "$2" ] && MPLAYER_OPTS+=" $2" && shift 2 || err "Option ‘$option’ requires an argument."
 			;;
 		'--my-increment')
-			[ "$2" ] && MY_INCREMENT="$2" && shift 2 || exit `err opt_requires_an_arg`
+			[ "$2" ] && MY_INCREMENT="$2" && shift 2 || err "Option ‘$option’ requires an argument."
 			;;
 		'--my-decrement')
-			[ "$2" ] && MY_DECREMENT="$2" && shift 2 || exit `err opt_requires_an_arg`
+			[ "$2" ] && MY_DECREMENT="$2" && shift 2 || err "Option ‘$option’ requires an argument."
 			;;
 		-n|'--match-number')
 			MATCH_NUMBER=t
@@ -615,7 +424,7 @@ while true; do
 			[ "$2" ] && [ "${test%%$2}" ] \
 				&& NOT_EPNUMBERS+=("$2") \
 				&& shift 2 \
-				|| exit `err opt_requires_an_arg`
+				|| err "Option ‘$option’ requires an argument."
 			;;
 		'--remember-sub-and-audio-delay')
 			REMEMBER_SUB_AND_AUDIO_DELAY=t
@@ -636,7 +445,7 @@ while true; do
 			[ "$2" ] && {
 				EXPECTED_SUBFOLDERS="$2"
 				shift 2
-			} || exit `err opt_requires_an_arg`
+			} || err "Option ‘$option’ requires an argument."
 			;;
 		-S|'--screenshot-dir')
 			[ "$2" ] && {
@@ -646,26 +455,26 @@ while true; do
 				# in a record.
 				SCREENSHOT_DIR_FROM_CMDLINE="$2"
 				# User has probably moved the directory.
-				[ -d "$SCREENSHOT_DIR" ] || exit `err scrdir_wrong_or_moved`
+				[ -d "$SCREENSHOT_DIR" ] || err "‘$SCREENSHOT_DIR’ passed to --screenshot-dir cannot be found. Did you move it?"
 				shift 2
-			} || exit `err opt_requires_an_arg`
+			} || err "Option ‘$option’ requires an argument."
 			;;
 		'--screenshot-dir-skel')
-			[ "$2" ] && SCREENSHOT_DIR_SKEL="$2" && shift 2 || exit `err opt_requires_an_arg`
+			[ "$2" ] && SCREENSHOT_DIR_SKEL="$2" && shift 2 || err "Option ‘$option’ requires an argument."
 			;;
-		'--taskset-opts')
-			[[ "$2" =~ ^[0-9,-]{1,20}$ ]] && TASKSET_OPTS="$2" && shift 2 || exit `err opt_taskset`
+		'--taskset-cpulist')
+			[[ "$2" =~ ^[0-9,-]{1,20}$ ]] && TASKSET_CPULIST="$2" && shift 2 || err 'Option -t|--taskset-cpulist requires argument to be a valid CPU list.\n See `man taskset` for the details.'
 			;;
 		-T) # Enable output for testing purposes.
 			# [ -v T ] is a visual mark for them.
 			T=t
 			shift
 			;;
-		-u)
-			CHECK_FOR_UPDATE=now
-			EXIT_AFTER_CHECK=t
-			shift
-			;;
+		# -u)
+		# 	CHECK_FOR_UPDATE=now
+		# 	EXIT_AFTER_CHECK=t
+		# 	shift
+		# 	;;
 		-v|'--version')
 			show_version
 			exit 0
@@ -675,61 +484,18 @@ while true; do
 			break
 			;;
 		*)
-			exit `err doushiyou`
+			# err 'Doushiyou~?'
+			KEYWORD="$1"
+			shift
 			;;
 	esac
 done
-
-[ $CHECK_FOR_UPDATE != 0 ] && {
-	[[ $CHECK_FOR_UPDATE =~ ^[0-9]+$ ]] && {
-		[ $(( (`date +%s`-`stat -L --format %Y $updater_timestamp`)/60/60/24 )) -gt $CHECK_FOR_UPDATE ] \
-			&& CHECK_FOR_UPDATE=now || {
-			grep -q 'New version is available!' $updater_timestamp \
-				&& msg 'New version is available'
-		}
-	}
-}
-
-[ $CHECK_FOR_UPDATE = now ] && {
-	which wget &>/dev/null && {
-		# latest_ver=`wget -O- http://github.com/deterenkelt/watchsh/releases \
-		#                 |& sed -nr '/<h1\s+class="release-title">/ {
-		#                                 :be N; s|.*</h1>.*|&|; t
-		#                                     s/.*v([0-9]{8}).*/\1/p; t qu
-		#                                     b be
-		#                                 :qu Q
-		#                             }'`
-		latest_ver=`wget -O- https://github.com/deterenkelt/watchsh/releases/latest \
-		                |& sed -nr 's_^.*/deterenkelt/watchsh/tree/v([0-9]+)-?[0-9]?".*$_\1_p;T;Q'`
-		[[ "$latest_ver" =~ ^[0-9]{8}$ ]] || err bad_latestver
-		touch $updater_timestamp
-		[ $latest_ver -gt $VERSION ] && {
-			msg 'New version is available!'
-			echo 'New version is available!' >$updater_timestamp
-			while true; do
-				read -p 'Would you like to view the RELEASE_NOTES in the repo? [Y/n]> '
-				[[ "$REPLY" =~ ^[Nn]$ ]] && break || {
-					[[ "$REPLY" =~ ^[Yy]$ ]] && {
-						which xdg-open &>/dev/null ||{
-							warn 'I’d like to open new RELEASE_NOTES from github, but it seems that you haven’t
-  xdg-open installed.'
-							break
-						}
-						xdg-open http://github.com/deterenkelt/watchsh/blob/master/sources/RELEASE_NOTES
-						break
-					}|| warn 'Deep breath, a pill and the right key.'
-				}
-			done
-		}|| msg 'This version is the latest available.'
-	}|| warn 'To check for updates I’d like to have wget.'
-	[ -v EXIT_AFTER_CHECK ] && exit
-}
 
 # This assignment must be here because -M itself is optional.
 which "${MPLAYER_COMMAND:=mpv}" &>/dev/null || {
 	alias | grep -q "^alias $MPLAYER_COMMAND='.*'$" \
 		&& alias=`alias -p | sed -nr "s/^alias $MPLAYER_COMMAND='(.*)'$/\1/"` \
-		|| exit `err mpcmd_not_found`
+		|| err "No such binary or alias found: ‘$MPLAYER_COMMAND’."
 }
 
 # Trying to be intellectual.
@@ -744,7 +510,7 @@ which "${MPLAYER_COMMAND:=mpv}" &>/dev/null || {
 		grep -q "\bmplayer2\b" <<<"$alias" && COMPAT=mplayer2
 		grep -q "\bmplayer\b" <<<"$alias" && COMPAT=mplayer
 	}
-	[ -v COMPAT ] && msg "I’ve guessed COMPAT mode for $COMPAT."
+	[ -v COMPAT ] && info "I’ve guessed COMPAT mode for $COMPAT."
 }
 
 # This is the default – for the latest mpv.
@@ -757,7 +523,7 @@ declare -A mp_opts=(
 	[audio-delay]='audio-delay'
 )
 
-case "$COMPAT" in
+case "${COMPAT:-}" in
 	# The players are in the order of development, mpv-03x preceded mpv-026.
 	mplayer) # the original MPlayer
 		dashes='-'
@@ -777,20 +543,20 @@ case "$COMPAT" in
 	mpv-025x)
 		mp_opts[sub-file]='sub-file'
 		mp_opts[audio-file]='audio-file'
+		;;
+	*);;
 esac
 
-KEYWORD="$*"
+# KEYWORD="$*"
 [ -v RESUME ] || {
-	[ "$KEYWORD" ] || exit `err no_keyword`
+	[ "$KEYWORD" ] || err 'No keyword given.'
 	[ "${KEYWORD/@(*[^.]|)\**/}" ] || {
 		warn "I’ve found that you used * in the pattern for keyword, and the patterns should
   use ‘.*’ style, not just ‘*’."
 		read -p 'Are you sure you want to continue? [N/y] > '
-		[[ "$REPLY" =~ ^[yY]$ ]] || exit `err aborted_by_user`
+		[[ "$REPLY" =~ ^[yY]$ ]] || abort 'Cancelled.'
 	}
 }
-
-apply_mimetype_fix
 
 alias grep="grep --color=${NO_COLOR:-auto}"
 [ -v NO_COLOR ] && unset g r s
@@ -849,9 +615,9 @@ do_initial_search() {
 	}||{
 		KEYWORD_FIND_PATTERNS=`
 		sed -r 's/([^\])"/\1\\"/g                       # Escape unescaped "
-		        s/([^\])\.\*/\1*/g                     # .* → * ; \.* → \.*
-		        s/^/\\\\( -iname "*/; s/$/*" \\\\)/   # ^… …$ → \( -iname "*… …*" \)
-		        s/([^\])\|/\1*" -o -iname "*/g       # | → *" -o -iname "* ; \| → \|
+		        s/([^\])\.\*/\1*/g                      #    .* → * ;                   \.* → \.*
+		        s/^/\\\\( -iname "*/; s/$/*" \\\\)/     # ^… …$ → \( -iname "*… …*" \)
+		        s/([^\])\|/\1*" -o -iname "*/g          #     | → *" -o -iname "* ;      \| → \|
 		       ' <<<"$KEYWORD"`
 		KEYWORD_FIND_PATTERNS=`eval echo "$KEYWORD_FIND_PATTERNS"`
 	}
@@ -883,7 +649,7 @@ do_initial_search() {
 				# unset unnecessary basepaths for them to not appear
 				#   in the ‘V:’ list in choose_from()
 				local old_bp_count=${#BASEPATH[@]}
-				for ((j=1; j<$old_bp_count; j++)); do unset BASEPATH[j]; done
+				for ((j=1; j<old_bp_count; j++)); do unset BASEPATH[$j]; done
 				break 2
 			}
 		done
@@ -922,7 +688,7 @@ do_initial_search() {
 		local temp=${BASEPATH[0]}
 		unset BASEPATH
 		BASEPATH="$temp"
-	}|| return `err no_matches`
+	}|| err 'No matches!'
 
 	if  [ -r "$BASEPATH$FIRST_MATCH" ];  then
 		if  [ -d "$BASEPATH$FIRST_MATCH" ];  then
@@ -931,9 +697,9 @@ do_initial_search() {
 			[ -v IGNORE_DISKS ] && EXPECTED_SUBFOLDERS+=" VIDEO_TS BDMV "
 			unset same_path # important!
 			check_for_subfolders || return $?
-			[ "`find "$BASEPATH/$FIRST_MATCH${SUBFOLDERS:-}" -type d -name "VIDEO_TS"`" ] \
+			[ "`find -L "$BASEPATH/$FIRST_MATCH${SUBFOLDERS:-}" -type d -name "VIDEO_TS"`" ] \
 				&& { [ -v IGNORE_DISKS ] && INTERVAL=0 || MODE='dvd'; }
-			[ "`find "$BASEPATH/$FIRST_MATCH${SUBFOLDERS:-}" -type d -name "BDMV"`" ] \
+			[ "`find -L "$BASEPATH/$FIRST_MATCH${SUBFOLDERS:-}" -type d -name "BDMV"`" ] \
 				&& { [ -v IGNORE_DISKS ] && INTERVAL=0 ||  MODE='bd'; }
 # FIXME: Here must be check for the count of VIDEOFILES found at the end of
 #        the path (with SUBFOLDERS). If count==1, change mode to single and
@@ -947,14 +713,20 @@ do_initial_search() {
 						MODE=single
 						VIDEOFILE="$VIDEOFILES"
 					}
-				else  return `err empty_folder`;  fi
+				else
+					#  FIRST_MATCH shall be set at the time of possibility of this error,
+					#  so BASEPATH shouldn’t be an array already.
+					err "I couldn’t find any video files in $BASEPATH${FIRST_MATCH:-}${SUBFOLDERS:+$SUBFOLDERS\nConsider checking your --subfolders pattern.}"
+				fi
 			}
 		else
 			VIDEOFILE="$FIRST_MATCH"
 			unset FIRST_MATCH
 			MODE='single'
 		fi
-	else  return `err chosen_one_is_unreadable`;  fi
+	else
+		err "‘$FIRST_MATCH’ is not readable!"
+	fi
 	return 0
 }
 
@@ -980,7 +752,7 @@ list_videofiles() {
 	# Single files residing directly in BASEPATH
 	VIDEOFILES=`find -L "${BASEPATH[@]}${FIRST_MATCH:-}${SUBFOLDERS:-}" \
 	                    -maxdepth 1 -type f ${searchkeyword:-} \
-	                    -exec file -iL {} \; 2>/dev/null`
+	                    -exec mimetype -iL {} \; 2>/dev/null`
 	result=$?;
 	[ -v D ] && declare -p VIDEOFILES >>$dbg_file
 	# exec known to fail when it’s not important.That’s probably
@@ -1213,7 +985,7 @@ choose_from() {
 					|| warn "Number must be a correct line number, from 1 to $LIST_ITEMS_COUNT." # copypaste, C-v etc.
 			}|| warn "‘$input’ must be a number."
 		}
-		[ -v CHOSEN_ITEM ] && CHOSEN_NUMBER="$input" || return `err user_declined_input`
+		[ -v CHOSEN_ITEM ] && CHOSEN_NUMBER="$input" || abort 'Cancelled.'
 	done
 return 0
 }
@@ -1706,7 +1478,7 @@ build_the_list() {
 		for ((i=0; i<${#queue_dest[@]}; i++)); do
 			for ((j=queue_start[i]; j<queue_end[i]+1; j++)); do
 				eval queue_items_$i[\${#queue_items_$i[@]}]=$j
-				[ -v D ] && eval dmsg \""queue_items_$i=( \${queue_items_$i[@]} )"\"
+				[ -v D ] && eval info \""queue_items_$i=( \${queue_items_$i[@]} )"\"
 			done
 		done
 		[ -v D ] && declare -p queue_dest
@@ -1733,19 +1505,21 @@ build_the_list() {
 			}
 			_old_arr=("${_arr[@]}") # to see how things change
 			eval _queue_items=(\${queue_items_$i[@]})
-			[ -v D ] && dmsg "_queue_items=( ${_queue_items[@]} )"
+			[ -v D ] && info "_queue_items=( ${_queue_items[@]} )"
 			# [ -v T ] && [ $i -eq $iter ] && set -x
 			unset buf
 			for ((j=0; j<${#_queue_items[@]}; j++)); do
 				buf[${#buf[@]}]=${_arr[_queue_items[j]]}
-				[ -v D ] && echo "${di}Unsetting _arr[${_queue_items[j]}] = ${_arr[_queue_items[j]]]}." >>$dbg_file
+				local _temp_index="${_queue_items[j]}"
+				local _temp_value="${_arr[_queue_items[j]]]}"
+				[ -v D ] && echo "${di}Unsetting _arr[$_temp_index] = $_temp_value." >>$dbg_file
 				unset _arr[_queue_items[j]] # removing source lines from the array
 			done
 			# [ -v T ] && [ $i -eq $iter ] && { set +x; declare -p buf; }
 			[ -v D ] && {
 				echo -n "$di" >> $dbg_file && declare -p buf >>$dbg_file
 				[ $(( ${queue_dest[i]} + ${#_queue_items[@]} )) -gt ${#_old_arr[@]} ] \
-					&& dmsg '' 'Possible error: ${queue_dest[i]} + ${#_queue_items[@]} are out of range (${#_old_arr[@]}).\n'
+					&& info '' 'Possible error: ${queue_dest[i]} + ${#_queue_items[@]} are out of range (${#_old_arr[@]}).\n'
 			}
 
 			# If destination happens to reside within the removed group,
@@ -1762,7 +1536,7 @@ build_the_list() {
 			done
 			[ $c -eq ${#_queue_items[@]} ] && {
 				let queue_dest[i]-=${#_queue_items[@]}-1
-				[ -v D ] && dmsg "Destination was shifted by -$((${#_queue_items[@]}-1))"
+				[ -v D ] && info "Destination was shifted by -$((${#_queue_items[@]}-1))"
 			}
 			unset _new_arr
 			c=0
@@ -1775,18 +1549,18 @@ build_the_list() {
 			for item_index in ${_arr[@]}; do
 				[ $((c++)) -eq ${queue_dest[i]} ] && {
 					[ -v D ] && {
-						dmsg "Destination place! Placing the buffer:"
+						info "Destination place! Placing the buffer:"
 						dil_inc
 					}
 					for ((k=0; k<${#buf[@]}; k++)); do
 						_new_arr[${#_new_arr[@]}]=${buf[k]}
-						[ -v D ] && dmsg "_new_arr[$((${#_new_arr[@]}-1))] = ${buf[k]}"
+						[ -v D ] && info "_new_arr[$((${#_new_arr[@]}-1))] = ${buf[k]}"
 					done
 					buffer_placed=t
 					[ -v D ] && dil_dec
 				}
 				_new_arr[${#_new_arr[@]}]=$item_index
-				[ -v D ] && dmsg "_new_arr[$((${#_new_arr[@]}-1))] = $item_index"
+				[ -v D ] && info "_new_arr[$((${#_new_arr[@]}-1))] = $item_index"
 			done
 			# [ -v T ] && [ $i -eq $iter ] && set +x
 			[ -v buffer_placed ] || {
@@ -1795,9 +1569,9 @@ build_the_list() {
 			}
 
 			[ -v D ] && {
-				dmsg "Rearrangements for queue $i complete."
+				info "Rearrangements for queue $i complete."
 				dput_declare '' _old_arr '' _new_arr ''
-				dmsg "Brigning subsequent queue items into correspondence with current order:"
+				info "Brigning subsequent queue items into correspondence with current order:"
 				dil_inc
 			}
 			# [ -v T ] && exit
@@ -1805,19 +1579,19 @@ build_the_list() {
 				# [ -v T ] && [ $i -eq $iter ] && echo j = $j
 				eval _queue_items=(\${queue_items_$j[@]})
 				[ -v D ] && {
-					dmsg "Adjusting queue item $j."
+					info "Adjusting queue item $j."
 					dil_inc
 					dput_declare _queue_items
-					dmsg "Walking the _queue_items:"
+					info "Walking the _queue_items:"
 					dil_inc
 				}
 				unset dest_j_found
 				for ((k=0; k<${#_queue_items[@]}; k++)); do
-					[ -v D ] && dmsg "Searching for item = ${_queue_items[k]} (idx:$k):" && dil_inc
+					[ -v D ] && info "Searching for item = ${_queue_items[k]} (idx:$k):" && dil_inc
 					for ((l=0; l<${#_new_arr[@]}; l++)); do
 						# [ -v T ] && [ $i -eq $iter ] && set -x
 						[ ! -v dest_j_found -a  ${_new_arr[l]} -eq ${queue_dest[j]} ] && {
-							[ -v D ] && dmsg "Looks lile _new_arr[$l] is our destination: ${queue_dest[j]}."
+							[ -v D ] && info "Looks lile _new_arr[$l] is our destination: ${queue_dest[j]}."
 							queue_dest[j]=$l
 							local dest_j_found=t
 						}
@@ -1825,8 +1599,8 @@ build_the_list() {
 						[ ${_new_arr[l]} -eq ${_queue_items[k]} ] && {
 							eval queue_items_$j[k]=$l
 							[ -v D ] && {
-								dmsg "Looks like _new_arr[$l]=${_new_arr[l]} is also equal to the item in _queue_items[$k]!"
-								dmsg "Setting queue_items_$j (←the true one) to $l."
+								info "Looks like _new_arr[$l]=${_new_arr[l]} is also equal to the item in _queue_items[$k]!"
+								info "Setting queue_items_$j (←the true one) to $l."
 								dput_declare queue_items_$j
 							}
 							# [ -v T ] && [ $i -eq $iter ] && echo -en '\t'; declare -p queue_items_$j
@@ -2535,7 +2309,8 @@ screenshots_preprocessing() {
 				[ "$REPLY" ] && {
 					SCREENSHOT_DIR+="/$REPLY"
 					[ -d "$SCREENSHOT_DIR" ] && {
-						[ -w "$SCREENSHOT_DIR" ] && [ -x "$SCREENSHOT_DIR" ] || return `err scrdir_isnt_writeable`
+						[ -w "$SCREENSHOT_DIR" ] && [ -x "$SCREENSHOT_DIR" ] \
+							|| err "No sufficient rights to write to ‘$SCREENSHOT_DIR’."
 					}||{
 						## There was an idea to make all the folders at once.
 						## This had two major drawbacks:
@@ -2549,9 +2324,9 @@ screenshots_preprocessing() {
 						##      latter;
 						##   2) eval required more escaping than just ' ' → '\ '.
 						## eval is necessary for {} expansion in SCREENSHOT_DIR_SKEL
-						# eval mkdir -pm775 "\"${SCREENSHOT_DIR// /\ }/${SCREENSHOT_DIR_SKEL:+{${SCREENSHOT_DIR_SKEL// /\ }}}\"" || return `err cant_create_scrdir`
+						# eval mkdir -pm775 "\"${SCREENSHOT_DIR// /\ }/${SCREENSHOT_DIR_SKEL:+{${SCREENSHOT_DIR_SKEL// /\ }}}\"" || err "Couldn’t create directory ‘$SCREENSHOT_DIR’."
 						for folder in '' ${SCREENSHOT_DIR_SKEL//,/ }; do
-							mkdir -m775 "$SCREENSHOT_DIR/$folder" || return `err cant_create_scrdir`
+							mkdir -m775 "$SCREENSHOT_DIR/$folder" || err "Couldn’t create directory ‘$SCREENSHOT_DIR’."
 						done
 					}
 				}|| unset SCREENSHOT_DIR
@@ -2565,7 +2340,7 @@ screenshots_preprocessing() {
 		#   the original directory should go there.
 		SCREENSHOT_DIR_ORIG="$SCREENSHOT_DIR"
 		SCREENSHOT_DIR='.'
-		msg 'Current directory is about to hold screenshots.'
+		info 'Current directory is about to hold screenshots.'
 	fi
 	screendir_timestamp=`date +%s`
 	return 0
@@ -2649,11 +2424,11 @@ watch() {
 			unset VIDEOFILE
 			if [ $MODE = dvd ]; then
 				[ -v DVD_BD_NAV ] && protocol=dvdnav || protocol=dvd
-				device='dvd-device'
+				[ -v COMPAT ] && device="${dashes}dvd-device"
 			else
 				# bdnav is only supported by the mpv mplayer.
 				[ -v DVD_BD_NAV ] && protocol=bdnav || protocol=${mp_opts[bd-protocol]}
-				device='bluray-device'
+				[ -v COMPAT ] && device="${dashes}bluray-device"
 			fi
 
 			# Replace it with MPLAYER_OPTS+=" ${dashes}profile protocol.$protocol"
@@ -2665,9 +2440,9 @@ watch() {
 				[ $? -eq 0 ] && \
 					MPLAYER_OPTS+=" ${dashes}profile protocol.$protocol"
 			else
-				warn "$MPLAYER_COMMAND config doesn’t have profile ‘protocol.$protocol’ set."
+				info "$MPLAYER_COMMAND config doesn’t have profile ‘protocol.$protocol’ set."
 			fi
-			MPLAYER_OPTS+=" $protocol:// ${dashes}$device "
+			MPLAYER_OPTS+=" $protocol:// ${device:-} "
 			;;
 	esac
 
@@ -2762,9 +2537,9 @@ Consider switching to the latest mpv if you want to load multiple tracks
 
 	local path_to_videofile="$BASEPATH$FIRST_MATCH${SUBFOLDERS:-}${VIDEOFILE:-}"
 	[ -v D ] && dbg_file="$DEBUG_DIR/mpv_run"
-	[ -v TASKSET_OPTS ] \
+	[ -v TASKSET_CPULIST ] \
 		&& which taskset >/dev/null \
-		&& taskset_cmd="taskset $TASKSET_OPTS"
+		&& taskset_cmd="taskset --cpu-list $TASKSET_CPULIST"
 	[ -v IONICE_OPTS ] \
 		&& which ionice >/dev/null \
 		&& ionice_cmd="ionice $IONICE_OPTS"
@@ -2774,10 +2549,11 @@ Consider switching to the latest mpv if you want to load multiple tracks
 	#   the video from those that encode webms (see below).
 	{ coproc \
 		{ eval ${ionice_cmd:-} ${taskset_cmd:-} $MPLAYER_COMMAND \
-		    --msg-level=all=info \
-		    ${NO_AUTOSUB:-} ${subtitles:-} ${tracks:-} "$MPLAYER_OPTS" \
-		    "\"$path_to_videofile\"" \
-			|& sed '/^Exiting\.\.\./ {s/End of file/&/p; t ex1; Q0; :ex1 Q1}'
+		       --msg-level=all=info \
+		       ${NO_AUTOSUB:-} ${subtitles:-} ${tracks:-} "$MPLAYER_OPTS" \
+		       "\"$path_to_videofile\"" \
+			   |& sed '/^Exiting\.\.\./ {s/End of file/&/p; t ex1; Q0; :ex1 Q1}' \
+			   || true
 		} >&3
 	} 3>&1 # let mpv’s output flow to the stdout.
 	local mpvsed_pipe_pid=$!
@@ -2799,11 +2575,24 @@ Consider switching to the latest mpv if you want to load multiple tracks
 
 	[ -v REMEMBER_SUB_AND_AUDIO_DELAY ] && [ ! -v COMPAT -a "$MODE" = episodes ] && {
 		if which inotifywait pkill &>/dev/null; then
-			local config watch_later="$HOME/.mpv/watch_later"
+			local config
+			if [ -r "$HOME/.mpv/watch_later" ]; then
+				local  watch_later="$HOME/.mpv/watch_later"
+
+			elif [ -r "$HOME/.config/mpv/watch_later" ]; then
+				local  watch_later="$HOME/.config/mpv/watch_later"
+			else
+				err "Cannot find watch_later directory neither in ~/.mpv nor in ~/.mpv/config."
+			fi
 			local inotifywait_cmd="inotifywait -q --monitor --format %f -e modify $watch_later"
 			(
 				# Wait for inotifywait to spawn
-				while ! pgrep --session $PPID -xf "$inotifywait_cmd" &>/dev/null; do sleep 1; done
+				while ! pgrep --session $PPID \
+				              -xf "$inotifywait_cmd" \
+				              &>/dev/null
+				do
+					sleep 1
+				done
 				# Wait for mpv to close (mpv_pid could be used instead, but at this time
 				#   it’d be kinda superfluous).
 				while [ -e /proc/$mpvsed_pipe_pid ]; do sleep 1; done
@@ -2811,7 +2600,9 @@ Consider switching to the latest mpv if you want to load multiple tracks
 					echo "Trying to kill ‘$inotifywait_cmd’ with session id $PPID." >>$dbg_file
 					pstree -ap $PPID >>$dbg_file
 				}
-				pkill -13 --session $PPID -xf "$inotifywait_cmd" # SIGPIPE to suppress the message.
+				# SIGPIPE to suppress the message.
+				pkill -13 --session $PPID -xf "$inotifywait_cmd"  \
+					|| true
 			) &
 			while IFS= read -r config; do
 				if [ "`sed -nr '1s/^#\s(.*)$/\1/p' "$watch_later/$config"`" -ef "$path_to_videofile" ];  then
@@ -2821,17 +2612,19 @@ Consider switching to the latest mpv if you want to load multiple tracks
 					#   from zero to 20000, or it may lead to confusion?
 					[ -v D ] && echo "$config changed in $watch_later\!" >>$dbg_file
 					local _sub_delay="`sed -nr 's/^sub-delay=(.*)$/\1/p' "$watch_later/$config"`"
-					[ "$_sub_delay" -a "$_sub_delay" != "$SUB_DELAY" ] && {
+					#                                         v-----------may be unset
+					[ "$_sub_delay" ] && [ "$_sub_delay" != "$SUB_DELAY" ] && {
 						SUB_DELAY="$_sub_delay"
-						msg "${0##*/}: remembering sub-delay=$SUB_DELAY"
+						info "${0##*/}: remembering sub-delay=$SUB_DELAY"
 					}
 					local _audio_delay="`sed -nr 's/^audio-delay=(.*)$/\1/p' "$watch_later/$config"`"
-					[ "$_audio_delay" -a "$_audio_delay" != "$AUDIO_DELAY" ] && {
+					#                                             v-----------may be unset
+					[ "$_audio_delay" ] && [ "$_audio_delay" != "$AUDIO_DELAY" ] && {
 						AUDIO_DELAY="$_audio_delay"
-						msg "${0##*/}: remembering audio-delay=$AUDIO_DELAY"
+						info "${0##*/}: remembering audio-delay=$AUDIO_DELAY"
 					}
 				else [ -v D ] && echo 'Something changed, but that wasn’t our file.' >>$dbg_file;  fi
-			done < <($inotifywait_cmd)
+			done < <($inotifywait_cmd || true)
 		else
 			warn 'For --remember-sub-and-audio-delay inotifywait and pkill are required!'
 		fi
@@ -2923,58 +2716,64 @@ get_other_files() {
 #     0 if the function processed screenshots, 1 if not. This is needed
 #     to distinguish cases when it did the job and when it didn’t to avoid
 #     printing last shown episode number twice.
-screenshots_postprocessing() {
-	# Seeking screenshots
-	[ -d "$SCREENSHOT_DIR" ] && {
-		compress_screenshot() {
-			local shot="$1"
-			[ -v pngcrush ] && {
-				# In place overwriting wasn’t supposed to run under parallel.
-				# Should check how to run optipng some day.
-				pngcrush -reduce "$shot" "/tmp/$shot"
-				mv "/tmp/$shot" "$shot"
-			}
-			[ -v JPEG_COMPRESSION ] && [ -v pngtopbm ] && [ -v cjpeg ] && {
-				$pngtopbm "$shot" 2>/dev/null \
-					| cjpeg -quality $JPEG_COMPRESSION -progressive \
-					 -outfile "${shot%.*}.jpg" &>/dev/null
-				rm "$shot"
-			}
-		}
+# screenshots_postprocessing() {
+# 	local new_screenshots=()
+# 	# Seeking screenshots
+# 	[ -d "$SCREENSHOT_DIR" ] && {
+# 		compress_screenshot() {
+# 			local shot="$1"
+# 			[ -v pngcrush ] && {
+# 				# In place overwriting wasn’t supposed to run under parallel.
+# 				# Should check how to run optipng some day.
+# 				pngcrush -reduce "$shot" "/tmp/$shot"
+# 				mv "/tmp/$shot" "$shot"
+# 			}
+# 			[ -v JPEG_COMPRESSION ] && [ -v pngtopbm ] && [ -v cjpeg ] && {
+# 				$pngtopbm "$shot" 2>/dev/null \
+# 					| cjpeg -quality $JPEG_COMPRESSION \
+# 					        -progressive \
+# 					        -outfile "${shot%.*}.jpg" \
+# 					        &>/dev/null
+# 				rm "$shot"
+# 			}
+# 		}
 
-		local new_screenshots=`find "$SCREENSHOT_DIR" -maxdepth 1 \
-		                      -type f -iname "*.png" \
-		                      -newermt @$screendir_timestamp -printf "%f\n"`
-		[ "$new_screenshots" ] && {
-			if which parallel &>/dev/null; then
-				# Exporting the function doing the job to the environment,
-				#   so it would be available in the subshell. Also doing `which`
-				#   here, so the function wouldn’t call it each time.
-				export -f compress_screenshot
-				export JPEG_COMPRESSION # if unset, then not exported
-				which pngcrush &>/dev/null && export pngcrush=t
-				# pngtopnm is old binary and as far as I know it is removed
-				#   from the upstream package, but symlinked to pngtopam in
-				#   many distributives. Except debean >_>
-				which pngtopnm &>/dev/null && export pngtopbm=pngtopnm
-				# Modern distrubutives won’t use symlink, Debean won’t get
-				#   an inexisting binary.
-				which pngtopam &>/dev/null && export pngtopbm=pngtopam
-				which cjpeg &>/dev/null && export cjpeg=t
-				echo -e "$new_screenshots" | ${taskset_cmd:-} parallel --eta compress_screenshot
-				export -nf compress_screenshot
-			else
-				cpu_cores=`grep -c processor /proc/cpuinfo`
-				[[ "$cpu_cores" =~ ^[0-9]+$ && "$cpu_cores" -gt 1 ]] \
-					&& warn 'No parallel was found. Using 1 CPU core.'
-				for shot in $new_screenshots; do
-					${taskset_cmd:-} compress_screenshot "$shot"
-				done
-			fi
-		}
-	}
-	return  $((1-0${new_screenshots:+1}))
-}
+# 		while IFS= read -r -d ''; do
+# 			new_screenshots+=("$REPLY")
+# 		done < <(find "$SCREENSHOT_DIR" -maxdepth 1 \
+# 		              -type f -iname "*.png" \
+# 		              -newermt @$screendir_timestamp \
+# 		              -print0)
+# 		[ ${#new_screenshots[@]} -ne 0 ] && {
+# 			if which parallel &>/dev/null; then
+# 				# Exporting the function doing the job to the environment,
+# 				#   so it would be available in the subshell. Also doing `which`
+# 				#   here, so the function wouldn’t call it each time.
+# 				export -f compress_screenshot
+# 				export JPEG_COMPRESSION # if unset, then not exported
+# 				which pngcrush &>/dev/null && export pngcrush=t
+# 				# pngtopnm is old binary and as far as I know it is removed
+# 				#   from the upstream package, but symlinked to pngtopam in
+# 				#   many distributives. Except debean >_>
+# 				which pngtopnm &>/dev/null && export pngtopbm=pngtopnm
+# 				# Modern distrubutives won’t use symlink, Debean won’t get
+# 				#   an inexisting binary.
+# 				which pngtopam &>/dev/null && export pngtopbm=pngtopam
+# 				which cjpeg &>/dev/null && export cjpeg=t
+# 				${taskset_cmd:-} parallel --eta compress_screenshot ::: "${new_screenshots[@]}"
+# 				export -nf compress_screenshot
+# 			else
+# 				cpu_cores=$(nproc)
+# 				[[ "$cpu_cores" =~ ^[0-9]+$  &&  "$cpu_cores" -gt 1 ]] \
+# 					&& warn 'No parallel was found. Using 1 CPU core.'
+# 				for shot in $new_screenshots; do
+# 					${taskset_cmd:-} compress_screenshot "$shot"
+# 				done
+# 			fi
+# 		}
+# 	}
+# 	return $((1-0${new_screenshots:+1}))
+# }
 
 # EXPECTS:
 #     ~/.watch.sh/journal to exist and contain at least one \n (for sed).
@@ -3008,7 +2807,7 @@ You can remove $JOURNAL and let watch.sh to create a new one."
 				eval "$(sed -n "$start_line,/^$/ { s/^declare/declare -g/; p } # Force global namespace – we’re inside function." \
 				$JOURNAL 2>/dev/null || echo local no_such_keyword=t)"
 			fi
-			[ -v no_such_keyword ] && return `err no_such_keyword_in_journal`
+			[ -v no_such_keyword ] && abort 'No such keyword.'
 
 			check_required_vars() {
 				local var
@@ -3029,7 +2828,9 @@ You can remove $JOURNAL and let watch.sh to create a new one."
 				unset RUN_IN_CYCLE  # --resume sets it by default.
 			fi
 		}
-		[ -v not_enough_data ] && return `err not_enough_data_to_restore`
+		[ -v not_enough_data ] && err "Not enough data to restore.
+Couldn’t retrieve $not_found_vars from the journal.
+This might be caused by a broken file, truncated entry at the end of the journal (though such entries shouldn’t exist) or a new update that changed the mechanism of file searching and thus, the list of required variables."
 		# Yes, it could be just one variable, but with two names, its purpose
 		#   is clearer, hence easier to understand at both stages. Moreover,
 		#   INTERRUPTED can’t be used to launch ‘until’ cycle with ‘watch’
@@ -3046,7 +2847,7 @@ You can remove $JOURNAL and let watch.sh to create a new one."
 			# of date. We must force RUN_IN_CYCLE instead of regular
 			# RESUME procedure.
 			current_lastmod=$(stat -c %Y "$BASEPATH$FIRST_MATCH${SUBFOLDERS:-}")
-			[[ "$current_lastmod" =~ ^[0-9]+$ ]] || return `err cant_get_watchdir_lastmod`
+			[[ "$current_lastmod" =~ ^[0-9]+$ ]] || err 'Cannot retrieve videofile’s directory last modification time.'
 			[ $current_lastmod -gt "$LASTMOD" ] && {
 				# We’re going to amend the --resume convenience,
 				# so let’s at least provide the user with the number of
@@ -3142,7 +2943,7 @@ export_session_data() {
 		# SCREENSHOT_DIR_ORIG is the original string passed via --screenshot-dir,
 		# it should be used if we change SCREENSHOT_DIR to ‘.’ in screenshots_preprocessing().
 		data+="\nSCREENSHOT_DIR='$(escape_for_sed_replacement "${SCREENSHOT_DIR_ORIG:-$SCREENSHOT_DIR}")'"
-		[ -v TASKSET_OPTS ] && data+="\nTASKSET_OPTS='$TASKSET_OPTS'"
+		[ -v TASKSET_CPULIST ] && data+="\nTASKSET_CPULIST='$TASKSET_CPULIST'"
 		[ -v IONICE_OPTS ] && data+="\nIONICE_OPTS='$IONICE_OPTS'"
 		[ -v EXIT_AFTER_THIS_EPISODE ] && data+="\nEXIT_AFTER_THIS_EPISODE='$EXIT_AFTER_THIS_EPISODE'"
 		[ -v SUB_DELAY ] && data+="\nSUB_DELAY='$SUB_DELAY'"
@@ -3157,12 +2958,12 @@ export_session_data() {
 		sed -ri "1 i # watch.sh journal v$VERSION\n\n$data\n" $JOURNAL
 		# truncate to JOURNAL_MAX_SIZE
 		j_size=`stat --format='%s' $JOURNAL`
-		[[ "$j_size" =~ ^[0-9]+$ ]] || return `err cant_retrieve_journal_size`
+		[[ "$j_size" =~ ^[0-9]+$ ]] || err 'Couldn’t retrieve journal size.'
 		j_max_size=`echo "$(sed 's/K/*1024/;s/M/*1024*1024/' <<<"$JOURNAL_MAX_SIZE")" | bc -q`
 
-		[[ "$j_max_size" =~ ^[0-9]+$ ]] || return `err cant_compute_journal_maxsize`
+		[[ "$j_max_size" =~ ^[0-9]+$ ]] || err 'Couldn’t compute journal maximum size.'
 		[ $j_size -gt $j_max_size ] && {
-			truncate --size=$JOURNAL_MAX_SIZE $JOURNAL || return `err cant_truncate_journal`
+			truncate --size=$JOURNAL_MAX_SIZE $JOURNAL || err 'Couldn’t truncate journal.'
 			# TODO: Clean the stump that might have left at the end of the file
 			# sed -i '/^$/,$ d' $JOURNAL # (this doesn’t work – sed is too greedy)
 			# Though I’m not sure if the cleaning is really needed, simple tests
@@ -3200,7 +3001,7 @@ screenshots_preprocessing || exit $?
 # Exit trap should be here – after all the necessary data are collected or
 #   imported. There is no point in altering the journal on exit, if user
 #   declined to start watching something halfway.
-trap "export_session_data || exit $?" EXIT HUP INT QUIT KILL
+trap "export_session_data || exit $?" EXIT HUP INT
 # A good place to check the $MODE.
 until [ -v STOP ]; do
 	watch || exit $?
@@ -3226,12 +3027,15 @@ until [ -v STOP ]; do
 		}|| break
 	}
 done
-screenshots_postprocessing && [ $MODE = episodes ] \
-	&& [ "$LAST_EP_NUMBER_SHOW_AFTER" = screenshots \
-	  -o "$LAST_EP_NUMBER_SHOW_AFTER" = both ] \
-	&& print_last_shown_episode_number
+
+# screenshots_postprocessing && [ $MODE = episodes ] \
+	# && [    "$LAST_EP_NUMBER_SHOW_AFTER" = screenshots    \
+	     # -o "$LAST_EP_NUMBER_SHOW_AFTER" = both        ]  \
+	# && print_last_shown_episode_number
 
 
+echo
+# exit 0
 
 # IDEAS
 # ————————
@@ -3267,7 +3071,7 @@ screenshots_postprocessing && [ $MODE = episodes ] \
 # TODO
 # ————————
 #
-#   1. Check that in every fucking find clause brackets are escaped.
+#   1. Check that in every damn find clause brackets are escaped.
 #      Fucking find ignores ? * and lone [ and ] in -name "pattern",
 #      but if said pattern will contain both [ and ], find will think
 #      it’s time to enable GLOB pattern matching. Re⋅tar⋅da⋅tion.
