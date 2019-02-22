@@ -51,7 +51,7 @@ BAHELITE_CHERRYPICK_MODULES=(
 	logging
 	misc
 )
-. "$HOME/repos/bahelite/bahelite.sh"
+. "$(dirname "$(realpath --logical "$0")")/lib/bahelite.sh"
 prepare_cachedir
 start_log
 
