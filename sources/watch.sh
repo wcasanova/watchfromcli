@@ -741,8 +741,8 @@ do_initial_search() {
 #      parameter and pointing to the last line of the first subshell.
 list_videofiles() {
 	local result
-	[ "$1" = search_by_keyword ] && local searchkeyword="$KEYWORD_FIND_PATTERNS"
-	[ "$2" = preserve_basepath ] && local preserve_basepath=t
+	[ "${1:-}" = search_by_keyword ] && local searchkeyword="$KEYWORD_FIND_PATTERNS"
+	[ "${2:-}" = preserve_basepath ] && local preserve_basepath=t
 	# Single files residing directly in BASEPATH
 	VIDEOFILES=`find -L "${BASEPATH[@]}${FIRST_MATCH:-}${SUBFOLDERS:-}" \
 	                    -maxdepth 1 -type f ${searchkeyword:-} \
@@ -825,11 +825,15 @@ choose_from() {
 		# Showing current paths:
 		# V: here is shown where the script looks for videofiles at this moment
 		[ -v NO_HINTS ] || echo ' ↙ I currently look for videofiles here.'
-		for ((i=0; i<${#BASEPATH[@]}; i++)); do
+		#  retarded BASEPATH may be either a variable or an array here.
+		[[ "${BASEPATH@a}" =~ .*a.* ]]  \
+			&& local _basepath_quantity=${#BASEPATH[@]} \
+			|| local _basepath_quantity=1
+		for ((i=0; i<_basepath_quantity; i++)); do
 			local path_to_video="${BASEPATH[i]}${FIRST_MATCH:-}${SUBFOLDERS:-}"
 			local max_width=$(($cols-4))
 			[ ${#path_to_video} -gt $max_width ] && path_to_video="…${path_to_video:0-$max_width:$max_width}"
-			echo -e "${w}V: $path_to_video$s"
+			echo -e "${__w}V: $path_to_video${__s}"
 		done
 		# C: current working directory (CWD), the directory in which the shell
 		#    operates.
@@ -857,7 +861,8 @@ choose_from() {
 		#      keyword.
 		[ ${FUNCNAME[1]} = screenshots_preprocessing ] && {
 			local safe_screenshot_dir="$SCREENSHOT_DIR"
-			[ ${#safe_screenshot_dir} -gt $max_width ] && ="…${safe_screenshot_dir:0-$max_width:$max_width}"
+			[ ${#safe_screenshot_dir} -gt $max_width ] \
+				&& safe_screenshot_dir="…${safe_screenshot_dir:0-$max_width:$max_width}"
 			[ -v NO_HINTS ] || echo ' ↙ Screenshot directory as it was passed.'
 			echo "S: $safe_screenshot_dir"
 		}
@@ -871,9 +876,11 @@ choose_from() {
 				build_the_list || return $?                                      # L1/L2 HEU
 			}|| local use_simple_list=t
 		}|| local use_simple_list=t
-		[ -v use_simple_list ] && echo -e "$LIST_TO_CHOOSE_FROM" | grep -niG "\($KEYWORD\|$\)"
+		[ -v use_simple_list ] \
+			&&	echo -e "$LIST_TO_CHOOSE_FROM" \
+					| grep -n --colour=always -i -G  "\($KEYWORD\|$\)"
 
-		unset another_view prompt_heuristics
+		unset  another_view  prompt_heuristics
 		[ ${FUNCNAME[1]} = watch -a "$MODE" = episodes ] && {
 			[ $HEURISTICS_LEVEL -eq 1 -a -v list_variants_available ] && {
 				local another_view="View: $b[${INDEX_AT_THE_TOP:=1}/${#group_patterns[@]}]$s, $g<Tab>$s to rearrange. "
@@ -886,7 +893,7 @@ choose_from() {
 			local prompt_heuristics="Heuristics: $b[$heu_lvl_as_txt$d]$s, ${g}<h>${s} to switch. "
 		}
 		[ ${FUNCNAME[1]} = watch -a ! -v NO_HINTS ] && {
-			local num_choosing_hint="[$MY_DECREMENT↓0-9↑$MY_INCREMENT] "
+			local num_choosing_hint="[${MY_DECREMENT:-}↓0-9↑${MY_INCREMENT:-}] "
 			echo ' ↙ Commands to rebuild the list in other way, if possible.'
 		}
 		local prompt_1st_line="${another_view:-}${prompt_heuristics:-}${g}<?>${s} hints."
@@ -905,8 +912,8 @@ choose_from() {
 		# Use C-v <key> to print its escape sequence. P.S. Octals work, too!
 		local up=$'\e[A' down=$'\e[B' backspace=$'\177' F1=$'\e[11~' # F1 requires another read to catch 4th char, wat do? ;_;
 		until [ -v input_is_ready ]; do
-			[ ${#input} -gt 30 ] && input=${input:0:30}
-			read -sn1 -p "$input"
+			[ -v input ] && [ ${#input} -gt 30 ] && input=${input:0:30}
+			read -sn1 -p "${input:-}"
 			[ "$REPLY" = $'\e' ] && read -sn2 rest && REPLY+="$rest"
 			[ "$REPLY" ] && {
 				# Commands that must be only available in the watch function.
@@ -933,7 +940,7 @@ choose_from() {
 					"$backspace")
 						[ ${#input} -gt 0 ] && input=${input::-1}
 						;;
-					"$up"|"$MY_INCREMENT")
+					"$up"|"${MY_INCREMENT:-disregard it}")
 						[ "$input" ] || input=0
 						[[ "$input" =~ ^[0-9]+$ ]] \
 							&& [ $input -lt $LIST_ITEMS_COUNT ] \
@@ -942,7 +949,7 @@ choose_from() {
 								&& input=$LIST_ITEMS_COUNT
 						}
 						;;
-					"$down"|"$MY_DECREMENT")
+					"$down"|"${MY_DECREMENT:-disregard it}")
 						[ "$input" ] || input=1
 						[[ "$input" =~ ^[0-9]+$ ]] \
 							&& [ $input -gt 1 ] && {
@@ -962,22 +969,22 @@ choose_from() {
 				echo -en "\r\e[K$prompt_2nd_line" # \K lear line
 			}||{
 				echo
-				[[ "$input" =~ ^[0-9]+$ || ! "$input" ]] && {
+				[[ "${input:-}" =~ ^[0-9]+$ || ! "${input:-}" ]] && {
 					input_is_ready=t
 				}||{
-					MANUAL_REARRANGEMENT="$input"
+					MANUAL_REARRANGEMENT="${input:-}"
 					continue 2
 				}
 			}
 		done
 
-		unset CHOSEN_ITEM # may be left from some previous call
-		[ "$input" ] && {
-			[[ "$input" =~ ^[0-9]+$ ]] && {
+		unset CHOSEN_ITEM  # may be left from some previous call
+		[ "${input:-}" ] && {
+			[[ "${input:-}" =~ ^[0-9]+$ ]] && {
 				[ $input -le $LIST_ITEMS_COUNT ] && [ $input -gt 0 ] \
 					&& CHOSEN_ITEM=`echo -e "$LIST_TO_CHOOSE_FROM" | sed -n "$input p"` \
 					|| warn "Number must be a correct line number, from 1 to $LIST_ITEMS_COUNT." # copypaste, C-v etc.
-			}|| warn "‘$input’ must be a number."
+			}|| warn "‘${input:-}’ must be a number."
 		}
 		[ -v CHOSEN_ITEM ] && CHOSEN_NUMBER="$input" || abort 'Cancelled.'
 	done
@@ -997,9 +1004,22 @@ return 0
 #     $2 – matches
 #     $3 – matches_count
 group_create() {
-	group_patterns[${#group_patterns[@]}]=$1
-	group_matches[${#group_patterns[@]}-1]=$2
-	group_matches_count[${#group_patterns[@]}-1]=$3
+	local _gr_p_index \
+	      _gr_m_index \
+	      _gr_m_count_index
+	[ -v group_patterns ] \
+		&& _gr_p_index=${#group_patterns[@]} \
+		|| _gr_p_index=0
+	[ -v group_matches ] \
+		&& _gr_m_index=$(( ${#group_patterns[@]} - 1 )) \
+		|| _gr_m_index=0
+	[ -v group_matches_count ] \
+		&& _gr_m_count_index=$(( ${#group_patterns[@]} - 1 )) \
+		|| _gr_m_count_index=0
+
+	group_patterns[_gr_p_index]=$1
+	group_matches[_gr_m_index]=$2
+	group_matches_count[_gr_m_count_index]=$3
 
 	# group_occupied_numbers[] is to be filled later on, when we’ll know
 	#   which episodes will be left to each group.
@@ -1207,13 +1227,15 @@ create_groups_for_the_list() {
 						[ -v D ] && echo -en "\t\t\tUnique? " >>$dbg_file
 						unset same_matches_found # better than 2 unsets, because the one inside for cycle may occur and may not.
 						# Now check if any pattern already produced the same list of matches.
-						for ((k=0; k<${#group_matches[@]}; k++)); do
-							[ "$matches" = "${group_matches[k]}" ] && {
-								same_matches_found=t
-								[ -v D ] && echo 'No.' >>$dbg_file
-								break
-							}
-						done
+						[ -v group_matches ] && {
+							for ((k=0; k<${#group_matches[@]}; k++)); do
+								[ "$matches" = "${group_matches[k]}" ] && {
+									same_matches_found=t
+									[ -v D ] && echo 'No.' >>$dbg_file
+									break
+								}
+							done
+						}  # or catch [ -v same_matches_found ] too?
 						[ -v same_matches_found ] || {
 							[ -v D ] && echo -e "Yes.\nADD\t\t\tMultinum pattern: ‘${multinum_patterns[j]}’." >>$dbg_file
 							# TODO: make some flag to define the situation when no number is present. # Er… how’s that?
@@ -1379,16 +1401,27 @@ build_the_list() {
 	#          Ex. "1"           Ex. "1?"                   Ex. "L1"
 	#         (temporarily may comprise of space-separated numbers)
 	viditem_create() {
+		local viditem_file_idx  viditem_gid_idx  viditem_epnumber_idx
 		# If HEU LVL == 0, constructed in choose_from().
-		VIDITEM_FILE[${#VIDITEM_FILE[@]}]=$1
+		[ -v VIDITEM_FILE ] \
+			&& viditem_file_idx=${#VIDITEM_FILE[@]} \
+			|| viditem_file_idx=0
+		VIDITEM_FILE[viditem_file_idx]=$1
 		# Global, but used only within build_the_list() scope in order
 		#   to make us able to build the list with accordance to groups when
 		#   lowering heuristics level.
 		# Doesn’t go to journal – caps is used for conformance with viditem_*().
-		VIDITEM_GID[${#VIDITEM_GID[@]}]=$2
+		[ -v VIDITEM_GID ] \
+			&& viditem_gid_idx=${#VIDITEM_GID[@]} \
+			|| viditem_gid_idx=0
+		VIDITEM_GID[viditem_gid_idx]=$2
 		# Global. If HEU LVL == 0, filled with L# in choose_from().
 		# Removing leading zeroes to avoid misinterpretation as octal.
-		VIDITEM_EPNUMBER[${#VIDITEM_EPNUMBER[@]}]=${3##0}
+		[ -v VIDITEM_EPNUMBER ] \
+			&& viditem_epnumber_idx=${#VIDITEM_EPNUMBER[@]} \
+			|| viditem_epnumber_idx=0
+		VIDITEM_EPNUMBER[viditem_epnumber_idx]=${3##0}
+		return 0
 	}
 
 	# TAKES:
@@ -2242,8 +2275,8 @@ Entering cycle of groups supplementing.' >>$dbg_file
 		#   restrain grep from highlighting the whole string.
 		[ $HEURISTICS_LEVEL -lt 2 ] && {
 			[ "`grep -oG "$pattern"<<<"${VIDITEM_FILE[i]}"`" = "${VIDITEM_FILE[i]}" ] \
-				&& echo "${VIDITEM_FILE[i]}" | grep -iG "\($KEYWORD\|${VIDITEM_EPNUMBER[i]}\)" \
-				|| echo "${VIDITEM_FILE[i]}" | grep -iG "$pattern"
+				&& echo "${VIDITEM_FILE[i]}" | grep --colour=always -iG "\($KEYWORD\|${VIDITEM_EPNUMBER[i]}\)" \
+				|| echo "${VIDITEM_FILE[i]}" | grep --colour=always -iG "$pattern"
 			:
 		}|| echo "${VIDITEM_FILE[i]}"
 		LIST_TO_CHOOSE_FROM="${LIST_TO_CHOOSE_FROM:+$LIST_TO_CHOOSE_FROM\n}${VIDITEM_FILE[i]}"
