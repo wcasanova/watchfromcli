@@ -2640,7 +2640,7 @@ Consider switching to the latest mpv if you want to load multiple tracks
 					[ -v D ] && echo "$config changed in $watch_later\!" >>$dbg_file
 					local _sub_delay="`sed -nr 's/^sub-delay=(.*)$/\1/p' "$watch_later/$config"`"
 					#                                         v-----------may be unset
-					[ "$_sub_delay" ] && [ "$_sub_delay" != "$SUB_DELAY" ] && {
+					[ "$_sub_delay" ] && [ "$_sub_delay" != "${SUB_DELAY:-}" ] && {
 						SUB_DELAY="$_sub_delay"
 						info "${0##*/}: remembering sub-delay=$SUB_DELAY"
 					}
@@ -2816,7 +2816,7 @@ import_session_data() {
 You can remove $JOURNAL and let watch.sh to create a new one."
 		}
 		[ "`stat --format='%s' $JOURNAL`" -gt 1 ] && {
-			if [ "$KEYWORD" ]; then
+			if [ "${KEYWORD:-}" ]; then
 				# KEYWORD present, search among entries in the journal
 				# We can’t pass exit code from sed to eval, since eval’s
 				#   exit code is the result of what it _executes_, and it
