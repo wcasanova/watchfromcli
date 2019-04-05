@@ -1,37 +1,37 @@
-.TH watch.sh 1 "7 November 2017" Linux "User Manuals"
+.TH watchfromcli 1 "7 November 2017" Linux "User Manuals"
 .\"
 .\" NAME ----------------------------------------------------------------------
 .\"
 .SH NAME
-watch.sh \- a shell wrapper for mpv/MPlayer to run videos easy via CLI.
+watchfromcli \- a shell wrapper for mpv/MPlayer to run videos easy via CLI.
 .\"
 .\" SYNOPSIS ------------------------------------------------------------------
 .\"
 .SH SYNOPSIS
 .TP 4
 .IP "Simplest form"
-.B watch.sh
+.B watchfromcli
 [\fIoptional arguments\fP] \fB-d\fP \fIbasepath  keyword\fP
 .IP "To start watching cycle"
 .br
-.B watch.sh
+.B watchfromcli
 [\fIoptional arguments\fP] \fB-c -d\fP \fIbasepath  keyword\fP
 .IP "To resume watching cycle"
 .br
-.B watch.sh
+.B watchfromcli
 [\fIoptional arguments\fP] \fB-[r|R]\fP  [\fIkeyword\fP]
 .IP "Check for updates"
 .br
-.B watch.sh -u
+.B watchfromcli -u
 .\"
 .\" DESCRIPTION ---------------------------------------------------------------
 .\"
 .SH DESCRIPTION
-\fIwatch.sh\fP is written to simplify access to video files and play videos easily. It allows playing single files, DVD/BD folders and folders with episodes of TV series. For the former and the latter ones it can also find external subtitles and tracks, applying heuristic algorithms to include files with names that may strongly differ from the names of corresponding video files, and that frees you from the job of picking appropriate subtitles manually.
+\fIwatchfromcli\fP is written to simplify access to video files and play videos easily. It allows playing single files, DVD/BD folders and folders with episodes of TV series. For the former and the latter ones it can also find external subtitles and tracks, applying heuristic algorithms to include files with names that may strongly differ from the names of corresponding video files, and that frees you from the job of picking appropriate subtitles manually.
 
 This script can also help you deal with organization of taken screenshots, placing them right into the folder named after video and compressing them after you stop watching it.
 
-For the folder with episodes \fIwatch.sh\fP can track your watching progress, allowing to run episodes one after another without creating a playlist, but remembering the episode number you quit watching today, so you could easily resume watching the folder later.
+For the folder with episodes \fIwatchfromcli\fP can track your watching progress, allowing to run episodes one after another without creating a playlist, but remembering the episode number you quit watching today, so you could easily resume watching the folder later.
 
 \[char46]\[char46]\[char46]and many other accompanying things that make life even lazier.
 .\"
@@ -120,7 +120,7 @@ See \fBUsing heuristics\fP subsection for details.
 .RE
 .TP
 .B -f
-Stands for "fixed string", tells \fIwatch.sh\fP to treat the \fIkeyword\fP as a literal. Don't count on this switch much, it affects the code in merely two places, and fixed strings won't be possible in the future, because there are unavoidable expressions where the \fIkeyword\fP is used in patterns, so if this switch will develop, it would be escaping, not a real fixed string.
+Stands for "fixed string", tells \fIwatchfromcli\fP to treat the \fIkeyword\fP as a literal. Don't count on this switch much, it affects the code in merely two places, and fixed strings won't be possible in the future, because there are unavoidable expressions where the \fIkeyword\fP is used in patterns, so if this switch will develop, it would be escaping, not a real fixed string.
 .TP
 .B --group-indicator <\fIchars\fP>
 If for some reason, the terminal can't display ASCII graphic characters and the bullet, you can specify another set via this option. \fIchars\fP must be a string of exactly four characters, the first for the beginning of a group, the second for middle elements of the group, the third for the ending and the fourth for lone ones.
@@ -129,7 +129,7 @@ If for some reason, the terminal can't display ASCII graphic characters and the 
 Sets heuristics level directly to a specified number. The second level is under development and is currently disabled.
 .TP
 .B -H <\fIpattern\fP>
-Calls \fBman watch.sh\fP with 'pager' option, specifying \fBless\fP as the pager and passing \fIpattern\fP to it, allowing to open this man page on a specified word, e.g. passing \fB-H '^EXAM'\fP will open  this man page on \fBEXAMPLES OF USE\fP section.
+Calls \fBman watchfromcli\fP with 'pager' option, specifying \fBless\fP as the pager and passing \fIpattern\fP to it, allowing to open this man page on a specified word, e.g. passing \fB-H '^EXAM'\fP will open  this man page on \fBEXAMPLES OF USE\fP section.
 .TP
 .B -h, --help
 Shows this man page.
@@ -141,7 +141,7 @@ Treat a folder containing DVD of BD stuff like a folder with episodes instead of
 Interval between playing episodes, in seconds. It is always set to 0 if mpv must play DVD or BD contents as episodes. The default is 3 seconds.
 .TP
 .B --ionice-opts [\fIoption list\fP]
-Run mpv with ionice command. This is intended to give mpv higher I/O priority, when several tasks use the same drive. If \foption list\fP is omitted, watch.sh assumes "-c best-effort -n0" - the best we can give without root access.
+Run mpv with ionice command. This is intended to give mpv higher I/O priority, when several tasks use the same drive. If \foption list\fP is omitted, watchfromcli assumes "-c best-effort -n0" - the best we can give without root access.
 .TP
 .B -J, --no-journal
 Do not use \fIjournal\fP to store session data. Resuming the cycle won't work, but you can gain a bit of privacy instead.
@@ -153,7 +153,7 @@ The maximum size the \fIjournal\fP will be truncated to, in bytes. Additional su
 Use conversion to JPEG after running \fBpngcrush\fP (if present) on screenshots taken after closing watch session. The optional parameter defines quality, the default is 92. Use this only if you have MPlayer, mpv can save screenshots to JPEG itself, see \fBman mpv\fP to know how to set up its configuration file.
 .TP
 .B -L, --limit-watching-to <0..9999>
-Long-awaited option to limit the nnumber of episodes that would be played in a sequence. I.e. if you're watching something, say, from 26 episodes and only have time to watch three, pass \fB-L3\fP along with the \fB-c\fP, \fB-r\fP or \fB-R\fP option, and watch.sh will quit after playing the episode that stands after 3 positions in the list (so one can safely do \fB-R\fP between episodes), e.g. if the watching has started on 14th episode, watch.sh will quit when 16th ends.
+Long-awaited option to limit the nnumber of episodes that would be played in a sequence. I.e. if you're watching something, say, from 26 episodes and only have time to watch three, pass \fB-L3\fP along with the \fB-c\fP, \fB-r\fP or \fB-R\fP option, and watchfromcli will quit after playing the episode that stands after 3 positions in the list (so one can safely do \fB-R\fP between episodes), e.g. if the watching has started on 14th episode, watchfromcli will quit when 16th ends.
 .TP
 .B -l, --loop
 Loop the watching cycle.
@@ -190,7 +190,7 @@ The \fIcommand\fP to run the player. May be an executable or an \fIalias\fP. \fB
 P.S. mpv's --profile options are cumulative, so one can easily pass --profile=$HOSTNAME and --profile=hdmi for example.
 .TP
 .B --last-item-mark <\fImark\fP>
-When mpv finishes playing the last item, if printing the episode number is enabled, watch.sh can print also a mark, be it a dot "." or a word on the next line "\\nEND". This is to see if the cycle has actually ended in case there were a bunch of screenshots. The thing is, after the last number and \fBparallel\fP header are printed, there is a small pause before output from parallel starts, so you look at the screen for several seconds for nothing. Having a mark tells when the watch cycle is finished, so you can move on to something else while parallel works.
+When mpv finishes playing the last item, if printing the episode number is enabled, watchfromcli can print also a mark, be it a dot "." or a word on the next line "\\nEND". This is to see if the cycle has actually ended in case there were a bunch of screenshots. The thing is, after the last number and \fBparallel\fP header are printed, there is a small pause before output from parallel starts, so you look at the screen for several seconds for nothing. Having a mark tells when the watch cycle is finished, so you can move on to something else while parallel works.
 .TP
 .B --my-increment <\fIchar\fP>
 .RS 0
@@ -208,7 +208,7 @@ Pass navigation variant of the protocol when playing a disk, i.e. dvdnav:// and 
 Do not show hints built in the interface (for experienced users).
 .TP
 .B --not-epnumbers <\fIpattern\fP>
-For files that don't fall in any sequence, it is harder to define, where the episode number may be, and whether it is actually present there. In general case any number found in the filename may be the episode number, but watch.sh has, however, an array of patterns which, if met, cut off these patterns and all the rest till the end of the filename. These patterns include strings like 720p, x264 etc. The full list is defined in the \fBNOT_EPNUMBERS\fP variable in watch.sh. Some of the strings are \fIpatterns\fP, so you can add elements which are \fIpatterns\fP, too (useful commits are appreciated). Pattern is a bash pattern with extended glob matching (see \fBPattern Matching\fP section in the bash manual page). One pattern per option call allowed.
+For files that don't fall in any sequence, it is harder to define, where the episode number may be, and whether it is actually present there. In general case any number found in the filename may be the episode number, but watchfromcli has, however, an array of patterns which, if met, cut off these patterns and all the rest till the end of the filename. These patterns include strings like 720p, x264 etc. The full list is defined in the \fBNOT_EPNUMBERS\fP variable in watchfromcli. Some of the strings are \fIpatterns\fP, so you can add elements which are \fIpatterns\fP, too (useful commits are appreciated). Pattern is a bash pattern with extended glob matching (see \fBPattern Matching\fP section in the bash manual page). One pattern per option call allowed.
 .TP
 .B --remember-sub-and-audio-delay
 Should be self-explanatory. But, for this to work one must set up certain mpv keybinding. See the details under \fBRemembering subtitles and audio delay between episodes\fP subsection.
@@ -219,7 +219,7 @@ Prospective subfolders that are likely expected between a folder found in \fIbas
 .TP
 .B -S, --screenshot-dir <\fIscreens path\fP>
 If set, makes the script look for a folder *inside* the \fIscreens path\fP containing \fIkeyword\fP in its name. The script will change directory to it, so all the taken screenshots would be put in there. It will also try to compress fresh screenshots of PNG format with \fBpngcrush\fP if it will be found. For subsequent conversion to JPEG see \fB--jpeg-compression\fP.
-There’s no need to use this switch to make mpv use just ONE certain folder, that is not $PWD, for any screenshots you take. Instead, consider adding a \fBcd\fP command to the alias before calling \fBwatch.sh\fP. The player should use it for storing screenshots.
+There’s no need to use this switch to make mpv use just ONE certain folder, that is not $PWD, for any screenshots you take. Instead, consider adding a \fBcd\fP command to the alias before calling \fBwatchfromcli\fP. The player should use it for storing screenshots.
 .TP
 .B --screenshot-dir-skel <\fIdirlist\fP>
 The argument is a list of comma separated directories to be created under the folder specified via \fB--screenshot-dir\fP, e.g. "art,misc".
@@ -232,7 +232,7 @@ Passes \fICPU list\fP to \fBtaskset\fP, \fICPU list\fP may be a number, a span o
 .B --check-for-update[=0..n]
 .br
 .RS 7
-By default, watch.sh will check each 21 day if there is a new release and report the status. The check can be initiated by both \fB-u\fP and \fB--check-for-update\fP without arguments and watch.sh will exit after the check, if it was specified with \fB-u\fP. If the argument to the long option is a number and is greater than 1, then it defines the pause in days between checks. The value of 0 suppresses any kind of automatic checks and concomitant messages. Immediate check can still take effect.
+By default, watchfromcli will check each 21 day if there is a new release and report the status. The check can be initiated by both \fB-u\fP and \fB--check-for-update\fP without arguments and watchfromcli will exit after the check, if it was specified with \fB-u\fP. If the argument to the long option is a number and is greater than 1, then it defines the pause in days between checks. The value of 0 suppresses any kind of automatic checks and concomitant messages. Immediate check can still take effect.
 .RE
 .TP
 .B -v, --version
@@ -241,7 +241,7 @@ Prints version and legal information.
 .\" FILES ---------------------------------------------------------------------
 .\"
 .SH FILES
-\fB~/.watch.sh/journal\fP - stores session data.
+\fB~/.watchfromcli/journal\fP - stores session data.
 .\"
 .\" EXAMPLES OF USE -----------------------------------------------------------
 .\"
@@ -252,7 +252,7 @@ First of all, everyone has a directory with video files,
 for example. In there can be single files (movies) or folders containing episodes, Blu-ray or DVD stuff. This is what must be passed to the \fB-d\fP option, which stands for \fIbasedir\fP or \fIbasepath\fP. To find something in it, a \fIkeyword\fP must also be passed. In this simlpiest case the script would
 search for single files as well as folders inside of the \fIbasepath\fP, which names contain the specified \fIkeyword\fP. For example, if command line would look like that
 .nf
-	$ watch.sh -d /home/video clash
+	$ watchfromcli -d /home/video clash
 .fi
 then items in \fBbold\fP will be shown to choose one of them to continue:
 .nf
@@ -301,7 +301,7 @@ Heuristics can be changed in the runtime by pressing \fBh\fP and \fBH\fP keys to
 \fB|\fP     \fB|\fP                     \fB|\fP ly. Works a bit slower.                \fB|\fP
 .B "+-----+---------------------+----------------------------------------+"
 \fB|\fP  2  \fB|\fP --heuristics-level 2\fB|\fP Above what is done on the 1st level,   \fB|\fP
-\fB|\fP     \fB|\fP                     \fB|\fP watch.sh will try to build the list    \fB|\fP
+\fB|\fP     \fB|\fP                     \fB|\fP watchfromcli will try to build the list    \fB|\fP
 \fB|\fP     \fB|\fP                     \fB|\fP of episodes, starting with complemen-  \fB|\fP
 \fB|\fP     \fB|\fP                     \fB|\fP ting the first group. If it finds      \fB|\fP
 \fB|\fP     \fB|\fP                     \fB|\fP a gap in episode numbers, it will try  \fB|\fP
@@ -348,7 +348,7 @@ Standard player command line
 Now
 .nf
 .B $ wa old_film
-   ^------ an alias \fB"watch.sh -d /home/video -S disk"\fP.
+   ^------ an alias \fB"watchfromcli -d /home/video -S disk"\fP.
 .fi
 .RE
 That's it. To use dvdnav:// instead of dvd:// which would be the default for a DVD, there is a \fB--dvd-nav\fP option, or \fB-N\fP as a shorthand that is faster to type after the alias. If the player will have problems with disk viewing, it is possible to build the video files into a list of episodes, and it takes only addition of \fB-I\fP (or \fB--ignore-disks\fP) option to do it (think of it like adding VIDEO_TS and BDMV/STREAM to the list of prospective \fIsubfolders\fP).
@@ -382,11 +382,11 @@ Now, when shifting subtitles delay you must see lines like
 .br
 .nf
 .B   Saving state.
-.B   * watch.sh: remembering sub-delay=-1.000000
+.B   * watchfromcli: remembering sub-delay=-1.000000
 .fi
 
 .br
-The first one is mpv's reaction to write_watch_later_config, and the second is watch.sh reporting found a delay value.
+The first one is mpv's reaction to write_watch_later_config, and the second is watchfromcli reporting found a delay value.
 .br
 Usually it is safe to bind write_watch_later_config along with the command, but if you encounter any bugs, you may try to rebind it to its own key
 
@@ -414,7 +414,7 @@ Fortunately, the number of options that is supposed to be used on the everyday b
 For starters, this would be a good alias:
 .br
 .nf
-\fBalias wa='watch.sh \\
+\fBalias wa='watchfromcli \\
           -d BASEPATH \\
           --mplayer-opts "--fs --save-position-on-quit" \\
           --heuristics-level 1 \\
@@ -451,7 +451,7 @@ Authors aliases including those for multimonitor setup should be available on th
 http://github.com/deterenkelt/dotfiles/blob/master/bashrc/home.sh
 .\" -----------------------------------------------------------------------SS--
 .SS Using a custom figlet font
-Since recent version, figlet isn't shipped with \fIclb6x10\fP font, so one has to either use some default font like \fIbanner\fP, or install figlet font separately and passing the substitute command showing the last played episode number to watch.sh.
+Since recent version, figlet isn't shipped with \fIclb6x10\fP font, so one has to either use some default font like \fIbanner\fP, or install figlet font separately and passing the substitute command showing the last played episode number to watchfromcli.
 .br
 Figlet provides a wide variety of fonts, just visit http://www.figlet.org/. Note, that the font database is actually much much bigger on their ftp: ftp://ftp.figlet.org/pub/figlet/fonts/. You can also find that collection on github https://github.com/cmatsuoka/figlet-fonts.
 .br
@@ -466,7 +466,7 @@ https://github.com/cmatsuoka/figlet-fonts/raw/master/bdffonts/clb6x10.flf
 You can place it to your ~/.fonts folder and give absolute path to it as a font parameter:
 .br
 
-.B watch.sh ... --last-ep --last-ep-command "figlet -t -f $HOME/.fonts/clb6x10 -c"
+.B watchfromcli ... --last-ep --last-ep-command "figlet -t -f $HOME/.fonts/clb6x10 -c"
 .br
 
 Here \fB--last-ep\fP sets the default options and \fB--last-ep-command\fP overrides the default command, which uses the font that figlet should have out of the box ("banner"). NB that \fB--last-ep\fP goes first. The other way is to set all the options explicitly (see the description for these options above).
@@ -474,7 +474,7 @@ Here \fB--last-ep\fP sets the default options and \fB--last-ep-command\fP overri
 .SS Setting up bash completion module
 Completion suggests \fIKEYWORD\fPs entered earlier, for \fB-r\fP, \fB-R\fP and their long counterparts \fB--resume\fP and \fB--resume-from-previous\fP. Completion is available for several other options as well.
 .br
-Bash completion module should work after you restart the shell after installing watch.sh from the package or via ebuild. If it doesn't, or you're using the script in some other way known only to you, read the following instructions.
+Bash completion module should work after you restart the shell after installing watchfromcli from the package or via ebuild. If it doesn't, or you're using the script in some other way known only to you, read the following instructions.
 .br
 Every bash completion module consists of two parts: the function defining completion
 .br
@@ -482,9 +482,9 @@ Every bash completion module consists of two parts: the function defining comple
 .B complete -F <\fIfuncname\fP> <\fIcommand1\fP> [\fIcommand2\fP, \fIcommand3\fP...]
 
 .br
-And the actual function performing it (<\fIfuncname\fP> in the example above). Both come with watch.sh bash completion module. For the completion to work, three conditions must be met:
+And the actual function performing it (<\fIfuncname\fP> in the example above). Both come with watchfromcli bash completion module. For the completion to work, three conditions must be met:
 .br
-- \fBwatch.sh\fP should be in the PATH.
+- \fBwatchfromcli\fP should be in the PATH.
 .br
 - the completion module must be in /usr/share/bash-completion/completions to be auto-sourced properly (since bash-4.3) and enabled (in bash-4.3 they managed to avoid big penalty, and completions are enabled by default). Or sourced manually in ~/.bashrc, for example:
 .br
@@ -492,10 +492,10 @@ And the actual function performing it (<\fIfuncname\fP> in the example above). B
 .B source bash-completion.sh
 .br
 
-- the name of the script must be \fBwatch.sh\fP. NB: this is a requirement only to the script name, not to an alias, you can freely use \fBwa-a\fP as an alias to watch.sh and it will work (if the other two conditions are met, of course), or any other name for an alias. Just keep in mind, that if you rename the actual script you must redefine the completion:
+- the name of the script must be \fBwatchfromcli\fP. NB: this is a requirement only to the script name, not to an alias, you can freely use \fBwa-a\fP as an alias to watchfromcli and it will work (if the other two conditions are met, of course), or any other name for an alias. Just keep in mind, that if you rename the actual script you must redefine the completion:
 .br
 
-.B complete -F _watchsh <\fIyour-name-for-watch.sh\fP>
+.B complete -F _watchfromcli <\fIyour-name-for-watchfromcli\fP>
 .br
 
 This line may be placed somewhere in ~/.bashrc as well.
@@ -512,7 +512,7 @@ Heuristics is good but not perfect. Some groups may show the same results, since
 .br
 Ehehee... It seems I totally forgot to add support for the MyAnimeList. Again.
 
-\fBReport bugs to\fP http://github.com/deterenkelt/watchsh/issues
+\fBReport bugs to\fP http://github.com/deterenkelt/watchfromcli/issues
 (Fixes to this manpage in particular are appreciated).
 .\"
 .\" CAVEATS -------------------------------------------------------------------
@@ -532,9 +532,9 @@ When using this script with \fB--screenshot-dir\fP be sure to name new screensho
 To make the player remember position you quit the file on, use \fBsave-position-on-quit\fP option for \fBmpv\fP (see also binding to the "Q" key), that can also be added to the config file.
 
 .\" -----------------------------------------------------------------------SS--
-.SS Running watch.sh with convert_script.lua (that cuts webms)
+.SS Running watchfromcli with convert_script.lua (that cuts webms)
 
-It's strongly recommended to disable all terminal output for the instances of mpv that would do encoding to not confuse watch.sh which mpv sent the message about exit. The following section
+It's strongly recommended to disable all terminal output for the instances of mpv that would do encoding to not confuse watchfromcli which mpv sent the message about exit. The following section
 .br
 
 .B [encoding]
@@ -548,7 +548,6 @@ should be present in ~/.mpv/config
 .\"
 .SH SEE ALSO
 .BR mpv (1),
-.BR mplayer (1),
 .BR figlet (6),
 .BR cjpeg (1),
 .BR taskset (1),

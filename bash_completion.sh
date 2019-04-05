@@ -1,4 +1,4 @@
-_watchsh() {
+_watchfromcli() {
 	local cur prev words cword split
 	_init_completion -s -n : || return
 
@@ -20,7 +20,7 @@ _watchsh() {
 			# Separate -r and -R.
 			# -r is for quick remembering — 12 keys
 			# -R is for deep search. Full journal + episodes
-			COMPREPLY=(`sed -nr "s/^KEYWORD='($cur.*)'/\1/p" ~/.watch.sh/journal | head -n 12`)
+			COMPREPLY=(`sed -nr "s/^KEYWORD='($cur.*)'/\1/p" ~/.config/watchfromcli/journal | head -n 12`)
 			return
 			;;
 		-S|--screenshot-dir)
@@ -29,4 +29,4 @@ _watchsh() {
 	esac
 }
 
-complete -o nosort -F _watchsh watch.sh
+complete -o nosort -F _watchfromcli watchfromcli

@@ -1,8 +1,0 @@
-This script has optional dependencies making it work better, but this
-  functionality may be not needed for all users, so there are two RPM
-  packages, one is the actual package, which is called “watchsh-base”
-  having only strong dependencies, and the other one is meta package
-  “watchsh” which depends on watchsh-base and the optional packages.
-
-Due to impossibility to specify conditional dependency for mplayer,
-  mplayer2 or mpv, the latter was chosen as the player required.
