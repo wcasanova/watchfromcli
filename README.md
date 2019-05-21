@@ -160,6 +160,6 @@ Visit the <a href="https://github.com/deterenkelt/watchsh/wiki">wiki</a>.
 
 
 <p align="center">
-<img src="img/y u no go to wiki.png"><br/>
+<img src="https://raw.githubusercontent.com/wiki/deterenkelt/watchfromcli/img/main_repo_readme/y u no go to wiki.png"><br/>
 Y U NO GO TO THE <a href="https://github.com/deterenkelt/watchsh/wiki">WIKI</a>?
 </p>
