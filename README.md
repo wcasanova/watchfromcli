@@ -1,4 +1,4 @@
-watch.sh
+watchfromcli.sh
 ========
 
 A [shell](http://www.gnu.org/software/bash/) wrapper for [mpv](http://mpv.io/)/[MPlayer](http://www.mplayerhq.hu/) to run videos easy via [CLI](http://en.wikipedia.org/wiki/Command-line_interface).
@@ -21,13 +21,13 @@ First thing it does is looking for files and folders inside a _basepath_ (the on
 <img src="https://raw.githubusercontent.com/wiki/deterenkelt/watchfromcli/img/main_repo_readme/3.png"/>
 </p>
 
-It works not only with single video files, but also with folders having disk structure. For folders with episodes watch.sh can start a cycle, in which it will play one file after another through a short pause, in the time of which it can be stopped. The watching cycle can also be stopped by quitting the player, or even killing it – watch.sh recognizes when it quits normally or is closed in the middle of an episode. That helps to resume the cycle on the right episode.
+It works not only with single video files, but also with folders having disk structure. For folders with episodes watchfromcli.sh can start a cycle, in which it will play one file after another through a short pause, in the time of which it can be stopped. The watching cycle can also be stopped by quitting the player, or even killing it – watchfromcli.sh recognizes when it quits normally or is closed in the middle of an episode. That helps to resume the cycle on the right episode.
 
 <p align="center">
 <img src="https://raw.githubusercontent.com/wiki/deterenkelt/watchfromcli/img/main_repo_readme/4.png"/>
 </p>
 
-watch.sh maintains a journal, where it stores session data. It provides information needed to resume the interrupted watching cycle.
+watchfromcli.sh maintains a journal, where it stores session data. It provides information needed to resume the interrupted watching cycle.
 
 <p align="center">
 <img src="https://raw.githubusercontent.com/wiki/deterenkelt/watchfromcli/img/main_repo_readme/5.png"/>
