@@ -1,62 +1,112 @@
 # Should be sourced.
 
 #  bahelite.sh
-#  BAsh HElper LIbrary – To Everyone!
-#  ――――――――――――――――――――――――――――――――――
+#  Bash helper library for Linux to create more robust shell scripts.
 #  © deterenkelt 2018–2019
 #  https://github.com/deterenkelt/Bahelite
 #
 #  This work is based on the Bash Helper Library for Large Scripts,
-#  that I’ve been initially developing for Lifestream LLC in 2016. The old
-#  code of BHLLS can be found at https://github.com/deterenkelt/bhlls.
-
-#  This program is free software; you can redistribute it and/or modify it
-#  under the terms of the GNU General Public License as published
-#  by the Free Software Foundation; either version 3 of the License,
-#  or (at your option) any later version.
+#  that I’ve been initially developing for Lifestream LLC in 2016. It was
+#  licensed under GPL v3.
 #
-#  This program is distributed in the hope that it will be useful,
-#  but without any warranty; without even the implied warranty
-#  of merchantability or fitness for a particular purpose.
-#  See the GNU General Public License for more details.
+ # Bahelite is free software; you can redistribute it and/or modify it
+#    under the terms of the GNU General Public License as published
+#    by the Free Software Foundation; either version 3 of the License,
+#    or (at your option) any later version.
+#  Bahelite is distributed in the hope that it will be useful, but without
+#    any warranty; without even the implied warranty of merchantability
+#    or fitness for a particular purpose. See the GNU General Public License
+#    for more details.
 
 
-#  Bahelite doesn’t enable or disable any shell options, leaving it
-#  to the programmer to set the appropriate ones. Bahelite will only tempo-
-#  rarely enable or disable them as needed for its internal functions.
-
- # bash >= 4.3 for declare -n.
-#  bash >= 4.4 for the fixed typeset -p behaviour.
+ # Bahelite doesn’t enable or disable any shell options, it leaves to the prog-
+#    rammer to choose an optimal set. Bahelite may only temporarily enable or
+#    disable shell options – but only temporarily.
+#  It is *highly* recommended to use “set -feEu” in the main script, and if
+#    you add -T to that, thus making the line “set -feEuT”, Bahelite will be
+#    able to catch more bash errors.
 #
-if  (( ${BASH_VERSINFO[0]:-0} <= 3 )) \
-	|| (( ${BASH_VERSINFO[0]:-0} == 4 && ${BASH_VERSINFO[1]:-0} <= 3 ))
+ # The exit codes:
+#    1 – is not used. It is the generic code, with which main script may
+#        exit, if the programmer forgets to place his exits and returns pro-
+#        perly. Let these mistakes be exposed.
+#    2 – is not used. Bash exits with this code, when it catches an interpre-
+#        ter or a syntax error. Such errors may happen in the main script.
+#    3 – Bahelite exits with this code, if the system runs an incompatible
+#        version of the Bash interpreter.
+#    4 – Bahelite uses this code for all internal errors, i.e. related to the
+#        inner mechanics of this library, like checking for the minimal depen-
+#        dencies, loading modules, on an unsolicited attempt to source the main
+#        script (instead of executing it). In each case a detailed message
+#        starting with “Bahelite error:” is printed to stderr.
+#    5 – any error happening in the main script after Bahelite is loaded.
+#        You are strongly advised to use err() from bahelite_messages.sh
+#        instead of something like { echo 'An error happened!' >&2; exit 5; }.
+#        To use custom error codes, use ERROR_CODES (see bahelite_messages.sh).
+#    6 – an abort sanctioned by the one who runs the main script. Since an
+#        early quit means, that the run was not successful (as the program
+#        didn’t have a chance to complete whatever it was made for), and on
+#        the other hand it’s not like the program is broken (what a regular
+#        error would indicate), the exit code must be distinctive from both
+#        the “clear exit” with code 0 and “regular error” with code 5.
+#    7–125 – free for the main script.
+#    126–165 – not used by Bahelite and must not be used in the main script:
+#        this range belongs to the interpreter.
+#    166–254 – free for the main script.
+#    255 – not used by Bahelite and must not be used in the main script:
+#        this code may be triggered by more than one reason, which makes it
+#        ambiguous.
+#
+#  Notes
+#  1. Codes 5 and 6 are used only if the error_handling module is included
+#    (it is included by default).
+#  2. The usage of codes 1–6, 126–165, 255 is prohibited in ERROR_CODES,
+#     if you decide to use it for the custom type-specific error codes.
+#    (See bahelite_messages.sh for details.)
+
+
+
+ # Require bash v4.3 for declare -n.
+#          bash v4.4 for the fixed typeset -p behaviour, ${param@x} operators,
+#                    SIGINT respecting builtins and interceptable by traps,
+#                    BASH_SUBSHELL that is updated for process substitution.
+#
+if	((    ${BASH_VERSINFO[0]:-0} <= 3
+	   || (
+	            ${BASH_VERSINFO[0]:-0} == 4
+	        &&  ${BASH_VERSINFO[1]:-0} <  4
+	      )
+	))
 then
 	echo -e "Bahelite error: bash v4.4 or higher required." >&2
-	# so it would work for both sourced and executed scripts
+	#  so that it would work for both sourced and executed scripts
 	return 3 2>/dev/null ||	exit 3
 fi
 
  # Scripts usually shouldn’t be sourced. And so that your main script wouldn’t
 #  be sourced by an accident, Bahelite checks, that the main script is called
-#  as an executable. Set BAHELITE_LET_MAIN_SCRIPT_BE_SOURCED to skip this.
+#  as an executable. To allow the usage of Bahelite in a sourcable script,
+#  set BAHELITE_LET_MAIN_SCRIPT_BE_SOURCED to any value.
 #
 if	[ ! -v BAHELITE_LET_MAIN_SCRIPT_BE_SOURCED ] \
 	&& [ "${BASH_SOURCE[-1]}" != "$0" ]
 then
-	echo -e "${BASH_SOURCE[-1]} shouldn’t be sourced." >&2
+	echo -e "Bahelite error: ${BASH_SOURCE[-1]} shouldn’t be sourced." >&2
 	return 4
 fi
 
 
-             #  Cleaning the environment before start  #
+                #  Cleaning the environment before start  #
 
  # Wipe user functions from the environment
 #  This is done by default, because of the custom things, that often
-#    exist in ~/.bashrc or exported from mother shell. Being supposed to
-#    simplify the work in terminal, they may – and often will – complicate
-#    things for the mother script running in the terminal.
-#  Define BAHELITE_KEEP_ENV_FUNCS variable before sourcing bahelite.sh
-#    to override the default behaviour.
+#    exist in ~/.bashrc or exported from some higher, earlier shell. Being
+#    supposed to only simplify the work in terminal, such functions may –
+#    and often will – complicate things for a script.
+#  To keep the functions exported to us in this scope, that is, the scope
+#    where this very script currently execues, define BAHELITE_KEEP_ENV_FUNCS
+#    variable before sourcing bahelite.sh. Keep in mind, that outer functions
+#    may lead to an unexpected behaviour.
 #
 if [ ! -v BAHELITE_KEEP_ENV_FUNCS ]; then
 	#  This wipes every function, which name doesn’t start with an underscore
@@ -65,378 +115,324 @@ if [ ! -v BAHELITE_KEEP_ENV_FUNCS ]; then
 	unset -f $(declare -F | sed -rn 's/^declare\s\S+\s([^_]*+)$/\1/p')
 fi
 #
-#  env in shebang will not recognise -i, so an internal respawn is needed
-#  in order to run the script in a clean environment.
+#
+ # env in shebang will not recognise -i, so an internal respawn is needed
+#  in order to run the script in a clean environment. Be aware, env -i
+#  literally WIPES the environment – you won’t find $HOME or $USER any more.
+#
 if [ -v BAHELITE_TOTAL_ENV_CLEAN ]; then
 	[ ! -v BAHELITE_ENV_CLEANED ] && {
 		exec /usr/bin/env -i BAHELITE_ENV_CLEANED=t bash "$0" "$@"
 		exit $?
 	}
 fi
+declare -r BAHELITE_VARLIST_BEFORE_STARTUP="$(compgen -A variable)"
 
- # Bahelite requires util-linux >= 2.20
-#  Shoulda move that to a function-check, i.e. this should become a part
-#  of the check_required_utils.
+
+                    #  Checking basic dependencies  #
+
+ # Dependency checking goes in three stages:
+#  - basic dependencies (you are here). It’s those, that allow internal
+#    mechanisms of Bahelite to work. Passing this stage guarantees only
+#    that Bahelite has the necessary minimum to work and it can proceed
+#    to loading modules and doing more complex stuff.
+#  - module dependency checking. Sourcing the modules doesn’t need anything
+#    but the source command – at least it shouldn’t require any outside
+#    utils. The programmer is supposed to run check_required_utils (see the
+#    definition below in this file) when he thinks everything would be ready,
+#    and then the dependencies specified by the modules will be checked along
+#    the main script dependencies.
+#  - main script dependency checking. See check_required_utils below again.
 #
-read -d '' major minor  < <(
-	getopt -V \
-		| sed -rn 's/^[^0-9]+([0-9]+)\.?([0-9]+)?.*/\1\n\2/p'; \
-	echo -e '\0'
-)
-[[ "$major" =~ ^[0-9]+$  &&  "$minor" =~ ^[0-9]+$ ]] \
-&&  (
-		((  ( major == 2  &&  minor >= 20 )  ||  major >= 2  ))
-	) \
-	|| err 'old util-linux'
-unset  major minor
+if [ "$(type -t sed)" != 'file' ]; then
+	echo 'Bahelite error: sed is not installed.' >&2
+	do_exit=t
 
+elif [ "$(type -t grep)" != 'file' ]; then
+	echo 'Bahelite error: grep is not installed.' >&2
+	do_exit=t
 
- # Overrides ‘set’ bash builtin to change beahviour of set ±x:
-#    regular set -x output would include traponeachcommand(),
-#    which is triggered by bahelite_toggle_ondebug_trap(), which is necessary for precise
-#    tracing in case of an error, but it clogs the normal trace, when user
-#    calls set -x.
-#  Thus there needs to be a hook on set -x that will temporarily
-#    unset trap_on_debug, and bring it back on set +x.
-#  There were special functions debug_on and debug_off, that
-#    were intended to use instead of ‘set ±x’, but the habit of using
-#    ‘set ±x’ is too strong, so this function has to be made.
-#
-set() {
-	#  Hiding the output of the function itself.
-	builtin set +x
-	local command=()
-	if [ "$1" = -x ]; then
-		[ -v BAHELITE_TRAPONDEBUG_SET ] && {
-			#  The purpose of  bahelite_toggle_ondebug_trap  is to catch the
-			#  line, where an error happened, better and provide a sensible
-			#  trace stack. When the programmer enables xtrace, he already
-			#  got the information from the bahelite_toggle_ondebug_trap, so
-			#  we disable it on the time of enabling xtrace, for it will clog
-			#  the output dramatically.
-			bahelite_toggle_ondebug_trap  unset
-			declare -g BAHELITE_BRING_BACK_TRAPONDEBUG=t
-		}
-		command=(builtin set -x)
-	elif [ "$1" = +x ]; then
-		[ -v BAHELITE_BRING_BACK_TRAPONDEBUG ] && {
-			unset BAHELITE_BRING_BACK_TRAPONDEBUG
-			#  When xtrace if switched off, we can bring the trap on debug
-			#  back. The desired behaviour is solely to clear the shell trace
-			#  from bahelite functions.
-			#  This enables functrace / set -T!
-			#  Functions will inherit trap on RETURN!
-			bahelite_toggle_ondebug_trap  set
-		}
-		command=(builtin set +x)
-	else
-		#  For any arguments, that are not ‘-x’ or ‘+x’,
-		#    pass them as they are.
-		#  This is a potential bug, as adding -x in the
-		#  main ‘set’ declaration like
-		#      set -xfeEu  #T
-		#  or using “-o xtrace” will not use the override above.
-		#  Hopefully, everyone would just use ‘set -x’ or ‘set +x’.
-		command=(builtin set "$@")
+elif [ "$(type -t getopt)" != 'file' ]; then
+	echo 'Bahelite error: util-linux is not installed.' >&2
+	do_exit=t
+
+elif [ "$(type -t yes)" != 'file' ]; then
+	echo 'Bahelite error: coreutils is not installed.' >&2
+	do_exit=t
+fi
+#  This is to accumulate messages, so that if more than one utility would be
+#  missing, the messages would appear at once.
+[ -v do_exit ] && exit 4 || unset do_exit
+
+sed_version=$(sed --version | sed -n '1p')
+grep -q 'GNU sed' <<<"$sed_version" || {
+	echo 'Bahelite error: sed must be GNU sed.' >&2
+	exit 4
+}
+grep_version=$(grep --version | sed -n '1p')
+grep -q 'GNU grep' <<<"$grep_version" || {
+	echo 'Bahelite error: grep must be GNU grep.' >&2
+	exit 4
+}
+
+#  ex: sed (GNU sed) 4.5
+if [[ "$sed_version" =~ ^sed.*\ ([0-9]+)(\.([0-9]+)|)(\.([0-9]+)|)$ ]]; then
+	if	((    ${BASH_REMATCH[1]} <= 3
+		   || (      ${BASH_REMATCH[1]:-0} == 4
+		         &&  ${BASH_REMATCH[3]:-0} <= 2
+		         &&  ${BASH_REMATCH[5]:-0} <  1
+		      )
+		))
+	then
+		echo -e "Bahelite error: sed v4.2.1 or higher required." >&2
+		exit 4
 	fi
-	"${command[@]}"  # No “return”, to not confuse people looking at the trace.
-}
+else
+	echo 'Bahelite error: cannot determine sed version.' >&2
+	exit 4
+fi
+
+#  ex: grep (GNU grep) 3.1
+if [[ "$grep_version" =~ ^grep.*\ ([0-9]+)(\.([0-9]+)|)(\.([0-9]+)|)$ ]]; then
+	if	((    ${BASH_REMATCH[1]} <= 1
+		   || (      ${BASH_REMATCH[1]:-0} == 2
+		         &&  ${BASH_REMATCH[3]:-0} <  9
+		      )
+		))
+	then
+		echo -e "Bahelite error: grep v2.9 or higher required." >&2
+		exit 4
+	fi
+else
+	echo 'Bahelite error: cannot determine grep version.' >&2
+	exit 4
+fi
+
+#  ex: getopt from util-linux 2.32
+getopt_version="$(getopt --version | sed -n '1p')"
+if [[ "$getopt_version" =~ ^getopt.*util-linux.*\ ([0-9]+)(\.([0-9]+)|)(\.([0-9]+)|)$ ]]; then
+	if	((    ${BASH_REMATCH[1]} <= 1
+		   || (      ${BASH_REMATCH[1]:-0} == 2
+		         &&  ${BASH_REMATCH[3]:-0} <  20
+		      )
+		))
+	then
+		echo -e "Bahelite error: util-linux v2.20 or higher required." >&2
+		exit 4
+	fi
+else
+	echo 'Bahelite error: cannot determine util-linux version.' >&2
+	exit 4
+fi
+
+#  ex: yes (GNU coreutils) 8.29
+yes_version="$(yes --version | sed -n '1p')"
+if [[ "$yes_version" =~ ^yes.*coreutils.*\ ([0-9]+)(\.([0-9]+)|)(\.([0-9]+)|)$ ]]; then
+	if	((  ${BASH_REMATCH[1]} < 8  ))
+	then
+		echo -e "Bahelite error: coreutils v8.0 or higher required." >&2
+		exit 4
+	fi
+else
+	echo 'Bahelite error: cannot determine coreutils version.' >&2
+	exit 4
+fi
+
+unset  sed_version  grep_version  getopt_version  yes_version
 
 
- # To turn off xtrace output (enabled with set -x) during the execution
-#    of Bahelite own functions. You don’t need them in mother script, just
-#    use set +x/-x, as usual.
-#  What these functions essentially do is hiding Bahelite code from xtrace,
-#    so that you could run set -x and see *only your code*, as you used to.
-#    To show Bahelite code anyway, add “unset BAHELITE_HIDE_FROM_XTRACE”
-#    in the mother script someplace after sourcing bahelite.sh.
-#
-xtrace_off() {
-	 # This prevents disabling xtrace recursively.
-	#  In case some higher level function would call a lower-level function
-	#  and both of them would use xtrace_off, xtrace_on would break off
-	#  the hiding once it’s called inside the lover-level function, and we
-	#  need to hide trace until xtrace_on would be called in the higher
-	#  level function
-	#[ -z "$BAHELITE_XTRACE_HIDING_KEY" ] && {
-	[ ! -v BAHELITE_BRING_XTRACE_BACK ] && {
-		 # If xtrace is not enabled, we have nothing to do.
-		#    Calling xtrace_off by mistake may initiate unwanted hiding,
-		#    which will lead to unexpected results.
-		#  Essentially, this prevents calling it by a lowskilled user mistake.
-		[ -o xtrace ] || return 0
 
-		 # When set -x enables trace, the commands are prepended with ‘+’.
-		#  To differentiate between user’s commands and bahelite,
-		#  we temporarily change ‘+’ to ‘⋅’
-		declare -g OLD_PS4="$PS4" && declare -g PS4='⋅'
-		[ -v BAHELITE_HIDE_FROM_XTRACE ] && {
-			builtin set +x
-			declare -g BAHELITE_BRING_XTRACE_BACK=${#FUNCNAME[*]}
-		}
-		return 0
-	}
-	return 1
-}
-xtrace_on() {
-	(( ${BAHELITE_BRING_XTRACE_BACK:-0} == ${#FUNCNAME[*]} )) && {
-		unset BAHELITE_BRING_XTRACE_BACK
-		builtin set -x
-		#  Salty experience of learning how traps on RETURN work resulted
-		#  in the following:
-		#  - a trap on RETURN defined in a function persists after that func-
-		#    tion quits. That means that one cannot set a trap on RETURN on
-		#    entering a function and hope that it will only work once. Even
-		#    though without “functrace” shell option set other functions
-		#    *will not* inherit it, the source command *will*. In other words,
-		#    each time you source an external file and the control returns
-		#    back to the main file, the trap on RETURN triggers;
-		#  - thus the trap on RETURN has a global scope anyway – and that
-		#    means, that it’s possible to remove it from global scope when it
-		#    completes what it needs. This way set/unset should come strictly
-		#    in pairs – as needed for hiding xtrace diving into bahelite func-
-		#    tions;
-		#  - in order to be sure, that the return trap is executed and unset
-		#    only the level, when it was set, BAHELITE_BRING_XTRACE_BACK
-		#    contains the current function nesting level.
-		trap '' RETURN
-		#  Restoring the original PS4.
-		#  Currently doesn’t work well, because xtrace off and on somehow
-		#  don’t go in pairs sometimes. Needs an investigation.
-		#  Most users presumably don’t alter PS4 anyway, so just set it to ‘+’.
-		#declare -g PS4="${OLD_PS4:-+}"
-		declare -g PS4='+'
-	}
-	return 0
-}
+                        #  Initial settings  #
 
- # To turn off errexit (set -e) and disable trap on ERR temporarily.
-#  bahelite_toggle_onerror_trap() is defined in bahelite_error_handling.sh,
-#  which is an optional module. Handling this optionality creates the need
-#  in simplifying of the way to turn errexit on and off – so here is this
-#  function.
-#
-errexit_off() {
-	[ -o errexit ] && {
-		set +e
-		[ "$(type -t bahelite_toggle_onerror_trap)" = 'function' ]  \
-			&& bahelite_toggle_onerror_trap  unset
-		declare -g BAHELITE_BRING_BACK_ERREXIT=t
-	}
-	return 0
-}
-errexit_on() {
-	[ -v BAHELITE_BRING_BACK_ERREXIT ] && {
-		unset BAHELITE_BRING_BACK_ERREXIT
-		set -e
-		[ "$(type -t bahelite_toggle_onerror_trap)" = 'function' ]  \
-			&& bahelite_toggle_onerror_trap  set
-	}
-	return 0
-}
-
-
- # (For internal use) To turn off noglob (set -f) temporarily,
-#    but bring it back to the main script’s defaults afterwards.
-#  This comes handy when shell needs to use globbing like for “ls *.sh”,
-#    but it is disabled by default for safety.
-#
-noglob_off() {
-	[ -o noglob ] && {
-		set +f
-		declare -g BAHELITE_BRING_BACK_NOGLOB=t
-	}
-	return 0
-}
-noglob_on() {
-	[ -v BAHELITE_BRING_BACK_NOGLOB ] && {
-		unset BAHELITE_BRING_BACK_NOGLOB
-		set -f
-	}
-	return 0
-}
-
-
-BAHELITE_VERSION="2.13"
+BAHELITE_VERSION="2.19"
 #  $0 == -bash if the script is sourced.
 [ -f "$0" ] && {
 	MYNAME=${0##*/}
+	MYNAME_NOEXT=${MYNAME%.*}
 	#  Sourced scripts cannot operate on the main script’s $0,
 	#  as it is changed for them to “bash”.
 	MYNAME_AS_IN_DOLLARZERO="$0"
 	MYPATH=$(realpath --logical "$0")
 	MYDIR=${MYPATH%/*}
-	#  Used for desktop notifications in bahelite_messages.sh
+	#  Used for desktop notifications in bahelite_messages_to_desktop.sh
 	#  and in the title for dialog windows in bahelite_dialog.sh
-	[ -v MY_DESKTOP_NAME ] || {
-		MY_DESKTOP_NAME="${MYNAME%.*}"
-		MY_DESKTOP_NAME="${MY_DESKTOP_NAME^}"
+	[ -v MY_DISPLAY_NAME ] || {
+		#  Not forcing lowercase, as there may be intended
+		#  caps, like in abbreviations.
+		MY_DISPLAY_NAME="${MYNAME_NOEXT^}"
 	}
 	BAHELITE_DIR=${BASH_SOURCE[0]%/*}  # The directory of this file.
+	ORIG_BASHPID=$BASHPID
+	ORIG_PPID=$PPID
 }
 
 CMDLINE="$0 $@"
 ARGS=("$@")
-#
-#  Terminal variables
-if [[ "$-" =~ ^.*i.*$ ]]; then
-	TERM_COLS=$(tput cols)
+if [ -v TERM_COLS  -a  -v TERM_LINES ]; then
+	declare -x TERM_COLS
+	declare -x TERM_LINES
+elif [ -v COLUMNS  -a  -v LINES ]; then
+	declare -nx TERM_COLS=COLUMNS
+	declare -nx TERM_LINES=LINES
 else
-	#  For non-interactive shells restrict the width to 80 characters,
-	#  in order for the logs to not be excessively wi-i-ide.
-	TERM_COLS=80
+	declare -x TERM_COLS=80
+	declare -x TERM_LINES=25
 fi
-TERM_LINES=$(tput lines)
 
 
- # Script’s tempdir
-#  bahelite_on_exit removes it – don’t forget anything there.
-#  You may want to define BAHELITE_LOCAL_TMPDIR in order to create
-#    TMPDIR not in /tmp (or TMPDIR, if it is defined beforehand), but in
-#    a local directory, under ~/.cache. This is useful, when something
-#    creates very large files, and your /tmp is in RAM and too small.
-[ -v BAHELITE_LOCAL_TMPDIR ] && BAHELITE_LOCAL_TMPDIR="$HOME/.cache"
-TMPDIR=$(mktemp --tmpdir=${BAHELITE_LOCAL_TMPDIR:-${TMPDIR:-/tmp/}} \
-                -d ${MYNAME%*.sh}.XXXXXXXXXX )
 
-
- # Desktop directory
+ # The directory for temporary files
+#  It’s used by Bahelite and the main script. bahelite_on_exit will remove
+#    this directory, unless you set BAHELITE_DONT_CLEAR_TMPDIR or an error
+#    would be caught.
+#  If using /tmp is for some reason undesirable, for example, if the main
+#    script creates very large files, you may want to create one under user’s
+#    $HOME or somewhere else. For that, define TMPDIR=$HOME/.cache/ before
+#    sourcing bahelite.sh, and TMPDIR will be set to something like
+#    $HOME/.cache/my-prog.XXXXXXXXX/.
+#  You can also pass TMPDIR through the environment. This is useful, when you
+#    run one script from within another, and they both use Bahelite. By passing
+#    TMPDIR to the inside script, you can tell it to use the same TMPDIR as
+#    the main script does. With this you simplify the debugging and minimise
+#    file clutter.
 #
-DESKTOP=$(which xdg-user-dir &>/dev/null && xdg-user-dir DESKTOP) ||:
-[ -d "$DESKTOP" ] || DESKTOP="$HOME"
+[ -v TMPDIR ] && {
+	[ -d "${TMPDIR:-}" ] || {
+		echo "Bahelite warning: no such directory: “$TMPDIR”, will use /tmp." >&2
+		unset TMPDIR
+	}
+}
+TMPDIR=$(mktemp --tmpdir=${TMPDIR:-/tmp/}  -d ${MYNAME%*.sh}.XXXXXXXXXX  )
+#  bahelite_on_exit trap shouldn’t remove TMPDIR, if the exit occurs
+#  within a subshell
+(( BASH_SUBSHELL > 0 )) && BAHELITE_DONT_CLEAR_TMPDIR=t
 
-
- # Dummy logfile
-#  To enable proper logging, call start_log().
-LOG=/dev/null
+declare -rx  MYNAME  MYNAME_NOEXT  MYNAME_AS_IN_DOLLARZERO  MYPATH  MYDIR  \
+             MY_DISPLAY_NAME  BAHELITE_VERSION  BAHELITE_DIR  CMDLINE  ARGS  \
+             TMPDIR  BAHELITE_LOCAL_TMPDIR  ORIG_BASHPID  ORIG_PPID
 
 
  # By default Bahelite turns off xtrace for its internal functions.
-#  Call “unset BAHELITE_HIDE_FROM_XTRACE” after sourcing bahelite.sh
+#  set BAHELITE_SHOW_UP_IN_XTRACE after sourcing bahelite.sh
 #  to view full xtrace output.
 #
-BAHELITE_HIDE_FROM_XTRACE=t
+# BAHELITE_SHOW_UP_IN_XTRACE=t
 
 
  # Lists of utilities, the lack of which must trigger an error.
 #  For internal dependencies of bahelite.sh and bahelite_*.sh.
 #  Long name to make it distinctive from the REQUIRED_UTILS, which is
-#    the facility for the mother script. This array was separated from
-#    REQUIRED_UTILS to avoid accidental redefinition in the mother script
-#    instead of extension. It would be good to set this array readonly
-#    at the end of the bahelite.sh execution, but it’s not possible, because
-#    modules must remain optional – mother script may want to include addi-
-#    tional modules after receiving certain options, e.g. include
-#    bahelite_github.sh
+#    the facility for the mother script.
+#  Historically, this array was separated from REQUIRED_UTILS to avoid acci-
+#    dental redefinition in the mother script instead of extension. It would
+#    be good to set this array readonly at the end of the bahelite.sh execu-
+#    tion, but it’s not possible, because modules must remain optional – 
+#    the mother script may want to include additional modules after receiving
+#    certain options, e.g. make checking for updates optional and include
+#    bahelite_github.sh only when the option is set.
+#  NO NEED TO ADD sed, grep and any of the coreutils or util-linux binaries!
 #
-BAHELITE_INTERNALLY_REQUIRED_UTILS=(
-	getopt
-	grep
-	sed
-)
+declare -ax BAHELITE_INTERNALLY_REQUIRED_UTILS=()
 #
-#  Holds a short info on which package a missing binary may be found in.
-declare -A BAHELITE_INTERNALLY_REQUIRED_UTILS_HINTS=()
 #
-#  User list for required utils
+ # Holds a short info on which package a missing binary may be found in.
+#
+declare -Ax BAHELITE_INTERNALLY_REQUIRED_UTILS_HINTS=()
+#
+#
+ # User list for required utils
 #  Ex. REQUIRED_LIST=( mimetype ffmpeg )
 #  This list is initially empty to separate internally required utils from
 #    the dependencies of the main script itself. If that would be a single
 #    list, users could accidently wipe it with = instead of addition to it
 #    with +=.
-REQUIRED_UTILS=()
+#  NO NEED TO ADD sed, grep and any of the coreutils or util-linux binaries!
 #
-#  Holds descriptions for missing utils: which packages they can be found in,
+declare -ax REQUIRED_UTILS=()
+#
+#
+ # Holds descriptions for missing utils: which packages they can be found in,
 #  which versions were used for development etc. A hint is printed when
 #  a corresponding utility in REQUIRED_UTILS is not found.
 #  Syntax: REQUIRED_UTILS_HINTS=( [prog1]='Prog1 can be found in Package1.' )
 #  (Hints are not required, this array may be left empty.)
-declare -A REQUIRED_UTILS_HINTS=()
 #
-#  In the future, add an array that would hold function names, that should
+declare -Ax REQUIRED_UTILS_HINTS=()
+#
+#
+ # In the future, add an array that would hold function names, that should
 #  run sophisticated checks over the binaries, e.g. query their version,
 #  or that grep is GNU grep and not BSD grep.
+#
 #declare -A REQUIRED_UTILS_CHECKFUNCS=()
 
 
 
-                        #  Module verbosity  #
+                             #  Modules  #
 
- # When everything goes right, modules do not output anything to stdout. Only
-#  in case of a potential trouble or an error they output messages. Sometimes
-#  however, it would be useful to make the modules print intermediate infor-
-#  mation, i.e. info messages. In regular use such messages would only unneces-
-#  sarily clog the output, so they are allowed only on the increased verbosity
-#  level.
-#     The array below controls displaying extra info and warn messages, that
-#  are normally not shown. Works per module. Redefine elements in the mother
-#  script after sourcing bahelite.sh, but before calling any bahelite func-
-#  tions. For example, to enable verbose messages for bahelite_rcfile.sh:
-#  BAHELITE_VERBOSE=( [rcfile]=t )
-#
-declare -A BAHELITE_VERBOSE=(
-	[bahelite]=f                  # the main module = bahelite.sh = this file.
-	[colours]=f                   # bahelite_colours.sh
-	[dialog]=f                    # etc.
-	[directories]=f
-	[error_handling]=f
-	[github]=f
-	[logging]=f
-	[menus]=f
-	[messages]=f
-	[misc]=f
-	[rcfile]=f
-	[versioning]=f
-	[x_desktop]=f
-)
-
-
- # Checks whether verbosity is enabled for a certain module
-#  This function is supposed to be called from within a Bahelite module,
-#  i.e. bahelite_*.sh files, in the following manner:
-#      bahelite_check_module_verbosity \
-#          && info "Trying RC file:
-#                   $rcfile"
-#
-bahelite_check_module_verbosity() {
-	local caller_module_funcname=${FUNCNAME[1]}
-	local caller_module_filename=${BASH_SOURCE[1]}
-	caller_module_filename=${caller_module_filename##*/}
-	caller_module_filename=${caller_module_filename%.sh}
-	caller_module_filename=${caller_module_filename#bahelite_}
-	[ "${BAHELITE_VERBOSE[$caller_module_filename]}" = t ]  \
-		&& return 0  \
-		|| return 1
-}
-
-bahelite_module_verbosity_test() {
-	bahelite_check_module_verbosity \
-		&& info "Hai, dozo."
+bahelite_load_module() {
+	local module_name="$1"
+	local module_file="$BAHELITE_DIR/bahelite_$module_name.sh"
+	[ -r "$module_file" ]  || {
+		echo "Bahelite error: cannot find module “$module_name”." >&2
+		return 4
+	}
+	#  As we are currently in a function scope, the “source” command
+	#  will make all declare calls local. To define global variables
+	#  “declare -g” must be used in all modules!
+	source "$module_file"  || {
+		echo "Bahelite error: cannot load module “$module_name”." >&2
+		return 4
+	}
 	return 0
 }
+export -f bahelite_load_module
 
+
+bahelite_verify_error_code() {
+	local error_code=$1
+	if	[[ "$error_code" =~ ^[0-9]{1,3}$ ]]  \
+		&&  ((
+		            (       $error_code >= 7
+		                &&  $error_code <= 125
+		            )
+
+		        ||  (       $error_code >= 166
+		                &&  $error_code <= 254
+		            )
+		    ))
+	then
+		return 0
+	else
+		return 1
+	fi
+}
+export -f bahelite_verify_error_code
+
+
+#  Required modules
+bahelite_load_module 'util_overrides' || exit $?
+bahelite_load_module 'messages' || exit $?
 if [ -v BAHELITE_CHERRYPICK_MODULES ]; then
-	for module in "${BAHELITE_CHERRYPICK_MODULES[@]}"; do
-		. "$BAHELITE_DIR/bahelite_$module.sh" || return 5
+	for module_name in "${BAHELITE_CHERRYPICK_MODULES[@]}"; do
+		bahelite_load_module "$module_name" || exit $?
 	done
 else
-	noglob_off
+	bahelite_noglob_off
 	for bahelite_module in "$BAHELITE_DIR"/bahelite_*.sh; do
-		. "$bahelite_module" || return 5
+		module_name=${bahelite_module##*/}
+		module_name=${module_name#bahelite_}
+		module_name=${module_name%.sh}
+		bahelite_load_module "$module_name" || exit $?
 	done
-	noglob_on
+	bahelite_noglob_on
 fi
+unset  module_name  bahelite_module
 
 
-[ -v BAHELITE_MODULE_MESSAGES_VER ] || {
-	echo "Bahelite: cannot find bahelite_messages.sh." >&2
-	return 5
-}
-
-
-
-
- # Call this function in your script after extending the array above.
+ # Dependency checking
+#  Call this function after extending REQUIRED_UTILS in the main script.
+#  See also “Checking basic dependencies” above.
 #
 check_required_utils() {
 	local  util  missing_utils req_utils=()
@@ -460,19 +456,25 @@ check_required_utils() {
 	[ "${missing_utils:-}" ] && ierr 'no util' "$missing_utils"
 	return 0
 }
+export -f check_required_utils
 
- # It’s a good idea to extend REQUIRED_UTILS list in your script
-#  and then call check_required_utils like:
-#      REQUIRED_UTILS+=( bc )
-#      check_required_utils
-#
-check_required_utils
+[ -v ERROR_CODES ] && [ ${#ERROR_CODES[*]} -ne 0 ] && {
+	for key in ${!ERROR_CODES[*]}; do
+		bahelite_verify_error_code "${ERROR_CODES[key]}" || {
+			echo "Bahelite error: Invalid exit code in ERROR_CODES[$key]:" >&2
+			echo "should be a number in range 7…125 or 166…254 inclusively." >&2
+			invalid_code=t
+		}
+	done
+	[ -v invalid_code ] && exit 4
+}
+unset  key  invalid_code
+
 
  # Before the main script starts, gather variables. In case of an error
 #  this list would be compared to the other, created before exiting,
 #  and the diff will be placed in "$LOGDIR/variables"
 #
-BAHELITE_STARTUP_VARLIST="$(compgen -A variable)"
-
+declare -r BAHELITE_VARLIST_AFTER_STARTUP="$(compgen -A variable)"
 
 return 0

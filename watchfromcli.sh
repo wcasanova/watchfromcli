@@ -53,7 +53,7 @@ BAHELITE_CHERRYPICK_MODULES=(
 )
 . "$(dirname "$(realpath --logical "$0")")/lib/bahelite/bahelite.sh"
 prepare_cachedir
-start_log
+start_logging
 
 show_help() {
 	cat <<-"EOF"
@@ -69,6 +69,7 @@ show_help() {
 	Open wiki <link>
 	Send issues to Github <link>
 	EOF
+	exit 0
 }
 
 
@@ -80,6 +81,7 @@ show_version() {
 	This is free software: you are free to change and redistribute it.
 	There is NO WARRANTY, to the extent permitted by law.
 	EOF
+	exit 0
 }
 
 
@@ -99,7 +101,7 @@ cd "$PWD" 2>/dev/null || err 'Cannot run – current directory is removed.'
 MAX_HEURISTICS_LEVEL=1
 HEURISTICS_LEVEL=0
 
-VERSION="20190223"
+VERSION="20190611"
 
 JOURNAL=~/.watch.sh/journal
 JOURNAL_MAX_SIZE="64K" # w/o suffix for bytes, K for KiB, M for MiB et al.
@@ -179,6 +181,8 @@ set_screenshot_subdir
 #   imported. There is no point in altering the journal on exit, if user
 #   declined to start watching something halfway.
 on_exit() { export_session_data || exit $?; }
+
+
 # A good place to check the $MODE.
 until [ -v STOP ]; do
 	watch || exit $?

@@ -200,14 +200,106 @@ Consider switching to the latest mpv if you want to load multiple tracks
 	#   It is also used to distinguish the mpv instance that runs
 	#   the video from those that encode webms (see below).
 	{ coproc \
-		{ eval ${ionice_cmd:-} ${taskset_cmd:-} $MPLAYER_COMMAND \
-		       --msg-level=all=info \
-		       ${NO_AUTOSUB:-} ${subtitles:-} ${tracks:-} "$MPLAYER_OPTS" \
-		       "\"$path_to_videofile\"" \
-			   |& sed '/^Exiting\.\.\./ {s/End of file/&/p; t ex1; Q0; :ex1 Q1}' \
-			   || true
+		{
+			#  To know, if mpv finished playing the file or it was interrupted,
+			#  we must catch its last line of the output and parse it. This
+			#  is bound to several difficulties:
+			#
+			#  1. The line in the mpv output that is interesting to us, is the
+			#     last one, however, as mpv output goes, there is just no
+			#     telling which line is last until the output finishes.
+			#     This means, that the program should either have a buffering
+			#     input, or there will be no output at all while mpv will not
+			#     quit playing the video and its output will be piped to that
+			#     program.
+			#
+			#  2. As working with the last line is undesirable, each line
+			#     must be compared. However, if the line wouldn’t match, this
+			#     shouldn’t be the signal to quit with a negative result.
+			#     A negative result should be when the last line would be
+			#     telling about an interruption (mpv process terminated or
+			#     received a key to quit.)
+			#
+			#  3. With grep it is impossible to preserve all lines of the out-
+			#     put for sure: if the lines would be printed with hacking the
+			#     -C(ontext) option, like -C 9999, then somelines of the mpv
+			#     output may be cut, because mpv may spam to console a lot and
+			#     exceed that number.
+			#     If grep would be given a regular expression like “Exiting...
+			#     OR $”, where `$` stands for the end of line, then it simply
+			#     will match against every single line.
+			#
+			#  4. In the end, the solution is using sed, but it is somewhat
+			#     tricky: first I’ll explain how this works and then I’ll tell,
+			#     why it cannot be done another way.
+			#
+			#     a) mpv output is piped to sed;
+			#     b) sed compares each line to “Exiting... ”
+			#     c) if the line would match, sed runs the commands in curly
+			#        braces on that line;
+			#     d) the first command in the curly braces attempts a replace-
+			#        ment. The pattern in this replacement is set to match
+			#        for the way when the video finishes to play by itself,
+			#        or naturally (user fastforwarded it);
+			#     e) the result of the replacement then serves as a boolean
+			#        variable for the “T” command – it gets “true” (and does
+			#        an action), when the replacement wasn’t successful;
+			#     f) The action of the “T” command is to jump to the end of the
+			#        sed expression, making it stop processing the current line
+			#        and proceed to load the next line and start the expression
+			#        from the step b);
+			#     e) In case when the replacement in the curly braces *is*
+			#        successful, the “T” command doesn’t activate, and the
+			#        execution pipeline goes to the next command, that is, “Q1”.
+			#     f) “Q1” tells sed to quit *immediately,* sed interrupts
+			#        itself, reads no more lines and quits with a return code
+			#        specified after the “Q”.
+			#
+			#     So, the result of sed is inverted: when the mpv quits with
+			#     “End of file”, the replacement works, sed quits with code 1,
+			#     which *negative.* And when mpv is interrupted, the output
+			#     would have “Quit” (or something like “Terminated”), the re-
+			#     placement in curly braces will not happen, the “T” command
+			#     will make sed ignore the line and it will eventually quit
+			#     by itself with a code 0, *positive*.
+			#
+			#     This has to be made so, because of two reasons:
+			#     - first, the string in the mpv output, that reports about
+			#       an uninterrupted is known to be one, while strings that
+			#       report about terminated may vary. (So the sed result
+			#       cannot be “inverted back” by changing the pattern in the
+			#       replacement to the opposite.)
+			#     - second, the approach with two quit commands, which seems
+			#       more logical, will not work:
+			#          sed … {s/End of file/&/p; t ex0; p; Q1; :ex0 p; Q0}
+			#       With this command, closing mpv in the middle of playback
+			#       doesn’t make sed catch the command for some reason. It just
+			#       never quits through the Q1 route. Why? A good question.
+			#
+			#  So that everything would work as intended, this sed command
+			#  with an internally inverted return code has to be used. The
+			#  code is then inverted to what it should be with an “!” before
+			#  the eval command. Then the “wait” command some lines below
+			#  will be conveying this return code and a negative result
+			#  (with an exception for code 127), will mean that mpv was inter-
+			#  rupted, and a positive one (with code 0) will mean, that mpv
+			#  finished playback in a natural way and watchfromcli may
+			#  proceed to load the next file, if RUN_IN_CYCLE is set.
+			#
+			! {
+				eval ${ionice_cmd:-} ${taskset_cmd:-}  \
+				     $MPLAYER_COMMAND  \
+				         --msg-level=all=info  \
+				         ${NO_AUTOSUB:-}  \
+				         ${subtitles:-}  \
+				         ${tracks:-}  \
+				         "$MPLAYER_OPTS"  \
+				         "\"$path_to_videofile\""  \
+				    |& sed '/^Exiting\.\.\./ {s/End of file/&/p; T; Q1}'
+			  }
 		} >&3
 	} 3>&1 # let mpv’s output flow to the stdout.
+
 	local mpvsed_pipe_pid=$!
 	[ -v D ] && {
 		echo "mpvsed_pipe_pid = $mpvsed_pipe_pid" >>$dbg_file
@@ -282,13 +374,15 @@ Consider switching to the latest mpv if you want to load multiple tracks
 		fi
 	}
 
-	wait $mpvsed_pipe_pid && {
+	wait $mpvsed_pipe_pid || {
+		(( $? == 127 )) && err '“wait” command error.'
 		# Should I make a test case and parse the last line for known exit
 		#   messages and ask what to do if none were found? It matters
 		#   when mpv output changes if verbosity level was increased from default.
 		INTERRUPTED=t
 		STOP=t
 	}
+
 	WE_HAVE_BEEN_IN_WATCH_FUNC=t # for export_session_data()
 	return 0
 }

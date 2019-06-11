@@ -3,22 +3,21 @@
 #  bahelite_versioning.sh
 #  Provides simple versioning in the form <major[.minor[.patch]]>.
 #  Doesn’t work with versions longer than three numbers, e.g. “1.2.3.4”!
-#  deterenkelt © 2018
+#  © deterenkelt 2018–2019
 
-# Require bahelite.sh to be sourced first.
+#  Require bahelite.sh to be sourced first.
 [ -v BAHELITE_VERSION ] || {
-	echo 'Must be sourced from bahelite.sh.' >&2
-	return 5
+	echo "Bahelite error on loading module ${BASH_SOURCE##*/}:"
+	echo "load the core module (bahelite.sh) first." >&2
+	return 4
 }
-. "$BAHELITE_DIR/bahelite_messages.sh" || return 5
 
-# Avoid sourcing twice
+#  Avoid sourcing twice
 [ -v BAHELITE_MODULE_VERSIONING_VER ] && return 0
 #  Declaring presence of this module for other modules.
-BAHELITE_MODULE_VERSIONING_VER='1.1.1'
+declare -grx BAHELITE_MODULE_VERSIONING_VER='2.0.3'
 
-# It is *highly* recommended to use “set -eE” in whatever script
-# you’re going to source it from.
+
 
  # Call a dialog to update version in the specified file.
 #  It’s supposed to be sourced from a pre-commit hook.
@@ -27,20 +26,20 @@ BAHELITE_MODULE_VERSIONING_VER='1.1.1'
 #       must occur in the code only once and be the only command on the line.
 #
 update_version() {
-	xtrace_off && trap xtrace_on RETURN
-	local file="$1" varname="$2" old_version new_version \
-	      old_major old_minor old_patch \
-	      major_nines minor_nines patch_nines \
-	      new_major new_minor new_patch \
-	      v v_val i xdialog_text which_is_newer
+	bahelite_xtrace_off  &&  trap bahelite_xtrace_on RETURN
+	local file="$1" varname="$2"  old_version  new_version \
+	      old_major  old_minor  old_patch \
+	      major_nines  minor_nines  patch_nines \
+	      new_major  new_minor  new_patch \
+	      v  v_val  i  xdialog_text
 	[ -w "$file" ] || err "“$file”
 		                   is not a writeable file."
 	grep -qE "^\s*(declare\s+-r\s+|)$varname=" "$file" \
 		|| err "Variable “$varname” assignment is nowhere to be found in file
-		        “file”."
+		        “$file”."
 	[ "$(grep -cE "^\s*(declare\s+-r\s+|)$varname=" "$file")" = 1 ] \
 		|| err "Variable “$varname” is assigned more than once in file
-		        “file”."
+		        “$file”."
 	which Xdialog &>/dev/null || err 'Xdialog wasn’t found, but is required.'
 
 	readarray -t old_version < <(
@@ -78,7 +77,7 @@ update_version() {
 	xdialog_text='Set new version for file'
 	xdialog_text+="\n${file##*/}"
 	xdialog_text+="\n\nOld version: $old_major.$old_minor.$old_patch."
-	errexit_off
+	bahelite_errexit_off
 	read -d '' new_major  new_minor  new_patch  < <(
 			Xdialog --stdout \
 			        --title "Set new version" \
@@ -91,8 +90,8 @@ update_version() {
 			echo -e '\0'
 			        # Fields: min max default label
 	)
-	errexit_on
-	[ "$new_major" ] || err 'Aborted.'
+	bahelite_errexit_on
+	[ "$new_major" ] || abort 'Aborted.'
 	if [ $new_minor -ne 0  -a  $new_patch -ne 0 ]; then
 		new_version="$new_major.$new_minor.$new_patch"
 	elif [ $new_minor -ne 0 ]; then
@@ -102,71 +101,114 @@ update_version() {
 	fi
 	unset old_version
 	local old_version=$old_major.$old_minor.$old_patch
-	which_is_newer=$(compare_versions "$old_version" "$new_version" )
-	if [ "$which_is_newer" = "$old_version" ]; then
+	if compare_versions "$old_version" '>' "$new_version"; then
 		xdialog_text="$old_version → $new_version"
 		xdialog_text+="\nThe old version seems to be newer."
 		xdialog_text+="\nStill write?"
-		errexit_off
+		bahelite_errexit_off
 		Xdialog --stdout --title "Confirm new version" \
 		        --ok-label Write --cancel-label Cancel \
 		        --yesno "$xdialog_text" 400x110 \
-			|| err 'Aborted.'
-		errexit_on
+			|| abort 'Aborted.'
+		bahelite_errexit_on
 	elif [ "$which_is_newer" = 'equal' ]; then
 		xdialog_text="$old_version = $new_version"
 		xdialog_text+="\nBoth versions are equal."
 		xdialog_text+="\nStill write?"
-		errexit_off
+		bahelite_errexit_off
 		Xdialog --stdout --title "Confirm new version" \
 		        --ok-label Write --cancel-label Cancel \
 		        --yesno "$xdialog_text" 400x110 \
-			|| err 'Aborted.'
-		errexit_on
+			|| abort 'Aborted.'
+		bahelite_errexit_on
 	fi
 	sed -ri "s/^(\s*(declare\s+-r\s+|))$varname=['\"]?[0-9\.]+['\"]?\s*$/\1$varname='$new_version'/" "$file"
 	return 0
 }
+export -f  update_version
+
 
  # Returns 0, if the passed string is a valid version number,
 #  e.g. “X”, “X.Y” or “X.Y.Z”. Returns 1 otherwise.
 #  $1 – version string
 #
 is_version_valid() {
-	xtrace_off && trap xtrace_on RETURN
+	bahelite_xtrace_off  &&  trap bahelite_xtrace_on RETURN
 	[[ "$1" =~ ^[0-9]{1,12}(\.[0-9]{1,12}){0,2}$ ]] \
 		&& return 0 \
 		|| return 1
 }
+export -f  is_version_valid
+
 
  # Compares two versions, and returns either the bigger one or “equal”.
-#    $1 – version string.
-#    $2 – version string.
+#  Version strings are numbers separated with dots: 1, 1.0, 1.0.0.1 are all
+#    fine. Last “-rcXXX” and “-pXXX” are discarded.
+#  $1 – version string A.
+#  $2 – arithmetic condition: one of ==, !=, >, <, >=, <=.
+#  $3 – version string B.
 #
 compare_versions() {
-	xtrace_off && trap xtrace_on RETURN
-	local i old_version="$1" new_version="$2"
-	IFS='.' old_version=( $1 )
-	IFS='.' new_version=( $2 )
-	[ ${#new_version[@]} -ge ${#old_version[@]} ] \
-		&& shortest_length=${#old_version[@]} \
-		|| shortest_length=${#new_version[@]}
-	# +2 is needed to compare implied digits, e.g. with 0 vs 0.0.1 the latter
-	# should be considered bigger. The comparison shouldn’t end on the first
-	# or the second digit and consider them equal.
+	bahelite_xtrace_off  &&  trap bahelite_xtrace_on RETURN
+	local i version_a=${1%%-*}  condition="$2"  version_b=${3%%-*}  \
+	      state='A and B are equal'
+	version_a=(  $(IFS='.';  echo $version_a)  )
+	version_b=(  $(IFS='.';  echo $version_b)  )
+	[ ${#version_b[@]} -ge ${#version_a[@]} ] \
+		&& shortest_length=${#version_a[@]}   \
+		|| shortest_length=${#version_b[@]}
+	#  +2 is needed to compare implied digits, e.g. with 0 vs 0.0.1 the latter
+	#  should be considered bigger. The comparison shouldn’t end on the first
+	#  or the second digit and consider them equal.
 	for ((i=0; i<shortest_length+2; i++)); do
-		[[ "${old_version[i]:-}" =~ ^[0-9]+$ ]] || old_version[$i]=0
-		[[ "${new_version[i]:-}" =~ ^[0-9]+$ ]] || new_version[$i]=0
-		if [ ${new_version[i]} -gt ${old_version[i]} ]; then
-			echo "$2"
-			return 0
-		elif [ ${old_version[i]} -gt ${new_version[i]} ]; then
-			echo "$1"
-			return 0
+		[[ "${version_a[i]:-}" =~ ^[0-9]+$ ]] || version_a[i]=0
+		[[ "${version_b[i]:-}" =~ ^[0-9]+$ ]] || version_b[i]=0
+		if [ ${version_b[i]} -gt ${version_a[i]} ]; then
+			state='B is bigger'
+			break
+		elif [ ${version_a[i]} -gt ${version_b[i]} ]; then
+			state='A is bigger'
+			break
 		fi
 	done
-	echo 'equal'
+
+	case "$condition" in
+		'==')	[ "$state" = 'A and B are equal' ] \
+					&& return 0 \
+					|| return 1
+				;;
+
+		'!=')	[ "$state" != 'A and B are equal' ] \
+					&& return 0 \
+					|| return 1
+				;;
+
+		'>')	[ "$state" = 'A is bigger' ] \
+					&& return 0 \
+					|| return 1
+				;;
+
+		'<')	[ "$state" = 'B is bigger' ] \
+					&& return 0 \
+					|| return 1
+				;;
+
+		'>=')	[ "$state" = 'A is bigger'  -o  "$state" = 'A and B are equal' ] \
+					&& return 0 \
+					|| return 1
+				;;
+
+		'<=')	[ "$state" = 'B is bigger'  -o  "$state" = 'A and B are equal' ] \
+					&& return 0 \
+					|| return 1
+				;;
+
+		*)		err "Unknown condition: “$condition”"
+	esac
 	return 0
 }
+export -f  compare_versions
+
+
 
 return 0

@@ -2,57 +2,60 @@
 process_args() {
 	# getopt from util-linux 2.24 is known to allow long options with a single dash
 	#   independetly of whether the -a|--alternative option is passed.
-	opts=$(getopt \
-	             --options \
-	                       acCd:eEFhH:IJlL:m:M:nNrRs:S:Tv \
-	             --longoptions \
-	allow-autosub,\
-	basedir:,basepath:,\
-	bashrc::,\
-	check-for-update::,\
-	compat:,\
-	dvd-bd-nav,\
-	group-indicator:,\
-	help,\
-	heuristics-level:,\
-	ignore-disks,\
-	interval:,\
-	ionice-opts::,\
-	journal-max-size:,\
-	jpeg-compression::,\
-	last-ep,\
-	last-ep-command:,\
-	last-ep-format:,\
-	last-item-mark:,\
-	limit-watching-to:,\
-	loop,\
-	match-all,\
-	match-number,\
-	mplayer-command:,\
-	mplayer-opts:,\
-	my-increment:,\
-	my-decrement:,\
-	no-color,\
-	no-hints,\
-	no-journal,\
-	not-epnumbers:,\
-	remember-sub-and-audio-delay,\
-	resume,\
-	resume-from-previous,\
-	run-in-cycle,\
-	screenshot-dir:,\
-	screenshot-dir-skel:,\
-	subfolders:,\
-	taskset-cpulist:,\
-	version,\
-	             -n 'watch.sh' -- "$@")
-	getopt_exit_code=$?
-	[ $getopt_exit_code -gt 0 ] && err 'Error parsing options.'
-	eval set -- "$opts"
+	local  getopt_longopts  opts
+
+	getopt_longopts=(
+		allow-autosub
+		basedir:
+		basepath:
+		bashrc::
+		check-for-update::
+		compat:
+		dvd-bd-nav
+		group-indicator:
+		help
+		heuristics-level:
+		ignore-disks
+		interval:
+		ionice-opts::
+		journal-max-size:
+		jpeg-compression::
+		last-ep
+		last-ep-command:
+		last-ep-format:
+		last-item-mark:
+		limit-watching-to:
+		loop
+		match-all
+		match-number
+		mplayer-command:
+		mplayer-opts:
+		my-increment:
+		my-decrement:
+		no-color
+		no-hints
+		no-journal
+		not-epnumbers:
+		remember-sub-and-audio-delay
+		resume
+		resume-from-previous
+		run-in-cycle
+		screenshot-dir:
+		screenshot-dir-skel:
+		subfolders:
+		taskset-cpulist:
+		version
+	)
+	opts=$(getopt  --options acCd:eEFhH:IJlL:m:M:nNrRs:S:Tv  \
+	               --longoptions $(IFS=','; echo "${getopt_longopts[*]}")  \
+	               -n 'watchfromcli.sh'  \
+	               -- "$@"
+	) || err 'Error parsing options.'
+	eval builtin set -- "$opts"
 
 	# while true; do
-	while [ $# -ne 0 ]; do
-		option="$1" # becasue this way it may be used in err()
+	while (( $# != 0 )); do
+		option="$1"  # because this way it may be used in err()
 		case "$option" in
 			-a|'--match-all')
 				MATCH_ALL=t
@@ -187,7 +190,7 @@ process_args() {
 					&& LAST_EP_NUMBER_PRINTING_COMMAND='figlet -t -f banner -c' \
 					|| {
 					warn 'I can’t use figlet? Is it and the font installed?
-	  I will use ‘cat’ to print the last shown episode number.'
+					      I will use ‘cat’ to print the last shown episode number.'
 					LAST_EP_NUMBER_PRINTING_COMMAND='cat'
 				}
 				LAST_EP_NUMBER_PRINTING_FORMAT='%n'
@@ -293,10 +296,6 @@ process_args() {
 				shift
 				break
 				;;
-			*)
-				KEYWORD="$1"
-				shift
-				;;
 		esac
 	done
 
@@ -356,7 +355,7 @@ process_args() {
 		*);;
 	esac
 
-	# KEYWORD="$*"
+	KEYWORD="$*"
 	[ -v RESUME ] || {
 		[ "$KEYWORD" ] || err 'No keyword given.'
 		[ "${KEYWORD/@(*[^.]|)\**/}" ] || {
