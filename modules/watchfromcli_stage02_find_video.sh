@@ -105,7 +105,9 @@ do_initial_search() {
 			done
 			# export -nf escape_for_sed
 
-		else  FIRST_MATCH="$matches";  fi
+		else
+			FIRST_MATCH="$matches"
+		fi
 		local temp=${BASEPATH[0]}
 		unset BASEPATH
 		BASEPATH="$temp"

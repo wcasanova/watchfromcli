@@ -106,9 +106,10 @@ watch() {
 		subtitles="$RELATED_FILES_LIST"
 		findpath="$BASEPATH${FIRST_MATCH:-}${SUBFOLDERS:-}"
 		[ "$subtitles" ] && {
-			[ -v COMPAT ] && { # subtitles in one line, --sub file1,file2,…fileN
-				# Because MPlayer’s syntax for subtitles is "-sub file1,file2"
-				#   we must escape commas in path and file names.
+			if [ -v COMPAT ]; then
+				#  Subtitles in one line, --sub file1,file2,…fileN
+				#  Because MPlayer’s syntax for subtitles is "-sub file1,file2"
+				#    we must escape commas in path and file names.
 				findpath="${findpath//,/\\\,}"
 				subtitles="${subtitles//,/\,}"
 				subtitles=$(echo "$subtitles" \
@@ -123,9 +124,18 @@ watch() {
 					           # Successful replace → goto loop.
 					               t loop  ")
 				subtitles="${dashes}${mp_opts[sub-file]} \"$subtitles\""
-			}||{ # each subtitle file passed with the key --sub file1 --sub file2 etc.
-				subtitles=`echo "$subtitles" | sed -r "s/.*/--sub-file='$(escape_for_sed_replacement "$findpath")&'/g"` # '…'"$findpath"'…'
-			}
+			else
+				#  Each subtitle file passed with the key --sub file1 --sub file2 etc.
+				# subtitles=`echo "$subtitles" | sed -r "s/.*/--sub-file='$(escape_for_sed_replacement "$findpath")&'/g"` # '…'"$findpath"'…'
+				subtitles="--sub-file=${findpath@Q}"  # '…'"$findpath"'…'
+				#  $subtitles is supposedly a newline-separated list, so there
+				#  should probably be something like
+				# while read -r ; do
+				# 	new_subtitles+=( "--sub_file=${REPLY@Q}" )
+				# done
+				#  And then in the mpv command it should simply expand as
+				#  an array "${new_subtitles[@]}"
+			fi
 		}
 		# Soundtracks
 		# NB: old format of passing files via comma is broken in latest MPlayer,
@@ -143,7 +153,9 @@ Consider switching to the latest mpv if you want to load multiple tracks
   at once.'
 				# tracks="${RELATED_FILES_LIST// /\\\ }"
 				tracks=`sed -n "$ s/.*/${dashes}${mp_opts[audio-file]} '$(escape_for_sed_replacement "$findpath")&'/p" <<<"$tracks"`
-			else  tracks=`sed -r "s/.*/--audio-file='$(escape_for_sed_replacement "$findpath")&'/g" <<<"$tracks"`;  fi
+			else
+				tracks=`sed -r "s/.*/--audio-file='$(escape_for_sed_replacement "$findpath")&'/g" <<<"$tracks"`
+			fi
 		}
 	} # MODE = single -o $MODE = episodes
 
@@ -199,7 +211,14 @@ Consider switching to the latest mpv if you want to load multiple tracks
 	# --msg-level=all=info because coproc will make mpv spam its status line.
 	#   It is also used to distinguish the mpv instance that runs
 	#   the video from those that encode webms (see below).
-	{ coproc \
+
+
+	#  Attempt to transform passing MPLAYER_OPTS in a better form, that would
+	#  allow env to work.
+	# TEMP_MPLAYER_OPTS=( $MPLAYER_OPTS )
+	MPLAYER_OPTS=( $MPLAYER_OPTS )
+
+	{ coproc  \
 		{
 			#  To know, if mpv finished playing the file or it was interrupted,
 			#  we must catch its last line of the output and parse it. This
@@ -258,10 +277,10 @@ Consider switching to the latest mpv if you want to load multiple tracks
 			#     So, the result of sed is inverted: when the mpv quits with
 			#     “End of file”, the replacement works, sed quits with code 1,
 			#     which *negative.* And when mpv is interrupted, the output
-			#     would have “Quit” (or something like “Terminated”), the re-
-			#     placement in curly braces will not happen, the “T” command
-			#     will make sed ignore the line and it will eventually quit
-			#     by itself with a code 0, *positive*.
+			#     would have “Quit” (or “Some errors happened”), the replace-
+			#     ment in curly braces will not happen, the “T” command will
+			#     make sed ignore the line and it will eventually quit by
+			#     itself with a code 0, *positive*.
 			#
 			#     This has to be made so, because of two reasons:
 			#     - first, the string in the mpv output, that reports about
@@ -287,14 +306,29 @@ Consider switching to the latest mpv if you want to load multiple tracks
 			#  proceed to load the next file, if RUN_IN_CYCLE is set.
 			#
 			! {
-				eval ${ionice_cmd:-} ${taskset_cmd:-}  \
-				     $MPLAYER_COMMAND  \
-				         --msg-level=all=info  \
-				         ${NO_AUTOSUB:-}  \
-				         ${subtitles:-}  \
-				         ${tracks:-}  \
-				         "$MPLAYER_OPTS"  \
-				         "\"$path_to_videofile\""  \
+				#  env must be used to clear the environemnt from Bahelite
+				#    variables – or they will prevent other programs, that run
+				#    from within mpv, to run properly (mpv inherits this envi-
+				#    ronment).
+				#  eval, that was here before, will not work inside env
+				#    (and it would obviously be stupid to put it outside), so
+				#    it had to be removed. The removal of eval may break things
+				#    like external subtitles or some video files, because
+				#    the paths were modified to maintain escapes to run within
+				#    eval.
+				#  This was indeed bad to use eval at all, but this script has
+				#    originated from the year 2013, when there was no such
+				#    nice bash features like name references (declare -n) and
+				#    input escapes in the built-in substitution (e.g. ${var@Q}).
+				#
+				env ${ionice_cmd:-} ${taskset_cmd:-}  \
+				    $MPLAYER_COMMAND  \
+				        --msg-level=all=info  \
+				        ${NO_AUTOSUB:-}  \
+				        ${subtitles:-}  \
+				        ${tracks:-}  \
+				        "${MPLAYER_OPTS[@]}"  \
+				        "${path_to_videofile}"  \
 				    |& sed '/^Exiting\.\.\./ {s/End of file/&/p; T; Q1}'
 			  }
 		} >&3
