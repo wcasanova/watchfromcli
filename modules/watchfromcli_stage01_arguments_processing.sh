@@ -1,5 +1,6 @@
 
 process_args() {
+	declare -gA mp_opts=()
 	# getopt from util-linux 2.24 is known to allow long options with a single dash
 	#   independetly of whether the -a|--alternative option is passed.
 	local  getopt_longopts  opts
@@ -323,7 +324,7 @@ process_args() {
 
 	# This is the default – for the latest mpv.
 	dashes='--'
-	declare -A mp_opts=(
+	mp_opts=(
 		[bd-protocol]='bd'
 		[sub-file]='sub-files'
 		[audio-file]='audio-files'
@@ -352,7 +353,6 @@ process_args() {
 			mp_opts[sub-file]='sub-file'
 			mp_opts[audio-file]='audio-file'
 			;;
-		*);;
 	esac
 
 	KEYWORD="$*"

@@ -101,7 +101,7 @@ cd "$PWD" 2>/dev/null || err 'Cannot run – current directory is removed.'
 MAX_HEURISTICS_LEVEL=1
 HEURISTICS_LEVEL=0
 
-VERSION="201906111"
+VERSION="20190612"
 
 JOURNAL=~/.watch.sh/journal
 JOURNAL_MAX_SIZE="64K" # w/o suffix for bytes, K for KiB, M for MiB et al.
