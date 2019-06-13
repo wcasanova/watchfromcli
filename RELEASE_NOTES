@@ -1,3 +1,16 @@
+——— v 20190613 ———————————————————————————————————————————————————————————————
+
+1. The option -m / --mplayer-opt now takes only one mplayer option for the sake
+   of handling it properly. Old --mplayer-opts is specifically deprecated.
+
+   This should fix the issue with player options not being passed to it.
+
+2. Compatibility options are disabled, for it’s not known if they still work,
+   and their removal is planned for the future.
+
+
+
+
 ===] 7 November 2017 [===============================================
 
 1. Fixed #14. Strongly advised to update!
@@ -9,23 +22,23 @@
 ===] 23 October 2017 [===============================================
 
 1. --sub-file and --audio-file options were updated to have `s`
-   endings, like the modern mpv has. Older options can be used 
+   endings, like the modern mpv has. Older options can be used
    with --compat=mpv-0260 option.
-2. Solved #13. 
+2. Solved #13.
    Earlier, if -c|--run-in-cycle was given while files in a fol-
    der were still downloading, watch.sh would remember the file
    list as it was, when -r|--resume happened. You knew there are
    12 episodes, for example, but watch.sh remembered, that only
-   three were downloaded. 
-   Now watch.sh just starts a cycle anew in such case, but will 
+   three were downloaded.
+   Now watch.sh just starts a cycle anew in such case, but will
    suggest the number from the list you picked the last time.
    The new journal variable LASTMOD obsoletes old records with
    MODE='episodes', so the users are enouraged to remove the
    journal file and let watch.sh create a new one.
-3. --sub-auto=no, that earlier had to be put in the config file, 
-   is now automatically added to the mpv command line. You can 
-   remove it from the config. If, for some reason, you prefer to 
-   use sub-auto along with watch.sh, you can use --allow-autosub 
+3. --sub-auto=no, that earlier had to be put in the config file,
+   is now automatically added to the mpv command line. You can
+   remove it from the config. If, for some reason, you prefer to
+   use sub-auto along with watch.sh, you can use --allow-autosub
    switch to supress --sub-auto=no.
 
 
@@ -41,7 +54,7 @@
 
 1. Removed superfluous RUN_IN_CYCLE for $MODEs that are not ‘episodes’
    in import_session_data(). Let it be set by respective keys (-c/-r/-R).
-2. Improved check for the last item with -1 used in place of VIDEOFILES_COUNT 
+2. Improved check for the last item with -1 used in place of VIDEOFILES_COUNT
    and EXIT_AFTER_THIS_EPISODE if they are empty/unset.
 3. SCREENSHOT_DIR doesn’t go to the journal, if it was set to dot.
    Its original value is used instead.

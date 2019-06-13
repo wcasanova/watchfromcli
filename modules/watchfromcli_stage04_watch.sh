@@ -23,7 +23,7 @@
 watch() {
 	case $MODE in
 		single)
-			[ -v LOOP ] && MPLAYER_OPTS+=" --loop-file=inf"
+			[ -v LOOP ] && MPLAYER_OPTS+=( "--loop-file=inf" )
 			;;
 		episodes)
 			MATCH_NUMBER=t
@@ -67,9 +67,12 @@ watch() {
 			fi
 			CLEAN_EP_NUMBER=${EP_NUMBERS[VIDEO_NUMBER-1]#L}
 			CLEAN_EP_NUMBER=${CLEAN_EP_NUMBER%\?}
-			[ -v SUB_DELAY ] && MPLAYER_OPTS+=" $dashes${mp_opts[sub-delay]}=$SUB_DELAY"
-			[ -v AUDIO_DELAY ] && MPLAYER_OPTS+=" $dashes${mp_opts[audio-delay]}=$AUDIO_DELAY"
-			[ -v REMEMBER_SUB_AND_AUDIO_DELAY ] && MPLAYER_OPTS+=" --write-filename-in-watch-later-config"
+			[ -v SUB_DELAY ]  \
+				&& MPLAYER_OPTS+=( "$dashes${mp_opts[sub-delay]}=$SUB_DELAY" )
+			[ -v AUDIO_DELAY ]  \
+				&& MPLAYER_OPTS+=( "$dashes${mp_opts[audio-delay]}=$AUDIO_DELAY" )
+			[ -v REMEMBER_SUB_AND_AUDIO_DELAY ]  \
+				&& MPLAYER_OPTS+=( "--write-filename-in-watch-later-config" )
 			;;
 		dvd|bd)
 			local device protocol
@@ -85,16 +88,16 @@ watch() {
 
 			# Replace it with MPLAYER_OPTS+=" ${dashes}profile protocol.$protocol"
 			#   when rejecting mplayer and mplayer2.
-			if $MPLAYER_COMMAND ${dashes}profile help \
-				|& grep -q "\<protocol.$protocol\>" ; then
-				MPLAYER_OPTS=`echo "$MPLAYER_OPTS" \
-				    | sed "s/${dashes}profile[= ]^\S+/&,protocol.$protocol/;T;Q1"`
-				[ $? -eq 0 ] && \
-					MPLAYER_OPTS+=" ${dashes}profile protocol.$protocol"
-			else
-				info "$MPLAYER_COMMAND config doesn’t have profile ‘protocol.$protocol’ set."
-			fi
-			MPLAYER_OPTS+=" $protocol:// ${device:-} "
+			# if $MPLAYER_COMMAND ${dashes}profile help \
+			# 	|& grep -q "\<protocol.$protocol\>" ; then
+			# 	MPLAYER_OPTS=`echo "$MPLAYER_OPTS" \
+			# 	    | sed "s/${dashes}profile[= ]^\S+/&,protocol.$protocol/;T;Q1"`
+			# 	[ $? -eq 0 ] && \
+			# 		MPLAYER_OPTS+=( "${dashes}profile" "protocol.$protocol" )
+			# else
+			# 	info "$MPLAYER_COMMAND config doesn’t have profile ‘protocol.$protocol’ set."
+			# fi
+			MPLAYER_OPTS+=( "$protocol://" "${device:-}" )
 			;;
 	esac
 
@@ -211,12 +214,6 @@ Consider switching to the latest mpv if you want to load multiple tracks
 	# --msg-level=all=info because coproc will make mpv spam its status line.
 	#   It is also used to distinguish the mpv instance that runs
 	#   the video from those that encode webms (see below).
-
-
-	#  Attempt to transform passing MPLAYER_OPTS in a better form, that would
-	#  allow env to work.
-	# TEMP_MPLAYER_OPTS=( $MPLAYER_OPTS )
-	MPLAYER_OPTS=( $MPLAYER_OPTS )
 
 	{ coproc  \
 		{

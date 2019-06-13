@@ -11,7 +11,7 @@ process_args() {
 		basepath:
 		bashrc::
 		check-for-update::
-		compat:
+		# compat:
 		dvd-bd-nav
 		group-indicator:
 		help
@@ -30,7 +30,7 @@ process_args() {
 		match-all
 		match-number
 		mplayer-command:
-		mplayer-opts:
+		mplayer-opt:
 		my-increment:
 		my-decrement:
 		no-color
@@ -89,10 +89,10 @@ process_args() {
 						|| err 'Option --check-for-update takes a number of days between which it should check releases on github as argument.'
 				}
 				;;
-			'--compat')
-				[[ "$2" == @(mplayer|mplayer2|mpv-03x|mpv-025x) ]] && COMPAT="$2" && shift 2 \
-					|| err 'Option --compat requires argument to be one of ‘mplayer’, ‘mplayer2’, ‘mpv-03x’ or ‘mpv-025x’.'
-				;;
+			# '--compat')
+			# 	[[ "$2" == @(mplayer|mplayer2|mpv-03x|mpv-025x) ]] && COMPAT="$2" && shift 2 \
+			# 		|| err 'Option --compat requires argument to be one of ‘mplayer’, ‘mplayer2’, ‘mpv-03x’ or ‘mpv-025x’.'
+			# 	;;
 			-d|'--basedir'|'--basepath')
 				arg="$2"
 				[ -d "$arg" ] \
@@ -217,8 +217,11 @@ process_args() {
 			-M|'--mplayer-command')
 				[ "$2" ] && MPLAYER_COMMAND="$2" && shift 2 || err "Option ‘$option’ requires an argument."
 				;;
-			-m|'--mplayer-opts')
-				[ "$2" ] && MPLAYER_OPTS+=" $2" && shift 2 || err "Option ‘$option’ requires an argument."
+			-m|'--mplayer-opt')
+				[ "${2:-}" ]  \
+					&& MPLAYER_OPTS+=("$2")  \
+					|| err "Option ‘$option’ requires an argument."
+				shift 2
 				;;
 			'--my-increment')
 				[ "$2" ] && MY_INCREMENT="$2" && shift 2 || err "Option ‘$option’ requires an argument."
